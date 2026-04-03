@@ -12,6 +12,11 @@ from services.ai_service import analyze_code
 from services.filter_service import parse_and_filter_issues
 from utils.formatter import format_comment, format_inline_issue
 
+from stats_store import record_review, get_stats
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -32,6 +37,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/api/stats")
+async def stats():
+    return get_stats()
+
+@app.get("/")
+async def dashboard():
+    return FileResponse("static/index.html")
 
 # In-memory deduplication set for processed commit SHAs
 processed_shas = set()
@@ -117,8 +132,10 @@ def process_webhook(payload: dict):
 
         if success_count > 0:
             print("[webhook] successfully posted inline comments")
+            record_review(repo, pr_number, issues)
             return {"status": "success", "issues_commented": success_count}
         else:
+            record_review(repo, pr_number, issues)
             return {"status": "error", "reason": "Failed to post inline comments"}
 
     except Exception as e:
