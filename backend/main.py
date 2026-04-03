@@ -1,16 +1,16 @@
 import logging
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+
+# Load environment variables FIRST before importing singletons
+load_dotenv()
 
 # Ensure requirements specify exact functions
 from services.github_service import extract_pr_data, fetch_diff, post_comment, post_inline_comment
 from services.ai_service import analyze_code
 from services.filter_service import parse_and_filter_issues
 from utils.formatter import format_comment, format_inline_issue
-
-# Load environment variables
-load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -49,16 +49,16 @@ async def get_info():
         "services": ["github", "ai", "filter"]
     }
 
-@app.post("/webhook")
-async def webhook(request: Request):
-    """Full AI Code Review pipeline webhook endpoint."""
+def process_webhook(payload: dict):
+    """Heavy background logic execution."""
+    print("🚀 BACKGROUND TASK STARTED")
+    print("📦 KEYS:", list(payload.keys()))
     try:
-        payload = await request.json()
-        print("[webhook] Payload received")
-
         # Stage 1
         if "pull_request" not in payload:
-            return {"status": "ignored", "reason": "No pull_request in payload"}
+            print("❌ NO PR FOUND → IGNORING")
+            return
+        print("✅ PR DETECTED → CONTINUING")
 
         # Stage 2
         action = payload.get("action")
@@ -74,26 +74,29 @@ async def webhook(request: Request):
         if not head_sha:
             return {"status": "error", "reason": "No commit SHA found in payload"}
 
-        if head_sha in processed_shas:
-            print(f"[webhook] SHA {head_sha} already processed — duplicate skipped")
-            return {"status": "duplicate skipped"}
-        processed_shas.add(head_sha)
+        # if head_sha in processed_shas:
+        #     print(f"[webhook] SHA {head_sha} already processed — duplicate skipped")
+        #     return {"status": "duplicate skipped"}
+        # processed_shas.add(head_sha)
 
         print("[webhook] PR detected")
 
         # Stage 4
+        # We pass the full payload to the updated fetch_diff
         diff = fetch_diff(owner, repo, pr_number)
         if not diff:
+            print("📦 DIFF LENGTH: 0")
             print("[webhook] Empty diff — skipping")
             return {"status": "no changes"}
-        print("[fetch_diff] success")
+        print("📦 DIFF LENGTH:", len(diff))
 
         # Stage 5
         analysis_result = analyze_code(diff)
-        print("[analyze_code] success")
+        print("🧠 AI RESPONSE:", analysis_result)
 
         # Stage 6
         issues = parse_and_filter_issues(analysis_result)
+        print("🧹 FILTERED ISSUES:", issues)
 
         # Stage 7
         if not issues:
@@ -105,8 +108,9 @@ async def webhook(request: Request):
         for issue in issues:
             formatted_body = format_inline_issue(issue)
             issue["formatted_body"] = formatted_body
+            print("📤 POSTING COMMENT...")
             if post_inline_comment(owner, repo, pr_number, issue, head_sha):
-                print("[post_inline_comment] success")
+                print("✅ COMMENT POSTED")
                 success_count += 1
             else:
                 print("[post_inline_comment] error")
@@ -118,5 +122,15 @@ async def webhook(request: Request):
             return {"status": "error", "reason": "Failed to post inline comments"}
 
     except Exception as e:
-        print(f"[webhook] error: {str(e)}")
-        return {"status": "error", "message": str(e)}
+        print("❌ ERROR:", str(e))
+        return {"error": str(e)}
+
+    return {"status": "processed"}
+
+@app.post("/webhook")
+async def webhook(request: Request, background_tasks: BackgroundTasks):
+    """Accepts GitHub webhooks instantly to prevent timeouts."""
+    payload = await request.json()
+    print("🔥 RAW PAYLOAD RECEIVED, id:", id(payload), "keys:", list(payload.keys()))
+    background_tasks.add_task(process_webhook, payload)
+    return {"status": "processing"}

@@ -1,4 +1,5 @@
 venv/
+.venv/
 __pycache__/
 .env
 *.pyc
@@ -7,3 +8,4 @@ __pycache__/
 test_engine.py
 test_git.py
 test_results.txt
+backend/test_ai.py

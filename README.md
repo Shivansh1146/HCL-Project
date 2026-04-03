@@ -1,93 +1,146 @@
 # ⚡ AI-Powered Pull Request Code Review Assistant
 
-A production-grade, full-stack application that intercepts GitHub Pull Request payloads (Webhooks) in real-time, extracts the exact code that was changed, uses artificial intelligence (OpenAI `gpt-4o-mini`) to detect bugs and security flaws, and dynamically comments the fixes directly onto the specific lines natively in the GitHub PR.
+A production-grade application that intercepts GitHub Pull Request webhooks in real-time, analyzes the changed code using AI to detect bugs and security flaws, and posts inline comments directly onto the vulnerable lines in the PR.
 
 ---
 
-## 🏗️ Core System Architecture
-- **Backend Network**: Python + FastAPI
-- **Frontend Panel**: HTML + CSS (Inter Font) + Vanilla Javascript Web Form
-- **AI Engine**: OpenAI API (`gpt-4o-mini`)
-- **Integration Layer**: GitHub REST API (Webhooks & Comments)
+## 🏗️ Architecture
+
+| Layer | Technology |
+|---|---|
+| **Backend** | Python + FastAPI |
+| **AI Engine** | Groq API (`llama-3.3-70b-versatile`) — Free |
+| **Integration** | GitHub REST API (Webhooks & Inline Comments) |
+| **Tunneling** | localtunnel (dev) |
 
 ---
 
-## ⚙️ The 10-Stage Pipeline Engine (`main.py`)
-The entire webhook pipeline executes exactly like this upon a GitHub `POST`:
-1. **Payload Capture**: Validates standard JSON payload & ensures action is strictly `opened` or `synchronize`.
-2. **Action Validation**: Explicitly ignores spam events (like PRs closing).
-3. **Commit Hashing & Deduplication**: Extracts `payload["pull_request"]["head"]["sha"]` and checks an internal highly-performant Python `Set()` to prevent duplicate AI triggers.
-4. **Git Diff Extraction**: Reaches into GitHub securely to pull only the changed patches of code (`fetch_diff()`), bailing cleanly if empty.
-5. **AI Dispatching**: Fires the Raw Diff string securely into `analyze_code()` via OpenAI.
-6. **Smart Filtering**: Triggers `parse_and_filter_issues()` to grade and drop false positives.
-7. **Clean Exit Logic**: Compiles surviving issues into structured GitHub Markdown. If no issues survive, it halts operations quietly rather than spamming empty comments.
-8. **Markdown Formatting**: Executes markdown templates via `format_inline_issue()`.
-9. **Inline Output Execution**: Pings the GitHub API in a loop targeting the distinct `commit_sha` and referencing the `path` and `line` mapped dynamically inside the AI response.
-10. **Error Catching**: Implements a Try-Catch fallback. If GitHub kicks back a `422 Unprocessable Entity` (Because AI guessed an invalid line number), it catches the crash and seamlessly drops the issue inside the main PR thread instead of failing!
+## ⚙️ Pipeline (`main.py`)
+
+GitHub sends a `POST` → instantly returns `200 OK` → background task runs:
+
+1. **Validate** — Accepts only `opened` / `synchronize` PR events
+2. **Extract** — Pulls `owner`, `repo`, `pr_number`, `head_sha` from payload
+3. **Fetch Diff** — Downloads raw `.diff` from GitHub (`application/vnd.github.v3.diff`)
+4. **AI Analysis** — Sends diff to Groq LLaMA for security/bug detection
+5. **Filter** — Scores and drops low-signal / vague AI suggestions
+6. **Post Comment** — Posts inline comments on the exact changed lines via GitHub API
+
+> Uses FastAPI `BackgroundTasks` to return instant `200 OK` to GitHub before heavy processing begins — preventing webhook timeouts.
 
 ---
 
-## 🧠 The AI Brain & Diff Chunking (`ai_service.py`)
-Transforming standard OpenAI generation into a **Hardened Senior Security Engine**:
-- **Persona Lock**: Prompt strictly locks OpenAI into analyzing code under the persona of a *Senior Security Engineer*. This prevents it from nitpicking spelling errors.
-- **Chunking Matrix**: Massive pull requests crush context sizes. If a diff exceeds `8000` chars, it natively slices the diff into exact blocks of `4000` executing the AI function repeatedly.
-- **Semantic Deduplication**: Because chunking processing isolation produces duplicates, we execute `_is_similar()` on descriptions—which translates spaces to lowercase, mathematically deletes punctuation, isolates root subset components (ignoring stop words like 'and, are, on, of, for'), and guarantees identical issues from chunks are collapsed together into one dictionary!
-- **Retry Safety**: Wraps the OpenAI SDK call in `_analyze_chunk_with_retry`. Max 3 attempts allowing automatic 1-second interval resets upon connection drops.
-- **Strict JSON Targeting**: AI must return valid JSON forcing: `type` (bug|security|performance), `severity` (high|medium|low), `file` (from patch headers), and a physical `line` integer prediction.
+## 🧠 AI Service (`ai_service.py`)
+
+- **Model**: `llama-3.3-70b-versatile` via Groq (free, no billing)
+- **Chunking**: Diffs > 8000 chars split into 4000-char chunks processed separately
+- **Retry Logic**: 3 attempts with 1s backoff on API failures
+- **Semantic Deduplication**: Merges similar issues across chunks using word-overlap matching
+- **Strict JSON Schema**: Forces structured output — `type`, `severity`, `file`, `line`, `description`, `fix`
 
 ---
 
-## 🛡️ Heuristics Filtration Control (`filter_service.py`)
-LLMs hallucinate stylistic junk. To kill this, every AI response triggers a mathematical scoring phase:
-- Initial Score = `0`
-- `+2` Points if severity string equates to `high`.
-- `+1` Point if string length spans longer than 30 characters minimizing vague spam.
-- `-2` Points if descriptions utilize weak vocabulary arrays `['improve', 'optimize', 'better', 'clean']`.
-- Drops any JSON object if score results in `< 1`. Pure signal, zero noise.
+## 🛡️ Filter Service (`filter_service.py`)
+
+Scoring engine to eliminate hallucinated or vague AI output:
+
+| Condition | Score |
+|---|---|
+| `severity == "high"` | +2 |
+| `severity == "medium"` | +1 |
+| `description length > 30` | +1 |
+| Vague words (`improve`, `optimize`, etc.) | -2 |
+| **Threshold to pass** | `≥ 0` |
 
 ---
 
-## 🛠️ Quick Start Guide
+## 🛠️ Setup
 
-### 1. Set Up Your Environment
-Launch your terminal and create a `.env` file within the `backend/` directory harboring your valid secret credentials:
-```env
-OPENAI_API_KEY=sk-...
-GITHUB_TOKEN=ghp_...
-```
+### 1. Clone & Install
 
-### 2. Install Dependencies
-Initialize a sterile virtual environment and install the FastAPI tracking requirements.
 ```powershell
-python -m venv venv
-.\venv\Scripts\activate
+git clone https://github.com/Shivansh1146/hcl-project
+cd "HCL Project"
+python -m venv .venv
+.\.venv\Scripts\activate
 cd backend
 pip install -r requirements.txt
 ```
 
-### 3. Spin Up the FastAPI Backend
-Initialize the standard backend gateway pipeline natively:
+### 2. Configure Environment
+
+Create `backend/.env`:
+
+```env
+GROQ_API_KEY=gsk_...        # Get free at console.groq.com
+GITHUB_TOKEN=github_pat_... # Needs 'repo' scope
+PORT=8000
+ENVIRONMENT=development
+```
+
+### 3. Run Backend
+
 ```powershell
+cd backend
 python -m uvicorn main:app --reload --port 8001
 ```
 
-### 4. Enable Webhook Routing
-To permit GitHub to push webhook events directly into your locally running machine, spin up localtunnel:
+### 4. Expose via Tunnel
+
 ```powershell
 npx -y localtunnel --port 8001
+# → your url is: https://xxxx.loca.lt
 ```
 
-## 🔌 Securing the GitHub Integration
-1. Copy the `localtunnel` URL dynamically generated (e.g., `https://shaky-doodles-kneel.loca.lt`).
-2. Navigate to your target **GitHub Repository** -> **Settings** -> **Webhooks** -> **Add webhook**.
-3. Set **Payload URL** to `https://<YOUR_URL>.loca.lt/webhook`.
-4. Set **Content type** to `application/json`.
-5. Under triggers, click **"Let me select individual events"**, actively check **Pull requests**, and click **Save**.
+### 5. Configure GitHub Webhook
 
-## 🔥 Validation Testing
-Ready to watch it work? Open a new Git branch and introduce critical (simulated) failures to any file:
+1. Go to **GitHub Repo → Settings → Webhooks → Add webhook**
+2. **Payload URL**: `https://xxxx.loca.lt/webhook`
+3. **Content type**: `application/json`
+4. **Events**: Select `Pull requests` only
+5. Click **Save**
+
+---
+
+## ✅ Health Check
+
+```
+GET https://xxxx.loca.lt/api/health
+→ {"status": "healthy"}
+
+GET https://xxxx.loca.lt/webhook
+→ {"detail": "Method Not Allowed"}  ✅ (correct — expects POST from GitHub)
+```
+
+---
+
+## 🔥 Testing
+
+Create a new branch and introduce a security flaw:
+
 ```python
+# bad_code.py
 password = "123456"
 query = "SELECT * FROM users WHERE id=" + user_input
 ```
-Open a Pull Request into your tracker, and your assistant will instantaneously parse the event payload, flag the malicious logic, and securely execute an inline comment directly onto the vulnerable lines requiring remediation!
+
+Push and open a PR — the bot will automatically detect the vulnerability and post an inline comment on the exact line!
+
+---
+
+## 📁 Project Structure
+
+```
+HCL Project/
+├── backend/
+│   ├── main.py                  # FastAPI app + webhook pipeline
+│   ├── requirements.txt
+│   ├── .env                     # API keys (never commit!)
+│   ├── services/
+│   │   ├── ai_service.py        # Groq LLaMA integration
+│   │   ├── github_service.py    # GitHub API (diff fetch + comment post)
+│   │   └── filter_service.py    # Issue scoring & filtering
+│   └── utils/
+│       └── formatter.py         # Markdown comment formatter
+└── README.md
+```

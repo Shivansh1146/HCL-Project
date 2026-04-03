@@ -5,8 +5,7 @@ import string
 import logging
 from typing import Dict, Any
 from dotenv import load_dotenv
-from openai import OpenAI
-from openai import OpenAIError
+from groq import Groq, GroqError
 
 # Ensure environment variables are loaded
 load_dotenv()
@@ -14,15 +13,15 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 class AIService:
-    """Service to handle AI interactions using OpenAI."""
+    """Service to handle AI interactions using Groq (free tier)."""
 
     def __init__(self):
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        if not self.api_key or self.api_key == "your_openai_api_key_here":
-            logger.warning("OpenAI API key is not properly set.")
+        self.api_key = os.getenv("GROQ_API_KEY")
+        if not self.api_key:
+            logger.warning("Groq API key is not set. Set GROQ_API_KEY in .env")
             self.client = None
         else:
-            self.client = OpenAI(api_key=self.api_key)
+            self.client = Groq(api_key=self.api_key)
 
     def _is_similar(self, desc1: str, desc2: str) -> bool:
         """Normalizes descriptions and performs similarity matching."""
@@ -95,7 +94,7 @@ Code Diff:
         for attempt in range(max_retries):
             try:
                 response = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="llama-3.3-70b-versatile",
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.2,
                 )
@@ -116,8 +115,9 @@ Code Diff:
 
             except json.JSONDecodeError as e:
                 logger.error(f"[analyze_code] error on attempt {attempt + 1}: invalid JSON")
-            except OpenAIError as e:
+            except GroqError as e:
                 logger.error(f"[analyze_code] error on attempt {attempt + 1}: API failure - {str(e)}")
+                print(f"❌ GROQ ERROR: {str(e)}")
             except Exception as e:
                 logger.error(f"[analyze_code] error on attempt {attempt + 1}: Unexpected - {str(e)}")
 

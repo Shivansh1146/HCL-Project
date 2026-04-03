@@ -31,32 +31,31 @@ class GitHubService:
             raise ValueError("Invalid GitHub webhook payload format") from e
 
     def fetch_diff(self, owner: str, repo: str, pr_number: int) -> Optional[str]:
-        """Fetches the code diff of a specific pull request."""
+        """Fetches the code diff of a specific pull request securely."""
         logger.info(f"Fetching diff for {owner}/{repo} PR #{pr_number}")
 
-        url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/files"
+        diff_url = f"https://github.com/{owner}/{repo}/pull/{pr_number}.diff"
+
+        headers = self.headers.copy()
+        # Strictly accept native diff
+        headers["Accept"] = "application/vnd.github.v3.diff"
 
         try:
-            response = requests.get(url, headers=self.headers)
+            response = requests.get(diff_url, headers=headers)
+            print("DIFF STATUS:", response.status_code)
             response.raise_for_status()
 
-            files = response.json()
-            if not files:
-                logger.warning(f"No files found in PR #{pr_number} for {owner}/{repo}")
+            diff_text = response.text
+            if not diff_text:
+                logger.warning(f"No diff text found in PR #{pr_number}")
                 return ""
 
-            patches = []
-            for file in files:
-                if "patch" in file:
-                    patches.append(f"File: {file.get('filename', 'Unknown')}\n{file['patch']}")
-
-            combined_diff = "\n\n".join(patches)
-            logger.info(f"Successfully fetched and combined diff for PR #{pr_number}")
-            return combined_diff
+            logger.info(f"Successfully fetched diff for PR #{pr_number}")
+            return diff_text
 
         except requests.exceptions.RequestException as e:
             logger.error(f"GitHub API error while fetching diff: {str(e)}")
-            if hasattr(e.response, 'text'):
+            if hasattr(e, 'response') and hasattr(e.response, 'text'):
                 logger.error(f"Response: {e.response.text}")
             return None
         except Exception as e:
@@ -75,6 +74,8 @@ class GitHubService:
                 headers=self.headers,
                 json={"body": comment}
             )
+            print("GITHUB POST STATUS:", response.status_code)
+            print("GITHUB POST RESPONSE:", response.text)
             response.raise_for_status()
             logger.info(f"Successfully posted comment to PR #{pr_number}")
             return True
@@ -108,6 +109,8 @@ class GitHubService:
                 headers=self.headers,
                 json=payload
             )
+            print("GITHUB POST STATUS:", response.status_code)
+            print("GITHUB POST RESPONSE:", response.text)
             response.raise_for_status()
             logger.info(f"Successfully posted inline comment to PR #{pr_number}")
             return True
