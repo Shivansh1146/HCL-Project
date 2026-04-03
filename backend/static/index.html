@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>AI PR Code Review Dashboard</title>
+    <!-- Use Inter font for a modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(20, 27, 45, 0.7);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --high: #ef4444;
+            --medium: #f59e0b;
+            --low: #10b981;
+            --font-family: 'Inter', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
+        }
+
+        header {
+            width: 100%;
+            padding: 2rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(11, 15, 25, 0.8);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            font-weight: 300;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Top Row Stats */
+        .stat-card {
+            grid-column: span 3;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .stat-title {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .stat-value.flash {
+            animation: pulse-glow 1s ease-out;
+        }
+
+        @keyframes pulse-glow {
+            0% { text-shadow: 0 0 0 transparent; transform: scale(1); }
+            50% { text-shadow: 0 0 20px var(--accent); transform: scale(1.1); color: var(--accent); }
+            100% { text-shadow: 0 0 0 transparent; transform: scale(1); }
+        }
+
+        /* Middle Charts area */
+        .chart-card {
+            grid-column: span 6;
+        }
+
+        .grid-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .bar-container {
+            margin-bottom: 1.2rem;
+        }
+
+        .bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .bar-bg {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+
+        .bar-fill.high { background: var(--high); box-shadow: 0 0 10px var(--high); }
+        .bar-fill.medium { background: var(--medium); box-shadow: 0 0 10px var(--medium); }
+        .bar-fill.low { background: var(--low); }
+        .bar-fill.sec { background: #8b5cf6; }
+        .bar-fill.bug { background: #ec4899; }
+        .bar-fill.perf { background: #14b8a6; }
+
+        /* Feed */
+        .feed-card {
+            grid-column: span 12;
+            min-height: 300px;
+        }
+
+        .feed-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .feed-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            animation: slideIn 0.4s ease-out forwards;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .feed-item:nth-child(1) { animation-delay: 0s; }
+        .feed-item:nth-child(2) { animation-delay: 0.1s; }
+        .feed-item:nth-child(3) { animation-delay: 0.2s; }
+        .feed-item:nth-child(n+4) { opacity: 1; transform: translateY(0); animation: none; }
+
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .feed-info strong {
+            color: var(--accent);
+            font-size: 1.1rem;
+        }
+
+        .feed-info span {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-left: 0.5rem;
+        }
+
+        .feed-tags {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tag {
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .tag.high { background: rgba(239, 68, 68, 0.1); border: 1px solid var(--high); color: var(--high); }
+        .tag.medium { background: rgba(245, 158, 11, 0.1); border: 1px solid var(--medium); color: var(--medium); }
+        .tag.low { background: rgba(16, 185, 129, 0.1); border: 1px solid var(--low); color: var(--low); }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--low);
+            background: rgba(16, 185, 129, 0.1);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            border: 1px solid var(--low);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--low);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--low);
+            animation: blink 2s infinite ease-in-out;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Fallback for smaller screens */
+        @media (max-width: 900px) {
+            .stat-card { grid-column: span 6; }
+            .chart-card { grid-column: span 12; }
+        }
+        @media (max-width: 600px) {
+            .stat-card { grid-column: span 12; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>AI Code Reviewer Command Center</h1>
+        <div class="subtitle">Real-time autonomous vulnerability detection dashboard</div>
+    </header>
+
+    <div class="container">
+
+        <!-- Live Numbers -->
+        <div class="card stat-card">
+            <div class="stat-title">PRs Reviewed</div>
+            <div class="stat-value" id="val-prs">0</div>
+        </div>
+        <div class="card stat-card">
+            <div class="stat-title">Total Issues Found</div>
+            <div class="stat-value" id="val-issues" style="color: var(--high);">0</div>
+        </div>
+        <div class="card stat-card">
+            <div class="stat-title">Uptime</div>
+            <div class="stat-value" id="val-uptime" style="font-size: 1.5rem; margin-top:1rem;">0h 0m 0s</div>
+        </div>
+        <div class="card stat-card" style="justify-content: center;">
+            <div class="status">
+                <div class="status-dot"></div>
+                System Online
+            </div>
+            <div class="subtitle" style="margin-top: 1rem;" id="val-last-pr">Awaiting payload...</div>
+        </div>
+
+        <!-- Severity Breakdown -->
+        <div class="card chart-card">
+            <div class="grid-title">Issues by Severity</div>
+
+            <div class="bar-container">
+                <div class="bar-label"><span>Critical / High</span> <span id="lbl-sev-high">0</span></div>
+                <div class="bar-bg"><div class="bar-fill high" id="bar-sev-high" style="width: 0%;"></div></div>
+            </div>
+            <div class="bar-container">
+                <div class="bar-label"><span>Medium</span> <span id="lbl-sev-medium">0</span></div>
+                <div class="bar-bg"><div class="bar-fill medium" id="bar-sev-medium" style="width: 0%;"></div></div>
+            </div>
+            <div class="bar-container">
+                <div class="bar-label"><span>Low / Info</span> <span id="lbl-sev-low">0</span></div>
+                <div class="bar-bg"><div class="bar-fill low" id="bar-sev-low" style="width: 0%;"></div></div>
+            </div>
+        </div>
+
+        <!-- Type Breakdown -->
+        <div class="card chart-card">
+            <div class="grid-title">Issues by Type</div>
+
+            <div class="bar-container">
+                <div class="bar-label"><span>Security Vulnerabilities</span> <span id="lbl-typ-sec">0</span></div>
+                <div class="bar-bg"><div class="bar-fill sec" id="bar-typ-sec" style="width: 0%;"></div></div>
+            </div>
+            <div class="bar-container">
+                <div class="bar-label"><span>Logical Bugs</span> <span id="lbl-typ-bug">0</span></div>
+                <div class="bar-bg"><div class="bar-fill bug" id="bar-typ-bug" style="width: 0%;"></div></div>
+            </div>
+            <div class="bar-container">
+                <div class="bar-label"><span>Performance</span> <span id="lbl-typ-perf">0</span></div>
+                <div class="bar-bg"><div class="bar-fill perf" id="bar-typ-perf" style="width: 0%;"></div></div>
+            </div>
+        </div>
+
+        <!-- Live Feed -->
+        <div class="card feed-card">
+            <div class="grid-title">Real-Time PR Review Feed</div>
+            <ul class="feed-list" id="feed-list">
+                <!-- Javascript will populate this -->
+                <li style="text-align: center; color: var(--text-muted); padding: 2rem;">No reviews processed yet. The AI is waiting.</li>
+            </ul>
+        </div>
+
+    </div>
+
+    <script>
+        let previousPRCount = -1;
+
+        async function fetchStats() {
+            try {
+                const res = await fetch("/api/stats");
+                const data = await res.json();
+                updateDashboard(data);
+            } catch (err) {
+                console.error("Failed to fetch stats", err);
+            }
+        }
+
+        function updateDashboard(data) {
+            // Update big numbers
+            const prEl = document.getElementById("val-prs");
+            if (previousPRCount !== -1 && previousPRCount < data.total_prs) {
+                // Flash effect if new PR arrived
+                prEl.classList.remove("flash");
+                void prEl.offsetWidth; // trigger reflow
+                prEl.classList.add("flash");
+            }
+            prEl.innerText = data.total_prs;
+            previousPRCount = data.total_prs;
+
+            document.getElementById("val-issues").innerText = data.total_issues;
+            document.getElementById("val-uptime").innerText = data.uptime;
+
+            if (data.last_review_time) {
+                const d = new Date(data.last_review_time + "Z");
+                document.getElementById("val-last-pr").innerText = "Last review: " + d.toLocaleTimeString();
+            }
+
+            // Calculations for bars
+            const totalSev = Math.max(1, (data.issues_by_severity.high || 0) + (data.issues_by_severity.medium || 0) + (data.issues_by_severity.low || 0));
+            const totalTyp = Math.max(1, (data.issues_by_type.security || 0) + (data.issues_by_type.bug || 0) + (data.issues_by_type.performance || 0));
+
+            // Update Bars and Labels (Severity)
+            updateBar("sev-high", data.issues_by_severity.high || 0, totalSev);
+            updateBar("sev-medium", data.issues_by_severity.medium || 0, totalSev);
+            updateBar("sev-low", data.issues_by_severity.low || 0, totalSev);
+
+            // Update Bars and Labels (Type)
+            updateBar("typ-sec", data.issues_by_type.security || 0, totalTyp);
+            updateBar("typ-bug", data.issues_by_type.bug || 0, totalTyp);
+            updateBar("typ-perf", data.issues_by_type.performance || 0, totalTyp);
+
+            // Update Feed
+            const feedList = document.getElementById("feed-list");
+            if (data.recent_reviews && data.recent_reviews.length > 0) {
+                feedList.innerHTML = "";
+                data.recent_reviews.forEach((review) => {
+                    const li = document.createElement("li");
+                    li.className = "feed-item";
+
+                    li.innerHTML = `
+                        <div class="feed-info">
+                            <strong>${review.repo}#${review.pr_number}</strong>
+                            <span>reviewed at ${review.reviewed_at}</span>
+                        </div>
+                        <div class="feed-tags">
+                            <span class="tag high">${review.severities.high} High</span>
+                            <span class="tag medium">${review.severities.medium} Med</span>
+                            <span class="tag low">${review.severities.low} Low</span>
+                        </div>
+                    `;
+                    feedList.appendChild(li);
+                });
+            }
+        }
+
+        function updateBar(id, val, total) {
+            document.getElementById("lbl-" + id).innerText = val;
+            const pct = (val / total) * 100;
+            document.getElementById("bar-" + id).style.width = pct + "%";
+        }
+
+        // Poll every 3 seconds
+        fetchStats();
+        setInterval(fetchStats, 3000);
+    </script>
+</body>
+</html>

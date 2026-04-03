@@ -15,6 +15,18 @@ A production-grade application that intercepts GitHub Pull Request webhooks in r
 
 ---
 
+## 📊 Live Analytics Dashboard
+
+The platform includes a gorgeous, real-time tracking interface that auto-refreshes every 3 seconds to reflect the AI's autonomous activity.
+
+- **URL:** `http://localhost:8001/`
+- **Features:**
+  - **Live Metrics**: Total PRs parsed, Uptime counter, System Status
+  - **Animated Charts**: Glowing progress bars showing breakdown by Severity (Critical/Med/Low) and Type (Security/Bug/Performance).
+  - **Review Feed**: Real-time tumbling feed showing exact PRs and timestamped review metadata.
+
+---
+
 ## ⚙️ Pipeline (`main.py`)
 
 GitHub sends a `POST` → instantly returns `200 OK` → background task runs:
@@ -25,6 +37,7 @@ GitHub sends a `POST` → instantly returns `200 OK` → background task runs:
 4. **AI Analysis** — Sends diff to Groq LLaMA for security/bug detection
 5. **Filter** — Scores and drops low-signal / vague AI suggestions
 6. **Post Comment** — Posts inline comments on the exact changed lines via GitHub API
+7. **Record Stats** — Logs metadata (severity counts, issue types) to the live memory tracker
 
 > Uses FastAPI `BackgroundTasks` to return instant `200 OK` to GitHub before heavy processing begins — preventing webhook timeouts.
 
@@ -133,9 +146,12 @@ Push and open a PR — the bot will automatically detect the vulnerability and p
 ```
 HCL Project/
 ├── backend/
-│   ├── main.py                  # FastAPI app + webhook pipeline
+│   ├── main.py                  # FastAPI app + webhook pipeline + dashboard routes
+│   ├── stats_store.py           # In-memory analytics & metrics tracker
 │   ├── requirements.txt
 │   ├── .env                     # API keys (never commit!)
+│   ├── static/
+│   │   └── index.html           # Live interactive dashboard UI
 │   ├── services/
 │   │   ├── ai_service.py        # Groq LLaMA integration
 │   │   ├── github_service.py    # GitHub API (diff fetch + comment post)
