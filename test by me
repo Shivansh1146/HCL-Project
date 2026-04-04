@@ -1,1 +1,1 @@
-db.execute("SELECT * FROM users WHERE name = ?", (name,)) if isinstance(name, str) and name.isalnum() else logger.error('Sanitization failed')
+db.execute("SELECT * FROM users WHERE name = ?", (name,)) if isinstance(name, str) and name.isalnum() else logger.error('Sanitization failed') should be replaced with a more robust validation and sanitization mechanism, such as using a whitelist of allowed characters or a dedicated library for input validation.
