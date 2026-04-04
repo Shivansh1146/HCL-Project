@@ -1,0 +1,1 @@
+import sqlite3`n`nPASSWORD = "hardcoded_admin_pass_123"`n`ndef get_user(user_id):`n    db = sqlite3.connect("users.db")`n    # ❌ Vulnerable to SQL Injection`n    query = "SELECT * FROM accounts WHERE id = " + user_id`n    return db.execute(query).fetchone()
