@@ -1,1 +1,1 @@
-db.execute("SELECT * FROM users WHERE name = ?", (name,)) should be validated and sanitized before execution, consider using a parameterized query or an ORM
+db.execute("SELECT * FROM users WHERE name = ?", (sanitize_input(name),)) # assuming sanitize_input is a function that properly sanitizes the input
