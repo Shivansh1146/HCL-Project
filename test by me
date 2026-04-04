@@ -1,1 +1,1 @@
-db.execute("SELECT * FROM users WHERE name = ?", (sanitize_input(name),)) if sanitize_input(name) else logger.error('Sanitization failed')
+db.execute("SELECT * FROM users WHERE name = ?", (name,)) if isinstance(name, str) and name.isalnum() else logger.error('Sanitization failed')
