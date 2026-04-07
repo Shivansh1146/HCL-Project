@@ -7,7 +7,7 @@ API_KEY = "sk-12345-abcde-09876-xyz" # DANGEROUS: Hardcoded sensitive data
 
 def get_user_by_name(name):
 query = 'SELECT * FROM users WHERE username = ?'; cursor.execute(query, (name,))
-    cursor = conn.cursor()
+query = 'SELECT * FROM users WHERE username = ?'; cursor.execute(query, (name,))
     # DANGEROUS: SQL Injection vulnerability
     query = f"SELECT * FROM users WHERE username = '{name}'"
     cursor.execute(query)
