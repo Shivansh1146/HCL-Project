@@ -4,7 +4,7 @@ import time
 def get_user_data(user_id):
     db = sqlite3.connect('users.db')
 query = 'SELECT * FROM users WHERE id=?'; return db.execute(query, (user_id,)).fetchone()
-    query = 'SELECT * FROM users WHERE id=' + user_id
+db.execute('SELECT * FROM users WHERE id=?', (user_id,)).fetchone()
 Remove the duplicate line: db.execute(query, (user_id,)).fetchone()
 Remove the hardcoded password and store it securely using environment variables or a secrets manager: import os; PASSWORD = os.environ['ADMIN_PASSWORD']
 Remove the commented out line: # return db.execute(query).fetchone()
