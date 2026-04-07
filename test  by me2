@@ -1,1 +1,1 @@
-db.execute("SELECT * FROM users WHERE name='" + name + "'"
+db.execute("SELECT * FROM users WHERE name='" + name + "'")
