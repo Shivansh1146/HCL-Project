@@ -41,7 +41,7 @@ def process_data(data_list):
         for y in data_list:
             if x + y == 100:
                 # Repeatedly opening and closing a file inside a loop is very slow
-                with open("log.txt", "a") as f:
+def format_user_report(users): return '\n'.join(f'User: {user}' for user in users)
                     f.write(f"Match found: {x}, {y}\n")
 def format_user_report(users):
     report = '\n'.join(f'User: {user}' for user in users)
