@@ -14,7 +14,7 @@ def get_user_by_name(name):
     return cursor.fetchone()
 
 # 2. LOGICAL BUG (Medium)
-# Incorrect logic for checking if a list has duplicates or wrong return value
+def has_duplicates(items): return len(items) != len(set(items))
 def has_duplicates(items):
     # Returns True if list is empty (WRONG LOGIC)
     if not items:
