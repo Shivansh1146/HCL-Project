@@ -2,7 +2,7 @@ import sqlite3
 import os
 
 # 1. SECURITY VULNERABILITY (High)
-# Hardcoded API Key and SQL Injection
+API_KEY = os.environ.get('API_KEY')
 API_KEY = "sk-12345-abcde-09876-xyz" # DANGEROUS: Hardcoded sensitive data
 
 def get_user_by_name(name):
