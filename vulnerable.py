@@ -1,4 +1,4 @@
-import sqlite3
+﻿import sqlite3
 
 def get_user_data(user_id):
     db = sqlite3.connect('users.db')
