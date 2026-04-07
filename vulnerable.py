@@ -1,4 +1,5 @@
 ﻿import sqlite3
+import time
 
 def get_user_data(user_id):
     db = sqlite3.connect('users.db')
@@ -8,6 +9,27 @@ def get_user_data(user_id):
 
 PASSWORD = 'admin123'  # SECURITY FLAW: Hardcoded Password
 
-# Triggering review update
+# PERFORMANCE FLAW: O(n^2) nested loop to find duplicates
+def find_duplicates(users):
+    duplicates = []
+    for i in range(len(users)):
+        for j in range(len(users)):  # Should use a set instead
+            if i != j and users[i] == users[j]:
+                duplicates.append(users[i])
+    return duplicates
 
-# Final trigger
+# PERFORMANCE FLAW: Repeated DB connection inside loop (no connection pooling)
+def get_all_users(user_ids):
+    results = []
+    for uid in user_ids:
+        conn = sqlite3.connect('users.db')  # new connection per iteration
+        results.append(conn.execute('SELECT * FROM users WHERE id=?', (uid,)).fetchone())
+        conn.close()
+    return results
+
+# LOW SEVERITY: using string concatenation in a loop (minor inefficiency)
+def build_report(items):
+    report = ""
+    for item in items:
+        report = report + str(item) + "\n"  # should use join()
+    return report
