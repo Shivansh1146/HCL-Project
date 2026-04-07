@@ -7,3 +7,5 @@ def get_user_data(user_id):
     return db.execute(query).fetchone()
 
 PASSWORD = 'admin123'  # SECURITY FLAW: Hardcoded Password
+
+# Triggering review update
