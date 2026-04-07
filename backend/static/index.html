@@ -1,438 +1,978 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>AI PR Code Review Dashboard</title>
-    <!-- Use Inter font for a modern look -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Reviewer | Command Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0b0f19;
-            --card-bg: rgba(20, 27, 45, 0.7);
-            --border-color: rgba(255, 255, 255, 0.1);
-            --text-main: #f1f5f9;
-            --text-muted: #94a3b8;
+            /* Vercel/Linear Inspired Palette */
+            --bg-color: #03040b;
+            --card-bg: rgba(13, 16, 23, 0.7);
+            --card-border: rgba(56, 62, 71, 0.5);
             --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.3);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+
             --high: #ef4444;
             --medium: #f59e0b;
             --low: #10b981;
-            --font-family: 'Inter', sans-serif;
+            --quality: #06b6d4;
+            --security: #a855f7;
+            --performance: #f97316;
+            --bug: #ef4444;
+
+            --glass-blur: blur(12px);
+            --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            --transition-flow: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: var(--font-family);
+            margin: 0; padding: 0; box-sizing: border-box;
         }
 
         body {
+            font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
-            color: var(--text-main);
+            color: var(--text-primary);
+            line-height: 1.5;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            overflow-x: hidden;
             background-image:
-                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
+                radial-gradient(circle at 0% 0%, rgba(59,130,246,0.1) 0%, transparent 40%),
+                radial-gradient(circle at 100% 100%, rgba(139,92,246,0.06) 0%, transparent 40%),
+                url("https://www.transparenttextures.com/patterns/dark-matter.png");
+            opacity: 0;
+            transition: opacity 1s ease-out;
         }
 
-        header {
+        body.loaded { opacity: 1; }
+
+        /* --- Layout --- */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 2.5rem;
+            max-width: 1400px;
+            margin: 0 auto;
             width: 100%;
-            padding: 2rem;
-            text-align: center;
-            border-bottom: 1px solid var(--border-color);
-            background: rgba(11, 15, 25, 0.8);
-            backdrop-filter: blur(10px);
-            position: sticky;
-            top: 0;
-            z-index: 100;
         }
 
-        h1 {
-            font-size: 2rem;
+        /* --- Header --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            animation: slideIn 0.6s ease-out;
+        }
+
+        .logo-section h1 {
+            font-size: 1.8rem;
             font-weight: 700;
-            letter-spacing: -0.05em;
-            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #fff, #94a3b8);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        .subtitle {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-top: 0.5rem;
-            font-weight: 300;
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.03);
+            border-radius: 99px;
+            border: 1px solid var(--card-border);
+            font-size: 0.85rem;
+            font-weight: 500;
         }
 
-        .container {
-            width: 100%;
-            max-width: 1200px;
-            padding: 2rem;
+        .status-dot {
+            width: 8px; height: 8px;
+            background-color: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        /* --- Global Grid --- */
+        .grid {
             display: grid;
             grid-template-columns: repeat(12, 1fr);
             gap: 1.5rem;
+            margin-bottom: 2rem;
         }
 
         .card {
             background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 1.5rem;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 1.75rem;
+            transition: var(--transition);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
 
-        /* Top Row Stats */
+        .card:hover {
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- Stat Cards --- */
         .stat-card {
             grid-column: span 3;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            transition: transform 0.2s ease, border-color 0.2s ease;
+            text-align: left;
         }
 
-        .stat-card:hover {
-            transform: translateY(-2px);
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .stat-title {
+        .stat-label {
             color: var(--text-muted);
             font-size: 0.85rem;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             margin-bottom: 0.5rem;
         }
 
         .stat-value {
-            font-size: 3rem;
-            font-weight: 700;
-            color: var(--text-main);
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            font-variant-numeric: tabular-nums;
+            background: linear-gradient(to bottom, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .stat-value.flash {
-            animation: pulse-glow 1s ease-out;
+        .stat-card:first-child {
+            position: relative;
+            overflow: hidden;
         }
 
-        @keyframes pulse-glow {
-            0% { text-shadow: 0 0 0 transparent; transform: scale(1); }
-            50% { text-shadow: 0 0 20px var(--accent); transform: scale(1.1); color: var(--accent); }
-            100% { text-shadow: 0 0 0 transparent; transform: scale(1); }
+        .stat-card:first-child::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 70%);
+            opacity: 0.4;
+            pointer-events: none;
+            z-index: 0;
         }
 
-        /* Middle Charts area */
+        /* --- Progress Bars --- */
         .chart-card {
             grid-column: span 6;
+            position: relative;
+            overflow: hidden;
         }
 
-        .grid-title {
-            font-size: 1.2rem;
-            font-weight: 600;
+        .chart-card::before {
+            content: '';
+            position: absolute;
+            bottom: -50%; right: -20%; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, rgba(139,92,246,0.15) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 1.5rem;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.5rem;
         }
 
-        .bar-container {
-            margin-bottom: 1.2rem;
+        .bar-group {
+            margin-bottom: 1.25rem;
         }
 
         .bar-label {
             display: flex;
             justify-content: space-between;
-            font-size: 0.9rem;
-            margin-bottom: 0.4rem;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
         }
 
-        .bar-bg {
-            width: 100%;
-            height: 8px;
+        .bar-background {
+            height: 6px;
             background: rgba(255,255,255,0.05);
-            border-radius: 4px;
+            border-radius: 99px;
             overflow: hidden;
-            position: relative;
         }
 
         .bar-fill {
             height: 100%;
-            border-radius: 4px;
-            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-            position: absolute;
-            left: 0;
-            top: 0;
+            border-radius: 99px;
+            transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        .bar-fill.high { background: var(--high); box-shadow: 0 0 10px var(--high); }
-        .bar-fill.medium { background: var(--medium); box-shadow: 0 0 10px var(--medium); }
-        .bar-fill.low { background: var(--low); }
-        .bar-fill.sec { background: #8b5cf6; }
-        .bar-fill.bug { background: #ec4899; }
-        .bar-fill.perf { background: #14b8a6; }
-
-        /* Feed */
-        .feed-card {
+        /* --- PR Feed (Accordion) --- */
+        .feed-container {
             grid-column: span 12;
-            min-height: 300px;
         }
 
-        .feed-list {
-            list-style: none;
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-        }
-
-        .feed-item {
+        .feed-header {
+            margin-bottom: 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem;
-            background: rgba(255,255,255,0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            animation: slideIn 0.4s ease-out forwards;
-            opacity: 0;
-            transform: translateY(10px);
         }
 
-        .feed-item:nth-child(1) { animation-delay: 0s; }
-        .feed-item:nth-child(2) { animation-delay: 0.1s; }
-        .feed-item:nth-child(3) { animation-delay: 0.2s; }
-        .feed-item:nth-child(n+4) { opacity: 1; transform: translateY(0); animation: none; }
-
-        @keyframes slideIn {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .accordion-item {
+            border-bottom: 1px solid var(--card-border);
+            transition: var(--transition);
+            border-left: 3px solid transparent;
         }
 
-        .feed-info strong {
-            color: var(--accent);
-            font-size: 1.1rem;
+        .accordion-item:last-child { border-bottom: none; }
+
+        .accordion-item:hover {
+            background: rgba(255,255,255,0.015);
+            transform: translateY(-1px);
         }
 
-        .feed-info span {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            margin-left: 0.5rem;
+        .accordion-item.has-high {
+            border-left: 3px solid rgba(239, 68, 68, 0.2); /* Reduced visual aggression (20%) */
+            background: linear-gradient(to right, rgba(239, 68, 68, 0.03), transparent);
         }
 
-        .feed-tags {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .tag {
-            padding: 0.2rem 0.6rem;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .tag.high { background: rgba(239, 68, 68, 0.1); border: 1px solid var(--high); color: var(--high); }
-        .tag.medium { background: rgba(245, 158, 11, 0.1); border: 1px solid var(--medium); color: var(--medium); }
-        .tag.low { background: rgba(16, 185, 129, 0.1); border: 1px solid var(--low); color: var(--low); }
-
-        .status {
+        .risk-badge {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 0.85rem;
-            color: var(--low);
-            background: rgba(16, 185, 129, 0.1);
-            padding: 0.3rem 0.8rem;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-left: 1rem;
+        }
+
+        .risk-badge.high { background: rgba(239, 68, 68, 0.1); color: var(--high); border: 1px solid rgba(239, 68, 68, 0.2); }
+        .risk-badge.moderate { background: rgba(245, 158, 11, 0.1); color: var(--medium); border: 1px solid rgba(245, 158, 11, 0.2); }
+        .risk-badge.low { background: rgba(16, 185, 129, 0.1); color: var(--low); border: 1px solid rgba(16, 185, 129, 0.2); }
+
+        .risk-dot { width: 6px; height: 6px; border-radius: 50%; opacity: 0.8; }
+        .risk-badge.high .risk-dot { background: var(--high); box-shadow: 0 0 10px var(--high); opacity: 1; }
+        .risk-badge.moderate .risk-dot { background: var(--medium); }
+        .risk-badge.low .risk-dot { background: var(--low); }
+
+        .confidence-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-left: 0.5rem;
+            opacity: 0.7;
+        }
+
+        .accordion-trigger {
+            width: 100%;
+            padding: 1.25rem 0.5rem;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            align-items: center;
+            cursor: pointer;
+            text-align: left;
+            background: none;
+            border: none;
+            color: inherit;
+        }
+
+        .accordion-trigger:hover {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .pr-info { display: flex; flex-direction: column; }
+        .pr-meta { font-size: 0.8rem; color: var(--text-muted); }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            width: fit-content;
+        }
+
+        .badge-status {
+            background: rgba(59,130,246,0.08);
+            color: var(--accent);
+            border: 1px solid rgba(59,130,246,0.15);
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .tag-pill {
+            display: flex; gap: 0.5rem;
+            align-items: center;
+        }
+        .sev-badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .sev-badge.high { background: rgba(239, 68, 68, 0.1); color: var(--high); border: 1px solid rgba(239, 68, 68, 0.2); }
+        .sev-badge.medium { background: rgba(245, 158, 11, 0.1); color: var(--medium); border: 1px solid rgba(245, 158, 11, 0.2); }
+        .sev-badge.low { background: rgba(16, 185, 129, 0.1); color: var(--low); border: 1px solid rgba(16, 185, 129, 0.2); }
+
+        .chevron {
+            transition: transform 0.3s ease;
+            color: var(--text-muted);
+        }
+
+        .accordion-item.active .chevron { transform: rotate(180deg); }
+
+        .accordion-item {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03); /* Soft separator */
+            transition: var(--transition-flow);
+        }
+
+        .accordion-item:hover {
+            background: rgba(255,255,255,0.02);
+            transform: translateX(4px);
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out, padding 0.2s ease-out;
+            background: rgba(0,0,0,0.15);
+        }
+
+        .accordion-item.active .accordion-content {
+            max-height: 500px;
+            padding: 1rem;
+        }
+
+        .quick-finding {
+            padding: 0.85rem 1rem;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.015);
+            border: 1px solid var(--card-border);
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            opacity: 0;
+            transform: translateY(10px);
+            border-left: 3px solid transparent;
+        }
+        .quick-finding:hover {
+            background: rgba(255,255,255,0.04);
+            transform: translateX(4px);
+            border-color: rgba(255,255,255,0.1);
+        }
+        .quick-finding.priority-high {
+            background: rgba(239, 68, 68, 0.01);
+            border-color: rgba(239, 68, 68, 0.05); /* 70% intensity reduction */
+        }
+        .quick-finding.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .cta-button {
+            width: 100%; padding: 0.85rem; background: var(--accent); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 700; transition: var(--transition); box-shadow: 0 4px 15px var(--accent-glow);
+        }
+        .cta-button:hover {
+            transform: scale(1.02);
+            filter: brightness(1.1);
+        }
+
+        /* --- Modal Panel --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active { display: flex; opacity: 1; }
+
+        .modal {
+            background: rgba(10, 12, 18, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
             border-radius: 20px;
-            border: 1px solid var(--low);
+            width: 95%;
+            max-width: 960px;
+            height: 85vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: translateY(20px) scale(0.98);
+            transition: var(--transition);
         }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--low);
-            border-radius: 50%;
-            box-shadow: 0 0 8px var(--low);
-            animation: blink 2s infinite ease-in-out;
+        .modal-overlay.active .modal { transform: translateY(0) scale(1); }
+
+        .modal-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+        .tabs {
+            display: flex;
+            gap: 1.5rem;
+            padding: 0 2rem;
+            background: rgba(255,255,255,0.02);
+            border-bottom: 1px solid var(--card-border);
         }
 
-        /* Fallback for smaller screens */
-        @media (max-width: 900px) {
+        .tab {
+            padding: 1rem 0;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .tab.active { color: var(--text-primary); }
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px; left: 0; width: 100%; height: 2px;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .modal-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        .finding-detail {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: rgba(255,255,255,0.02);
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+        }
+
+        .finding-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .code-block {
+            background: #0d1117;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+        }
+
+        /* --- Animations --- */
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Skeletons --- */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Responsive Mobile Fixes */
+        @media (max-width: 1024px) {
             .stat-card { grid-column: span 6; }
             .chart-card { grid-column: span 12; }
         }
-        @media (max-width: 600px) {
+        @media (max-width: 640px) {
             .stat-card { grid-column: span 12; }
+            .accordion-trigger { grid-template-columns: 1fr auto; gap: 0.5rem; }
+            .accordion-trigger > *:nth-child(2), .accordion-trigger > *:nth-child(3) { display: none; }
+            .main-content { padding: 1.5rem; }
         }
-
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>AI Code Reviewer Command Center</h1>
-        <div class="subtitle">Real-time autonomous vulnerability detection dashboard</div>
-    </header>
-
-    <div class="container">
-
-        <!-- Live Numbers -->
-        <div class="card stat-card">
-            <div class="stat-title">PRs Reviewed</div>
-            <div class="stat-value" id="val-prs">0</div>
-        </div>
-        <div class="card stat-card">
-            <div class="stat-title">Total Issues Found</div>
-            <div class="stat-value" id="val-issues" style="color: var(--high);">0</div>
-        </div>
-        <div class="card stat-card">
-            <div class="stat-title">Uptime</div>
-            <div class="stat-value" id="val-uptime" style="font-size: 1.5rem; margin-top:1rem;">0h 0m 0s</div>
-        </div>
-        <div class="card stat-card" style="justify-content: center;">
-            <div class="status">
+<div class="app-container">
+    <main class="main-content">
+        <header>
+            <div class="logo-section">
+                <h1>AI Code Reviewer</h1>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">Intelligent Feedback Command Center</p>
+            </div>
+            <div class="system-status">
                 <div class="status-dot"></div>
-                System Online
+                <span id="sync-indicator" style="opacity:1; transition:opacity 0.5s;">System Online</span>
+                <span style="color: var(--text-muted); margin-left: 0.5rem; border-left: 1px solid var(--card-border); padding-left: 0.5rem;" id="val-uptime">0h 0m</span>
             </div>
-            <div class="subtitle" style="margin-top: 1rem;" id="val-last-pr">Awaiting payload...</div>
+        </header>
+
+        <!-- Stats Overview -->
+        <div class="grid">
+            <div class="card stat-card">
+                <div class="stat-label">Total Pull Requests</div>
+                <div class="stat-value" id="val-prs">0</div>
+                <div class="stat-trend trend-up">↑ Live</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-label">Total Issues Detected</div>
+                <div class="stat-value" id="val-issues" style="color: var(--high);">0</div>
+                <div class="stat-trend" style="color: var(--text-muted);">Active Branch</div>
+            </div>
+            <!-- Severity Charts -->
+            <div class="card chart-card">
+                <div class="chart-header">
+                    <h3 style="font-size: 1rem;">Severity Breakdown</h3>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Weighted Analysis</span>
+                </div>
+
+                <div class="bar-group">
+                    <div class="bar-label"><span>Critical / High</span> <span id="lbl-sev-high">0</span></div>
+                    <div class="bar-background"><div class="bar-fill" id="bar-sev-high" style="width: 0%; background: var(--high); box-shadow: 0 0 10px var(--high);"></div></div>
+                </div>
+                <div class="bar-group">
+                    <div class="bar-label"><span>Significant / Medium</span> <span id="lbl-sev-medium">0</span></div>
+                    <div class="bar-background"><div class="bar-fill" id="bar-sev-medium" style="width: 0%; background: var(--medium);"></div></div>
+                </div>
+                <div class="bar-group">
+                    <div class="bar-label"><span>Minor / Quality</span> <span id="lbl-sev-low">0</span></div>
+                    <div class="bar-background"><div class="bar-fill" id="bar-sev-low" style="width: 0%; background: var(--low);"></div></div>
+                </div>
+            </div>
+
+            <!-- Issue Type Chart -->
+            <div class="card chart-card">
+                <div class="chart-header">
+                    <h3 style="font-size: 1rem;">Issue Categorization</h3>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Type Breakdown</span>
+                </div>
+
+                <div class="bar-group">
+                    <div class="bar-label"><span>Security</span> <span id="lbl-type-security">0</span></div>
+                    <div class="bar-background"><div class="bar-fill" id="bar-type-security" style="width: 0%; background: var(--security); box-shadow: 0 0 10px var(--security);"></div></div>
+                </div>
+                <div class="bar-group">
+                    <div class="bar-label"><span>Bugs</span> <span id="lbl-type-bug">0</span></div>
+                    <div class="bar-background"><div class="bar-fill" id="bar-type-bug" style="width: 0%; background: var(--bug);"></div></div>
+                </div>
+                <div class="bar-group">
+                    <div class="bar-label"><span>Performance</span> <span id="lbl-type-performance">0</span></div>
+                    <div class="bar-background"><div class="bar-fill" id="bar-type-performance" style="width: 0%; background: var(--performance);"></div></div>
+                </div>
+                <div class="bar-group">
+                    <div class="bar-label"><span>Quality</span> <span id="lbl-type-quality">0</span></div>
+                    <div class="bar-background"><div class="bar-fill" id="bar-type-quality" style="width: 0%; background: var(--quality);"></div></div>
+                </div>
+            </div>
+
+            <!-- Analysis Density Chart -->
+            <div class="card chart-card">
+                <div class="chart-header">
+                    <h3 style="font-size: 1rem;">Analysis Density</h3>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Health Trends</span>
+                </div>
+
+                <div class="bar-group">
+                    <div class="bar-label"><span>Issues per PR</span> <span id="lbl-density-val">0.0</span></div>
+                    <div class="bar-background"><div class="bar-fill" id="bar-density" style="width: 0%; background: var(--accent); box-shadow: 0 0 10px var(--accent-glow);"></div></div>
+                </div>
+                <div style="margin-top:2rem; padding:1.5rem; border-radius:12px; background:rgba(255,255,255,0.02); border:1px solid var(--card-border);">
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.5rem; text-transform:uppercase; letter-spacing:0.05em;">Security Posture</div>
+                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                        <div id="security-pulse" class="status-dot" style="width:12px; height:12px;"></div>
+                        <span id="security-status-text" style="font-weight:600; font-size:0.9rem;">Monitoring...</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Severity Breakdown -->
-        <div class="card chart-card">
-            <div class="grid-title">Issues by Severity</div>
+        <!-- PR Feed Area -->
+        <div class="grid">
+            <div class="card feed-container">
+                <div class="feed-header">
+                    <h3 style="font-size: 1.1rem; font-weight: 600;">Recent PR Activity</h3>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);" id="val-last-ts">Last sync: Just now</div>
+                </div>
 
-            <div class="bar-container">
-                <div class="bar-label"><span>Critical / High</span> <span id="lbl-sev-high">0</span></div>
-                <div class="bar-bg"><div class="bar-fill high" id="bar-sev-high" style="width: 0%;"></div></div>
-            </div>
-            <div class="bar-container">
-                <div class="bar-label"><span>Medium</span> <span id="lbl-sev-medium">0</span></div>
-                <div class="bar-bg"><div class="bar-fill medium" id="bar-sev-medium" style="width: 0%;"></div></div>
-            </div>
-            <div class="bar-container">
-                <div class="bar-label"><span>Low / Info</span> <span id="lbl-sev-low">0</span></div>
-                <div class="bar-bg"><div class="bar-fill low" id="bar-sev-low" style="width: 0%;"></div></div>
+                <div id="accordion-root">
+                    <!-- PR items injected here -->
+                    <div style="text-align:center; padding: 4rem; color: var(--text-muted);">
+                        <p>Waiting for PR payloads...</p>
+                    </div>
+                </div>
             </div>
         </div>
+        <footer style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--card-border); text-align: center; color: var(--text-muted); font-size: 0.8rem; padding-bottom: 2rem;">
+            &copy; 2026 AI Code Reviewer. Powered by Groq &bull; <span id="footer-conn-status">Connected to Backend</span>
+        </footer>
+    </main>
+</div>
 
-        <!-- Type Breakdown -->
-        <div class="card chart-card">
-            <div class="grid-title">Issues by Type</div>
-
-            <div class="bar-container">
-                <div class="bar-label"><span>Security Vulnerabilities</span> <span id="lbl-typ-sec">0</span></div>
-                <div class="bar-bg"><div class="bar-fill sec" id="bar-typ-sec" style="width: 0%;"></div></div>
+<!-- Advanced Modal Panel -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <h2 id="modal-title" style="font-size: 1.25rem;">PR Findings</h2>
+                <span id="modal-subtitle" style="font-size: 0.85rem; color: var(--text-muted);">Analysis Report</span>
             </div>
-            <div class="bar-container">
-                <div class="bar-label"><span>Logical Bugs</span> <span id="lbl-typ-bug">0</span></div>
-                <div class="bar-bg"><div class="bar-fill bug" id="bar-typ-bug" style="width: 0%;"></div></div>
-            </div>
-            <div class="bar-container">
-                <div class="bar-label"><span>Performance</span> <span id="lbl-typ-perf">0</span></div>
-                <div class="bar-bg"><div class="bar-fill perf" id="bar-typ-perf" style="width: 0%;"></div></div>
-            </div>
+            <button onclick="closeModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem;">&times;</button>
         </div>
-
-        <!-- Live Feed -->
-        <div class="card feed-card">
-            <div class="grid-title">Real-Time PR Review Feed</div>
-            <ul class="feed-list" id="feed-list">
-                <!-- Javascript will populate this -->
-                <li style="text-align: center; color: var(--text-muted); padding: 2rem;">No reviews processed yet. The AI is waiting.</li>
-            </ul>
+        <div class="tabs" id="modal-tabs">
+            <div class="tab active" onclick="setTab('all')">All Findings</div>
+            <div class="tab" onclick="setTab('high')">High</div>
+            <div class="tab" onclick="setTab('medium')">Medium</div>
+            <div class="tab" onclick="setTab('low')">Low</div>
         </div>
-
+        <div class="modal-scroll" id="modal-scroll">
+            <!-- Findings injected here -->
+        </div>
     </div>
+</div>
 
-    <script>
-        let previousPRCount = -1;
+<script>
+    const state = {
+        prs: [],
+        currentPR: null,
+        activeTab: 'all',
+        lastFeedJson: "",
+        expandedPRKey: null
+    };
 
-        async function fetchStats() {
-            try {
-                const res = await fetch("/api/stats");
-                const data = await res.json();
-                updateDashboard(data);
-            } catch (err) {
-                console.error("Failed to fetch stats", err);
+    async function fetchStats() {
+        try {
+            const res = await fetch("/api/stats");
+            const data = await res.json();
+            renderStats(data);
+
+            // Only re-render feed if the data has actually changed
+            const currentJson = JSON.stringify(data.recent_reviews);
+            if (currentJson !== state.lastFeedJson) {
+                state.lastFeedJson = currentJson;
+                renderFeed(data.recent_reviews);
             }
+        } catch (err) {
+            console.error("Dashboard Sync Failed", err);
+        }
+    }
+
+    function renderStats(data) {
+        // Simple count-up logic placeholder
+        document.getElementById('val-prs').innerText = data.total_prs;
+        document.getElementById('val-issues').innerText = data.total_issues;
+        document.getElementById('val-uptime').innerText = data.uptime;
+
+        if (data.last_review_time) {
+            const d = new Date(data.last_review_time);
+            document.getElementById('val-last-ts').innerText = "Last sync: " + d.toLocaleTimeString();
         }
 
-        function updateDashboard(data) {
-            // Update big numbers
-            const prEl = document.getElementById("val-prs");
-            if (previousPRCount !== -1 && previousPRCount < data.total_prs) {
-                // Flash effect if new PR arrived
-                prEl.classList.remove("flash");
-                void prEl.offsetWidth; // trigger reflow
-                prEl.classList.add("flash");
+        const total = Math.max(1, (data.issues_by_severity.high || 0) + (data.issues_by_severity.medium || 0) + (data.issues_by_severity.low || 0));
+        updateBar('sev-high', data.issues_by_severity.high || 0, total);
+        updateBar('sev-medium', data.issues_by_severity.medium || 0, total);
+        updateBar('sev-low', data.issues_by_severity.low || 0, total);
+
+        const typeTotal = Math.max(1, Object.values(data.issues_by_type || {}).reduce((a, b) => a + b, 0));
+        updateBar('type-security', data.issues_by_type.security || 0, typeTotal);
+        updateBar('type-bug', data.issues_by_type.bug || 0, typeTotal);
+        updateBar('type-performance', data.issues_by_type.performance || 0, typeTotal);
+        updateBar('type-quality', data.issues_by_type.quality || 0, typeTotal);
+
+        // Density Logic
+        const density = data.total_prs > 0 ? (data.total_issues / data.total_prs).toFixed(1) : 0;
+        document.getElementById('lbl-density-val').innerText = density;
+        document.getElementById('bar-density').style.width = Math.min(100, (density / 10) * 100) + '%';
+
+        // Security Pulse Update
+        const secDot = document.getElementById('security-pulse');
+        const secText = document.getElementById('security-status-text');
+        if (data.issues_by_type.security > 0) {
+            secDot.style.background = 'var(--high)';
+            secDot.style.boxShadow = '0 0 10px var(--high)';
+            secText.innerText = "Critical Security Risks Detected";
+            secText.style.color = 'var(--high)';
+        } else {
+            secDot.style.background = 'var(--low)';
+            secDot.style.boxShadow = '0 0 10px var(--low)';
+            secText.innerText = "Baseline Security Intact";
+            secText.style.color = 'var(--low)';
+        }
+    }
+
+    function updateBar(id, val, total) {
+        document.getElementById(`lbl-${id}`).innerText = val;
+        document.getElementById(`bar-${id}`).style.width = (val / total * 100) + '%';
+    }
+
+    function renderFeed(reviews) {
+        if (!reviews || reviews.length === 0) return;
+
+        const root = document.getElementById('accordion-root');
+        // Store current scroll position if needed, but innerHTML replace is fast
+        root.innerHTML = '';
+
+        reviews.forEach((rv, idx) => {
+            const prKey = `${rv.repo}#${rv.pr_number}`;
+            const isExpanded = state.expandedPRKey === prKey;
+
+            const item = document.createElement('div');
+
+            const highCount = rv.severities.high || 0;
+            const medCount = rv.severities.medium || 0;
+            const lowCount = rv.severities.low || 0;
+
+            const riskLevel = highCount > 0 ? "High" : (medCount > 0 ? "Moderate" : "Low");
+            const riskClass = riskLevel.toLowerCase();
+
+            let insightText = "";
+            let confidenceIndicator = "";
+
+            if (highCount > 0) {
+                insightText = `This PR contains <span style="color:#fff; font-weight:700; text-decoration: underline decoration-color:var(--high);">critical security risks</span> that should be <span style="color:var(--high); font-weight:700;">fixed</span> before merging.`;
+                confidenceIndicator = "Block Merge";
+            } else if (medCount > 0) {
+                insightText = `This PR has moderate issues that require a <span style="color:#fff; font-weight:700; text-decoration: underline decoration-color:var(--medium);">manual review</span> before proceeding.`;
+                confidenceIndicator = "Needs Review";
+            } else {
+                insightText = `No major risks detected. This PR is <span style="color:#fff; font-weight:700; text-decoration: underline decoration-color:var(--low);">safe to merge</span>.`;
+                confidenceIndicator = "Safe to Merge";
             }
-            prEl.innerText = data.total_prs;
-            previousPRCount = data.total_prs;
 
-            document.getElementById("val-issues").innerText = data.total_issues;
-            document.getElementById("val-uptime").innerText = data.uptime;
-
-            if (data.last_review_time) {
-                const d = new Date(data.last_review_time + "Z");
-                document.getElementById("val-last-pr").innerText = "Last review: " + d.toLocaleTimeString();
+            item.className = 'accordion-item' + (highCount > 0 ? ' has-high' : '') + (isExpanded ? ' active' : '');
+            // If it was expanded, make sure quick-findings are shown
+            if (isExpanded) {
+                setTimeout(() => {
+                    item.querySelectorAll('.quick-finding').forEach(f => f.classList.add('show'));
+                }, 10);
             }
 
-            // Calculations for bars
-            const totalSev = Math.max(1, (data.issues_by_severity.high || 0) + (data.issues_by_severity.medium || 0) + (data.issues_by_severity.low || 0));
-            const totalTyp = Math.max(1, (data.issues_by_type.security || 0) + (data.issues_by_type.bug || 0) + (data.issues_by_type.performance || 0));
+            // Sort issues by severity for the preview
+            const sortedIssues = [...(rv.issues || [])].sort((a, b) => {
+                const order = { 'high': 0, 'medium': 1, 'low': 2, 'quality': 3 };
+                return (order[a.severity.toLowerCase()] ?? 99) - (order[b.severity.toLowerCase()] ?? 99);
+            });
 
-            // Update Bars and Labels (Severity)
-            updateBar("sev-high", data.issues_by_severity.high || 0, totalSev);
-            updateBar("sev-medium", data.issues_by_severity.medium || 0, totalSev);
-            updateBar("sev-low", data.issues_by_severity.low || 0, totalSev);
+            item.innerHTML = `
+                <button class="accordion-trigger" onclick="toggleAccordion(this)">
+                    <div class="pr-info">
+                        <strong>
+                            ${rv.repo} <span style="color:var(--text-muted); font-weight:400;">#${rv.pr_number}</span>
+                            <div class="risk-badge ${riskClass}">
+                                <div class="risk-dot"></div>
+                                ${riskLevel} Risk
+                                <span class="confidence-label">&bull; ${confidenceIndicator}</span>
+                            </div>
+                        </strong>
+                        <span class="pr-meta">Last evaluated &bull; ${rv.reviewed_at}</span>
+                    </div>
+                    <div class="tag-pill" style="margin-right: 1.5rem; opacity: 0.8;">
+                        ${highCount > 0 ? `<div class="sev-badge high" style="padding:1px 6px;">HIGH ${highCount}</div>` : ''}
+                        ${medCount > 0 ? `<div class="sev-badge medium" style="padding:1px 6px;">MED ${medCount}</div>` : ''}
+                        ${lowCount > 0 ? `<div class="sev-badge low" style="padding:1px 6px;">LOW ${lowCount}</div>` : ''}
+                    </div>
+                    <div class="badge badge-status">Reviewed</div>
+                    <div class="chevron">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                </button>
+                <div class="accordion-content">
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                         <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Actionable Insight</div>
+                         <div style="font-size:1.05rem; font-weight:500; color: var(--text-primary); opacity: 0.95;">
+                            ${insightText}
+                         </div>
+                    </div>
 
-            // Update Bars and Labels (Type)
-            updateBar("typ-sec", data.issues_by_type.security || 0, totalTyp);
-            updateBar("typ-bug", data.issues_by_type.bug || 0, totalTyp);
-            updateBar("typ-perf", data.issues_by_type.performance || 0, totalTyp);
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">Categorized Findings Summary</div>
+                    <div class="quick-findings-group">
+                        ${sortedIssues.slice(0, 3).map((i, sIdx) => `
+                            <div class="quick-finding ${i.severity.toLowerCase() === 'high' ? 'priority-high' : ''}" style="animation-delay: ${sIdx * 50}ms;" onclick="openDetails(${JSON.stringify(rv).replace(/"/g, '&quot;')})">
+                                <span style="font-weight:500; display:flex; align-items:center;">
+                                    <span class="sev-badge ${i.severity.toLowerCase()}" style="padding:1px 6px; font-size:0.55rem; margin-right:12px; min-width:40px; justify-content:center;">${i.severity.substring(0,3).toUpperCase()}</span>
+                                    ${escapeHtml(i.description.substring(0, 80))}...
+                                </span>
+                                <span style="font-size:0.75rem; color:var(--text-muted); font-family:monospace; opacity:0.6;">${i.file.split('/').pop()}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${rv.issue_count > 3 ? `<div style="text-align:center; margin-bottom:1.2rem; font-size:0.8rem; color:var(--text-muted); font-style:italic; padding-top: 0.5rem;">+ ${rv.issue_count - 3} more context-aware findings</div>` : ''}
+                     <button class="cta-button" onclick="openDetails(${JSON.stringify(rv).replace(/"/g, '&quot;')})">View Full Analysis &raquo;</button>
+                </div>
+            `;
+            root.appendChild(item);
+        });
+    }
 
-            // Update Feed
-            const feedList = document.getElementById("feed-list");
-            if (data.recent_reviews && data.recent_reviews.length > 0) {
-                feedList.innerHTML = "";
-                data.recent_reviews.forEach((review) => {
-                    const li = document.createElement("li");
-                    li.className = "feed-item";
+    function toggleAccordion(btn) {
+        const item = btn.parentElement;
+        const isActive = item.classList.contains('active');
 
-                    li.innerHTML = `
-                        <div class="feed-info">
-                            <strong>${review.repo}#${review.pr_number}</strong>
-                            <span>reviewed at ${review.reviewed_at}</span>
-                        </div>
-                        <div class="feed-tags">
-                            <span class="tag high">${review.severities.high} High</span>
-                            <span class="tag medium">${review.severities.medium} Med</span>
-                            <span class="tag low">${review.severities.low} Low</span>
-                        </div>
-                    `;
-                    feedList.appendChild(li);
-                });
-            }
+        // Close all others
+        document.querySelectorAll('.accordion-item').forEach(el => {
+            el.classList.remove('active');
+            el.querySelectorAll('.quick-finding').forEach(f => f.classList.remove('show'));
+        });
+
+        if (!isActive) {
+            item.classList.add('active');
+            // Save state for persistence across refreshes
+            const head = item.querySelector('.pr-info strong').innerText;
+            const prNum = head.match(/#(\d+)/)[1];
+            const repo = head.split('#')[0].trim();
+            state.expandedPRKey = `${repo}#${prNum}`;
+
+            // Staggered show for findings
+            const findings = item.querySelectorAll('.quick-finding');
+            findings.forEach((f, idx) => {
+                setTimeout(() => f.classList.add('show'), idx * 50);
+            });
+        } else {
+            state.expandedPRKey = null;
+        }
+    }
+
+    function openDetails(rv) {
+        state.currentPR = rv;
+        state.activeTab = 'all';
+        document.getElementById('modal-title').innerText = `${rv.repo} #${rv.pr_number}`;
+        renderModalFindings();
+        updateTabUI();
+        document.getElementById('modal-overlay').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('modal-overlay').classList.remove('active');
+    }
+
+    function setTab(tab) {
+        state.activeTab = tab;
+        updateTabUI();
+        renderModalFindings();
+    }
+
+    function updateTabUI() {
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(t => {
+            t.classList.remove('active');
+            if (t.innerText.toLowerCase().includes(state.activeTab)) t.classList.add('active');
+        });
+    }
+
+    function renderModalFindings() {
+        const container = document.getElementById('modal-scroll');
+        container.innerHTML = '';
+
+        let issues = state.currentPR.issues || [];
+        if (state.activeTab !== 'all') {
+            issues = issues.filter(i => i.severity.toLowerCase() === state.activeTab);
         }
 
-        function updateBar(id, val, total) {
-            document.getElementById("lbl-" + id).innerText = val;
-            const pct = (val / total) * 100;
-            document.getElementById("bar-" + id).style.width = pct + "%";
+        // Elite Sorting: High > Medium > Low
+        issues = [...issues].sort((a, b) => {
+            const order = { 'high': 0, 'critical': 0, 'medium': 1, 'low': 2, 'quality': 3 };
+            return (order[a.severity.toLowerCase()] ?? 99) - (order[b.severity.toLowerCase()] ?? 99);
+        });
+
+        if (issues.length === 0) {
+            container.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--text-muted);">No ${state.activeTab} issues found in this scope.</div>`;
+            return;
         }
 
-        // Poll every 3 seconds
+        issues.forEach(i => {
+            const card = document.createElement('div');
+            card.className = 'finding-detail';
+            card.style.borderLeft = `4px solid ${getSevColor(i.severity)}`;
+
+            card.innerHTML = `
+                <div class="finding-meta">
+                    <span class="badge" style="background: ${getSevColor(i.severity)}22; color: ${getSevColor(i.severity)}; border:1px solid ${getSevColor(i.severity)}44;">${i.severity.toUpperCase()}</span>
+                    <span style="font-family:monospace; font-size:0.85rem; color:var(--text-muted);">${i.file} : L${i.line}</span>
+                </div>
+                <div style="font-weight:600; margin-bottom:1rem; font-size:1.05rem;">${escapeHtml(i.description)}</div>
+                <div class="code-block" style="box-shadow: inset 0 0 20px rgba(0,0,0,0.5);">
+                    <div style="color:var(--text-muted); position:absolute; right:1rem; top:0.5rem; font-size:0.7rem; font-weight:700; letter-spacing:0.05em;">CODE CONTEXT</div>
+                    <code style="color:#e6edf3; display:block; padding-top:0.5rem;">
+                        <span style="color:var(--text-muted);">// Line ${i.line - 1}</span><br>
+                        <span style="background: ${getSevColor(i.severity)}15; color: #fff; padding: 2px 4px; border-left: 3px solid ${getSevColor(i.severity)}; display:block; width:calc(100% + 2rem); margin-left:-1rem; padding-left:1rem;">
+                            <span style="opacity:0.5; margin-right:1rem;">${i.line}</span>${escapeHtml(i.description.substring(0, 100))}
+                        </span>
+                        <span style="color:var(--text-muted); opacity:0.5;">${i.line + 1} ...</span>
+                    </code>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function getSevColor(sev) {
+        const s = sev.toLowerCase();
+        if (s === 'high' || s === 'critical') return '#ef4444';
+        if (s === 'medium') return '#f59e0b';
+        return '#10b981';
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Initial load effects
+    window.addEventListener('DOMContentLoaded', () => {
+        document.body.classList.add('loaded');
         fetchStats();
-        setInterval(fetchStats, 3000);
-    </script>
+    });
+
+    setInterval(fetchStats, 3000);
+</script>
+
 </body>
 </html>

@@ -1,6 +1,7 @@
 import logging
 from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 from dotenv import load_dotenv
 
 # Load environment variables FIRST before importing singletons
@@ -12,15 +13,22 @@ from services.ai_service import analyze_code
 from services.filter_service import parse_and_filter_issues
 from utils.formatter import format_comment, format_inline_issue
 
-from stats_store import record_review, get_stats
+from stats_store import record_review, get_stats, initialize_db
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 
+# Initialize database on startup
+initialize_db()
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(message)s"
+    format="%(asctime)s - %(message)s",
+    handlers=[
+        logging.FileHandler("backend_log.txt"),
+        logging.StreamHandler()
+    ]
 )
 
 app = FastAPI(
@@ -38,7 +46,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Path resolution for static files
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.get("/api/stats")
 async def stats():
@@ -46,7 +58,7 @@ async def stats():
 
 @app.get("/")
 async def dashboard():
-    return FileResponse("static/index.html")
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 # In-memory deduplication set for processed commit SHAs
 processed_shas = set()
@@ -83,18 +95,9 @@ def process_webhook(payload: dict):
 
         # Stage 3
         owner, repo, pr_number = extract_pr_data(payload)
-
-        # SHA Deduplication Tracking
         head_sha = payload.get("pull_request", {}).get("head", {}).get("sha")
-        if not head_sha:
-            return {"status": "error", "reason": "No commit SHA found in payload"}
 
-        # if head_sha in processed_shas:
-        #     print(f"[webhook] SHA {head_sha} already processed — duplicate skipped")
-        #     return {"status": "duplicate skipped"}
-        # processed_shas.add(head_sha)
-
-        print("[webhook] PR detected")
+        print(f"[webhook] PR detected: #{pr_number} by {owner} at {head_sha}")
 
         # Stage 4
         # We pass the full payload to the updated fetch_diff
@@ -148,6 +151,19 @@ def process_webhook(payload: dict):
 async def webhook(request: Request, background_tasks: BackgroundTasks):
     """Accepts GitHub webhooks instantly to prevent timeouts."""
     payload = await request.json()
+
+    # Synchronous de-duplication to prevent race conditions
+    head_sha = payload.get("pull_request", {}).get("head", {}).get("sha")
+    if head_sha:
+        if head_sha in processed_shas:
+            print(f"🛑 [webhook] SHA {head_sha} already being processed/done. Skipping.")
+            return {"status": "duplicate_skipped", "sha": head_sha}
+        processed_shas.add(head_sha)
+        print(f"🎯 [webhook] Registered SHA {head_sha} for processing.")
+
     print("🔥 RAW PAYLOAD RECEIVED, id:", id(payload), "keys:", list(payload.keys()))
     background_tasks.add_task(process_webhook, payload)
     return {"status": "processing"}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

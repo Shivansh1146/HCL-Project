@@ -13,7 +13,7 @@ A production-grade, asynchronous code review agent that intercepts GitHub Pull R
 | Integration | GitHub REST API v3 (Webhooks + Inline Comments) |
 | Anti-Hallucination | Custom `validator.py` — variable name cross-checker |
 | Noise Filter | Custom `filter_service.py` — heuristic scoring engine |
-| Dashboard | Vanilla JS + CSS Glassmorphism — polls `/api/stats` every 3s |
+| Dashboard | Glassmorphism UI + **Decision Intelligence** (Actionable Guidance) |
 | Tunneling | `localtunnel` (development) |
 
 ---
@@ -114,11 +114,11 @@ The validator locates the actual code line using the diff's hunk headers and lin
 Accessible at `http://localhost:8001/` — auto-refreshes every 3 seconds.
 
 - **Status bar:** Shows backend offline warning if connection is lost
+- **Actionable Insights:** Decision-first guidance (e.g., "Block Merge" vs "Safe to Merge")
+- **Refined Spectrum:** Fixed overuse of red; subtle borders for High, neutral for Medium, and dimmed for Low
 - **Live metrics:** PRs reviewed, total issues found, uptime counter, last review time
-- **Severity breakdown:** Animated bars for Critical/High, Medium, Low
-- **Type breakdown:** Animated bars for Security, Bug, Performance
-- **Review feed:** Live list of recent PRs with per-severity issue counts
-- **Poll indicator:** Bottom-right corner confirms live connection status
+- **Severity & Type BREAKDOWN:** Animated charts for Critical, Significant, Minor, and Category distribution
+- **Micro-Polish:** Hover scale effects, smooth animations (200ms ease), and refined CTA buttons
 
 ---
 
@@ -201,7 +201,40 @@ DB_ACCESS_TOKEN = "mock-secret-abc123"  # Hardcoded secret
 password = "admin123"                    # Hardcoded password
 ```
 
-The bot will detect all three issues, validate variable names, and post inline comments with one-click suggested fixes on the exact lines.
+The bot will detect issues across all severities (High/Medium/Low) and categories (Security/Bug/Performance/Quality), validate variable names, and post inline comments with one-click suggested fixes.
+
+For a full spectrum demonstration, use:
+```python
+# vulnerability_demo.py
+import sqlite3
+import os
+import time
+
+# [HIGH] Security: SQL Injection vulnerability
+def get_user_data(user_id):
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    # Direct string concatenation is vulnerable to SQL injection
+    query = "SELECT * FROM users WHERE id = " + user_id
+    cursor.execute(query)
+    return cursor.fetchone()
+
+# [HIGH] Security: Hardcoded API Key
+DASHBOARD_API_KEY = "gsk_u9S3fJ8kL2m7N5p4Q1R0V8W6X4Y2Z0A1B3C5D7E9"
+
+# [MEDIUM] Bug: Potential UnboundLocalError
+def process_data(data):
+    if data:
+        result = data * 2
+    return result # Will fail if data is empty
+
+# [LOW] Performance: Inefficient processing simulation
+def main_worker():
+    items = [1, 2, 3, 4, 5]
+    for item in items:
+        time.sleep(0.1)
+        print(f"Processing {item}")
+```
 
 ---
 

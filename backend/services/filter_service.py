@@ -41,11 +41,15 @@ def parse_and_filter_issues(analysis_result: dict) -> list:
                 score += 2
             elif severity == "medium":
                 score += 1
+            elif severity == "low":
+                score += 1  # Give low severity a baseline pass score
 
             if len(description) > 30:
                 score += 1
 
-            if any(word in description for word in vague_words):
+            # Only apply vague-word penalty to high/medium — low issues
+            # naturally use words like 'improve' or 'better'
+            if severity in ("high", "medium") and any(word in description for word in vague_words):
                 score -= 2
 
             print(f"   SCORE: {score} | severity={severity}")

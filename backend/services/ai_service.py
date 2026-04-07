@@ -59,14 +59,15 @@ class AIService:
 
     def _analyze_chunk_with_retry(self, diff_chunk: str) -> Dict[str, Any]:
         """Calls OpenAI with retry logic."""
-        prompt = f"""You are a Senior Security Engineer reviewing production code.
+        prompt = f"""You are a Senior Code Quality and Security Engineer.
+Your goal is to perform a deep-dive review of the code diff.
 
 Analyze the code diff below and return ONLY valid JSON:
 
 {{
   "issues": [
     {{
-      "type": "bug|security|performance",
+      "type": "bug|security|performance|quality",
       "severity": "low|medium|high",
       "file": "file_path_from_diff",
       "line": 12,
@@ -77,15 +78,16 @@ Analyze the code diff below and return ONLY valid JSON:
 }}
 
 STRICT RULES:
-- limit output to MAX 3 issues per chunk
-- ONLY return real issues (no suggestions like "improve readability", best practices, or stylistic suggestions)
-- Focus strictly on: security vulnerabilities, logical bugs, and severe performance issues
-- Be specific (mention variable/function exact names)
-- Clearly explain WHY it is a problem
+- limit output to MAX 5 issues per chunk
+- YOU MUST return ALL real issues found. DO NOT skip minor issues.
+- You MUST label minor inefficiencies (unused variables, string concatenation in loops, redundant checks) as 'low' severity.
+- You MUST label large performance problems or bugs as 'medium'.
+- You MUST label security vulnerabilities as 'high'.
+- Be extremely thorough. Every chunk should ideally have 3-5 issues if the code is poor.
 - Provide a REAL fix (actual code, not detailed explanation)
-- Reject vague advice
 - 'file' must match actual file name from diff
-- 'line' must be approximate location of issue (int). do NOT leave empty, if unsure, provide best guess
+- 'line' must be approximate location of issue (int). do NOT leave empty.
+
 
 Code Diff:
 {diff_chunk}
