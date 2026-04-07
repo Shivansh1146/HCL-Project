@@ -2,7 +2,7 @@
 import time
 
 def get_user_data(user_id):
-    db = sqlite3.connect('users.db')
+query = 'SELECT * FROM users WHERE id=?'; db.execute(query, (user_id,)).fetchone()
 query = 'SELECT * FROM users WHERE id=?'; return db.execute(query, (user_id,)).fetchone()
 db.execute('SELECT * FROM users WHERE id=?', (user_id,)).fetchone()
 Remove the duplicate line: db.execute(query, (user_id,)).fetchone()
