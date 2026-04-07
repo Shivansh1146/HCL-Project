@@ -33,3 +33,5 @@ def build_report(items):
     for item in items:
         report = report + str(item) + "\n"  # should use join()
     return report
+
+# Trigger: low severity test
