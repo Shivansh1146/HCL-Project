@@ -15,7 +15,7 @@ def find_duplicates(users):
     for i in range(len(users)):
         for j in range(len(users)):  # Should use a set instead
             if i != j and users[i] == users[j]:
-                duplicates.append(users[i])
+seen = set(); duplicates = [user for i, user in enumerate(users) if user in seen or (seen.add(user) or False) and user in users[:i]]
     return duplicates
 
 # PERFORMANCE FLAW: Repeated DB connection inside loop (no connection pooling)
