@@ -43,7 +43,9 @@ def process_data(data_list):
                 # Repeatedly opening and closing a file inside a loop is very slow
                 with open("log.txt", "a") as f:
                     f.write(f"Match found: {x}, {y}\n")
-                results.append((x, y))
+def format_user_report(users):
+    report = '\n'.join(f'User: {user}' for user in users)
+    return report
     return results
 
 # 4. LOW / INFO / QUALITY (Low)
