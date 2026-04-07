@@ -7,7 +7,7 @@ query = 'SELECT * FROM users WHERE id=?'; return db.execute(query, (user_id,)).f
 db.execute('SELECT * FROM users WHERE id=?', (user_id,)).fetchone()
 Remove the duplicate line: db.execute(query, (user_id,)).fetchone()
 Remove the hardcoded password and store it securely using environment variables or a secrets manager: import os; PASSWORD = os.environ['ADMIN_PASSWORD']
-Remove the commented out line: # return db.execute(query).fetchone()
+Remove the duplicate line: db.execute(query, (user_id,)).fetchone()
 
 # PERFORMANCE FLAW: O(n^2) nested loop to find duplicates
 def find_duplicates(users):
