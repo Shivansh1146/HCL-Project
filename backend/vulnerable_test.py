@@ -12,7 +12,7 @@ query = 'SELECT * FROM users WHERE id = ?'; cursor.execute(query, (user_id,))
     return cursor.fetchone()
 
 # [HIGH] Security: Hardcoded API Key
-DASHBOARD_API_KEY = "gsk_u9S3fJ8kL2m7N5p4Q1R0V8W6X4Y2Z0A1B3C5D7E9"
+import os; DASHBOARD_API_KEY = os.environ.get('DASHBOARD_API_KEY')
 
 # [MEDIUM] Bug: Potential UnboundLocalError or NameError
 def process_data(data):
