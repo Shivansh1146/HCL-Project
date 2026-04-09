@@ -114,7 +114,7 @@ def verify_signature(payload_body: bytes, signature_header: str):
     """Verifies the GitHub webhook signature."""
     secret = os.getenv("GITHUB_WEBHOOK_SECRET")
     if not secret:
-        logger.warning("GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).")
+        logger.error("GITHUB_WEBHOOK_SECRET is not set in .env")
         return
 
     if not signature_header:
@@ -129,17 +129,14 @@ def verify_signature(payload_body: bytes, signature_header: str):
 async def process_webhook(payload: dict):
     """Enterprise backgroud task with Atomic State Protection and Syntax Validation."""
     async with analysis_semaphore:
-        logger.info("[DEBUG] Entered analysis_semaphore context")
         head_sha = payload.get("pull_request", {}).get("head", {}).get("sha")
         repo_full_name = payload.get("repository", {}).get("full_name", "unknown/repo")
-        logger.info(f"[DEBUG] Repo Full Name: {repo_full_name}")
         owner, repo = repo_full_name.split("/")
         pr_number = payload.get("pull_request", {}).get("number")
-        logger.info(f"[DEBUG] PR Number: {pr_number} | SHA: {head_sha}")
 
         pr_id = None
         try:
-            logger.info(f"[Enterprise] Starting PR #{pr_number} | SHA: {head_sha}")
+            logger.info(f"🚀 [Enterprise] Starting PR #{pr_number} | SHA: {head_sha}")
 
             # ATOMIC INITIATION: Record intent in Dashboard before any side effects
             pr_id = await initiate_review(repo, pr_number, status="fetching_diff")
@@ -193,7 +190,7 @@ async def process_webhook(payload: dict):
             await finalize_review(pr_id, valid_issues, status=final_status)
 
         except Exception as e:
-            logger.critical(f"[V5-OBSERVABILITY] Pipeline failure: {str(e)}", exc_info=True)
+            logger.critical(f"🔥 [V5-OBSERVABILITY] Pipeline failure: {str(e)}", exc_info=True)
             if head_sha:
                 await mark_sha_status(head_sha, "failed")
             if pr_id:

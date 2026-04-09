@@ -2060,3 +2060,200 @@ sqlite3.IntegrityError: NOT NULL constraint failed: prs.bot_start_time
 2026-04-09 23:58:02,380 - backend - INFO - Database initialized (Persistent Mode)
 2026-04-10 00:01:29,662 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
 2026-04-10 00:01:31,906 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-10 00:04:05,333 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 00:04:09,830 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:09,897 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:11,458 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:15,300 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 00:04:15,352 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:18,063 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:21,062 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:24,051 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:27,065 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:30,049 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:33,051 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:36,052 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:39,062 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:42,057 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:45,066 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:48,053 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:51,051 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:54,052 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:04:57,171 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:05:01,756 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:05:40,889 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:05:41,459 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:05:42,682 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:05:46,064 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:05:49,050 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:05:52,062 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:05:55,063 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:05:58,059 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:01,062 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:04,061 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:07,059 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:10,061 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:13,056 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:16,060 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:19,061 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:22,060 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:25,060 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:28,064 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:31,061 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:34,083 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:37,060 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:40,068 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:43,061 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:06:54,645 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 00:07:02,361 - backend - CRITICAL - DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.
+2026-04-10 00:07:12,470 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 00:07:28,403 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 00:08:53,709 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-10 00:08:53,719 - backend - INFO - SHA 48ce013289f5ea7e60b8898de7e898838c00a704 atomically claimed.
+2026-04-10 00:08:54,078 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #22
+2026-04-10 00:08:54,087 - backend - INFO - SHA 48ce013289f5ea7e60b8898de7e898838c00a704 marked as failed
+2026-04-10 00:09:22,193 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-10 00:09:22,194 - backend - INFO - SHA 48ce013289f5ea7e60b8898de7e898838c00a704 atomically claimed.
+2026-04-10 00:09:22,198 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #22
+2026-04-10 00:09:22,204 - backend - INFO - SHA 48ce013289f5ea7e60b8898de7e898838c00a704 marked as failed
+2026-04-10 00:09:28,366 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-10 00:09:28,371 - backend - INFO - SHA 3bcc76a0292c8de9fbc1d372c220d08a133fb7c8 atomically claimed.
+2026-04-10 00:09:28,384 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #24
+2026-04-10 00:09:28,393 - backend - INFO - SHA 3bcc76a0292c8de9fbc1d372c220d08a133fb7c8 marked as failed
+2026-04-10 00:10:21,017 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-10 00:10:51,842 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-10 00:10:51,844 - backend - INFO - SHA 3bcc76a0292c8de9fbc1d372c220d08a133fb7c8 atomically claimed.
+2026-04-10 00:10:51,855 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #24
+2026-04-10 00:10:51,866 - backend - INFO - SHA 3bcc76a0292c8de9fbc1d372c220d08a133fb7c8 marked as failed
+2026-04-10 00:11:00,392 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-10 00:11:27,764 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-10 00:11:27,766 - backend - INFO - SHA d55b95a2e56e939069318b5a02a3c3c81480e012 atomically claimed.
+2026-04-10 00:11:27,774 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #25
+2026-04-10 00:11:27,781 - backend - INFO - SHA d55b95a2e56e939069318b5a02a3c3c81480e012 marked as failed
+2026-04-10 00:15:27,947 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 00:15:59,351 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-10 00:15:59,355 - backend - INFO - SHA d55b95a2e56e939069318b5a02a3c3c81480e012 atomically claimed.
+2026-04-10 00:15:59,355 - backend - INFO - 🚀 [Enterprise] Starting PR #25 | SHA: d55b95a2e56e939069318b5a02a3c3c81480e012
+2026-04-10 00:15:59,356 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #25
+2026-04-10 00:15:59,356 - backend - CRITICAL - 🔥 [V5-OBSERVABILITY] Pipeline failure: name 'httpx' is not defined
+Traceback (most recent call last):
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\services\github_service.py", line 40, in fetch_diff
+    async with httpx.AsyncClient() as client:
+               ^^^^^
+NameError: name 'httpx' is not defined
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\main.py", line 145, in process_webhook
+    diff = await fetch_diff(owner, repo, pr_number)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\services\github_service.py", line 138, in fetch_diff
+    return await _github_service_instance.fetch_diff(owner, repo, pr_number)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\services\github_service.py", line 52, in fetch_diff
+    except httpx.HTTPError as e:
+           ^^^^^
+NameError: name 'httpx' is not defined
+2026-04-10 00:15:59,358 - backend - INFO - SHA d55b95a2e56e939069318b5a02a3c3c81480e012 marked as failed
+2026-04-10 00:15:59,358 - backend - INFO - 📈 Telemetry Finalized: PR ID 12 Status: error
+2026-04-10 00:16:28,812 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 00:20:46,762 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-10 00:20:46,766 - backend - INFO - SHA 4702bf46b72abc4ec1e076f847914cab96c41e6c atomically claimed.
+2026-04-10 00:20:46,767 - backend - INFO - 🚀 [Enterprise] Starting PR #26 | SHA: 4702bf46b72abc4ec1e076f847914cab96c41e6c
+2026-04-10 00:20:46,768 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #26
+2026-04-10 00:20:47,806 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/26 "HTTP/1.1 200 OK"
+2026-04-10 00:20:49,121 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 00:20:49,161 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 00:20:50,207 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 00:20:50,209 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 00:20:51,372 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 00:20:51,374 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 00:20:52,668 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 00:20:52,670 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 00:20:54,254 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 00:20:54,256 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 00:20:55,835 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 00:20:55,836 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 00:20:55,874 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-10 00:20:55,875 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 2.000000 seconds
+2026-04-10 00:20:59,429 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 00:20:59,441 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 00:20:59,485 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-10 00:20:59,486 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 10.000000 seconds
+2026-04-10 00:21:10,919 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 00:21:10,921 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 00:21:10,966 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-10 00:21:10,969 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 9.000000 seconds
+2026-04-10 00:21:20,742 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 00:21:20,743 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 00:21:20,781 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-10 00:21:20,782 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 6.000000 seconds
+2026-04-10 00:21:27,791 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 00:21:27,792 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 00:21:27,828 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-10 00:21:27,828 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 8.000000 seconds
+2026-04-10 00:21:36,853 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 00:21:36,854 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 00:21:36,888 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-10 00:21:36,889 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 1.000000 seconds
+2026-04-10 00:21:38,483 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 00:21:38,485 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 00:21:38,488 - services.filter_service - INFO - [filter_service] Filtering issues
+2026-04-10 00:21:38,488 - services.filter_service - INFO - [filter_service] REJECTED (score 0.0): the db_retry function does not handle all possible...
+2026-04-10 00:21:38,489 - services.filter_service - INFO - [filter_service] REJECTED (score 0.0): potential performance issue with await func(*args,...
+2026-04-10 00:21:38,489 - services.filter_service - INFO - ✅ FILTER PASSED: 43 issues
+2026-04-10 00:21:38,489 - backend - WARNING - [DiffValidator] Line 414 not in added lines for backend/backend_log.txt
+2026-04-10 00:21:38,489 - backend - WARNING - [DiffValidator] Line 435 not in added lines for backend/backend_log.txt
+2026-04-10 00:21:38,489 - backend - WARNING - [DiffValidator] File not in diff: C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py
+2026-04-10 00:21:38,490 - backend - WARNING - [DiffValidator] File not in diff: C:\Users\shivansh\Desktop\HCL Project\backend\main.py
+2026-04-10 00:21:38,490 - backend - WARNING - [DiffValidator] File not in diff: C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py
+2026-04-10 00:21:38,490 - backend - WARNING - [DiffValidator] File not in diff: C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py
+2026-04-10 00:21:38,490 - backend - WARNING - [DiffValidator] File not in diff: C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py
+2026-04-10 00:21:38,490 - backend - WARNING - [DiffValidator] File not in diff: C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py
+2026-04-10 00:21:38,490 - backend - WARNING - [DiffValidator] File not in diff: C:\Users\shivansh\Desktop\HCL Project\.env
+2026-04-10 00:21:38,490 - backend - WARNING - [DiffValidator] File not in diff: C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py
+2026-04-10 00:21:38,490 - backend - WARNING - [DiffValidator] File not in diff: C:\\Users\\shivansh\\Desktop\\HCL Project\\backend\\stats_store.py
+2026-04-10 00:21:38,491 - backend - WARNING - [DiffValidator] File not in diff: C:\\Users\\shivansh\\Desktop\\HCL Project\\backend\\main.py
+2026-04-10 00:21:38,491 - backend - WARNING - [DiffValidator] File not in diff: C:\\Users\\shivansh\\Desktop\\HCL Project\\backend\\stats_store.py
+2026-04-10 00:21:38,491 - backend - WARNING - [DiffValidator] File not in diff: C:\\Users\\shivansh\\Desktop\\HCL Project\\backend\\main.py
+2026-04-10 00:21:38,491 - backend - WARNING - [DiffValidator] File not in diff: C:\\Users\\shivansh\\Desktop\\HCL Project\\backend\\main.py
+2026-04-10 00:21:38,491 - backend - WARNING - [DiffValidator] File not in diff: C:\\Users\\shivansh\\Desktop\\HCL Project\\backend\\stats_store.py
+2026-04-10 00:21:38,491 - backend - WARNING - [DiffValidator] File not in diff: C:\\Users\\shivansh\\Desktop\\HCL Project\\backend\\stats_store.py
+2026-04-10 00:21:38,491 - backend - WARNING - [DiffValidator] File not in diff: C:\\Users\\shivansh\\Desktop\\HCL Project\\.venv\\Lib\\site-packages\\aiosqlite\\core.py
+2026-04-10 00:21:38,492 - backend - WARNING - [DiffValidator] File not in diff: C:\\Users\\shivansh\\Desktop\\HCL Project\\backend\\main.py
+2026-04-10 00:21:38,492 - backend - WARNING - [DiffValidator] File not in diff: C:\\Users\\shivansh\\Desktop\\HCL Project\\backend\\main.py
+2026-04-10 00:21:38,492 - backend - WARNING - [DiffValidator] File not in diff: C:\\Users\\shivansh\\Desktop\\HCL Project\\backend\\stats_store.py
+2026-04-10 00:21:38,492 - backend - WARNING - [DiffValidator] File not in diff: C:\Users\shivansh\Desktop\HCL Project\.env
+2026-04-10 00:21:38,492 - backend - WARNING - [DiffValidator] File not in diff: C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py
+2026-04-10 00:21:38,492 - backend - WARNING - [DiffValidator] File not in diff: C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py
+2026-04-10 00:21:38,493 - backend - WARNING - [DiffValidator] File not in diff: C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py
+2026-04-10 00:21:38,493 - backend - WARNING - [DiffValidator] File not in diff: code.py
+2026-04-10 00:21:38,493 - backend - WARNING - [DiffValidator] Line 102 not in added lines for backend/main.py
+2026-04-10 00:21:38,493 - backend - WARNING - [DiffValidator] Line 134 not in added lines for backend/main.py
+2026-04-10 00:21:38,493 - backend - WARNING - [DiffValidator] Line 195 not in added lines for backend/main.py
+2026-04-10 00:21:38,493 - backend - WARNING - [DiffValidator] Line 63 not in added lines for backend/main.py
+2026-04-10 00:21:38,493 - backend - WARNING - [DiffValidator] File not in diff: path/to/file.py
+2026-04-10 00:21:38,494 - backend - WARNING - Technical Validation Failure: Broken Python syntax. Error: invalid syntax (<unknown>, line 2)
+2026-04-10 00:21:38,495 - backend - WARNING - Technical Validation Failure: Broken Python syntax. Error: expected 'else' after 'if' expression (<unknown>, line 2)
+2026-04-10 00:21:38,495 - backend - WARNING - Technical Validation Failure: Broken Python syntax. Error: invalid syntax (<unknown>, line 2)
+2026-04-10 00:21:38,495 - backend - WARNING - Technical Validation Failure: Broken Python syntax. Error: invalid syntax (<unknown>, line 2)
+2026-04-10 00:21:38,496 - backend - WARNING - Technical Validation Failure: Broken Python syntax. Error: invalid syntax (<unknown>, line 2)
+2026-04-10 00:21:38,496 - backend - WARNING - Technical Validation Failure: Broken Python syntax. Error: invalid syntax (<unknown>, line 2)
+2026-04-10 00:21:38,496 - backend - WARNING - Technical Validation Failure: Broken Python syntax. Error: invalid syntax (<unknown>, line 2)
+2026-04-10 00:21:38,496 - backend - WARNING - Technical Validation Failure: Broken Python syntax. Error: invalid syntax (<unknown>, line 2)
+2026-04-10 00:21:38,496 - backend - WARNING - 🛡️ Multi-Layer Pruning: Removed 39 invalid issues
+2026-04-10 00:21:38,498 - backend - INFO - 📈 Telemetry Finalized: PR ID 13 Status: commenting
+2026-04-10 00:21:38,498 - services.github_service - INFO - Posting inline comment to Shivansh1146/HCL-Project PR #26
+2026-04-10 00:21:39,689 - httpx - INFO - HTTP Request: POST https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/26/comments "HTTP/1.1 201 Created"
+2026-04-10 00:21:39,691 - services.github_service - INFO - Posting inline comment to Shivansh1146/HCL-Project PR #26
+2026-04-10 00:21:41,003 - httpx - INFO - HTTP Request: POST https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/26/comments "HTTP/1.1 201 Created"
+2026-04-10 00:21:41,005 - services.github_service - INFO - Posting inline comment to Shivansh1146/HCL-Project PR #26
+2026-04-10 00:21:42,795 - httpx - INFO - HTTP Request: POST https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/26/comments "HTTP/1.1 201 Created"
+2026-04-10 00:21:42,796 - services.github_service - INFO - Posting inline comment to Shivansh1146/HCL-Project PR #26
+2026-04-10 00:21:44,108 - httpx - INFO - HTTP Request: POST https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/26/comments "HTTP/1.1 201 Created"
+2026-04-10 00:21:44,111 - backend - INFO - SHA 4702bf46b72abc4ec1e076f847914cab96c41e6c marked as completed
+2026-04-10 00:21:44,113 - backend - INFO - 📈 Telemetry Finalized: PR ID 13 Status: success
+2026-04-10 00:31:45,898 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 00:34:49,953 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-10 00:34:49,954 - backend - INFO - 🛑 [webhook] SHA 4702bf46b72abc4ec1e076f847914cab96c41e6c skip: active task exists and is not stale.

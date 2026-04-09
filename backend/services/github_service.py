@@ -86,7 +86,11 @@ class GitHubService:
         logger.info(f"Posting inline comment to {owner}/{repo} PR #{pr_number}")
         url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/comments"
 
-        body = issue.get("formatted_body", issue.get("description", ""))
+        raw_description = issue.get("description", "")
+        raw_fix = issue.get("fix", "")
+        severity = str(issue.get("severity", "MEDIUM")).upper()
+
+        body = f"🔍 **AI Review ({severity})**\n\n**Problem:**\n{raw_description}\n\n**Suggested Fix:**\n```suggestion\n{raw_fix}\n```"
         try:
             line = int(issue.get("line", 1))
         except (ValueError, TypeError):

@@ -1,9 +1,7 @@
 import aiosqlite
 import logging
 import os
-import asyncio
 from datetime import datetime, timedelta
-
 
 DB_PATH = "reviews.db"
 logger = logging.getLogger("backend")
@@ -79,16 +77,9 @@ async def initialize_db():
 
     await db.execute('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT)')
 
-    # 2. Schema Migrations
-    # Add 'status' column to 'prs' if it doesn't exist (Migration v2)
-    try:
-        await db.execute("ALTER TABLE prs ADD COLUMN status TEXT DEFAULT 'success'")
-        await db.commit()
-    except Exception:
-        # Ignore if column already exists
-        pass
-
-    await db.execute("INSERT OR IGNORE INTO system_meta (key, value) VALUES (?, ?)", ("schema_version", "2"))
+    # 2. Schema Migrations (Example: v2 add updated_at to processed_shas if missing)
+    # In a real app, use Alembic. Here we use an internal version.
+    await db.execute("INSERT OR IGNORE INTO system_meta (key, value) VALUES (?, ?)", ("schema_version", "1"))
 
     # 3. Initialize bot start time if not exists
     await db.execute("INSERT OR IGNORE INTO system_meta (key, value) VALUES (?, ?)",
