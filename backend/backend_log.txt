@@ -1649,3 +1649,414 @@ iVBORw0KGgoAAAANSUhEUgAAAZAAAAGZCAMAAACQbpc2AAADAFBMVEWEBz6FAD6FAD6GAD+MAEGOAEOK
 2026-04-08 03:50:59,276 - Successfully posted comment to PR #16
 2026-04-09 19:15:04,647 - backend - INFO - Database initialized (Persistent Mode)
 2026-04-09 19:16:38,246 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 19:41:13,576 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 22:22:54,505 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-09 22:22:54,527 - backend - INFO - SHA 954ea7e6a53811fd458275c9a5138a751aa42aea atomically claimed.
+2026-04-09 22:22:54,788 - backend - INFO - SHA 954ea7e6a53811fd458275c9a5138a751aa42aea marked as failed
+2026-04-09 22:26:11,965 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 22:26:55,779 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-09 22:26:55,787 - backend - INFO - SHA 4040450b99da86fc6a580b3fbc49cb3969b09d31 atomically claimed.
+2026-04-09 22:26:55,808 - backend - INFO - SHA 4040450b99da86fc6a580b3fbc49cb3969b09d31 marked as failed
+2026-04-09 22:27:09,296 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-09 22:27:09,298 - backend - INFO - SHA 954ea7e6a53811fd458275c9a5138a751aa42aea atomically claimed.
+2026-04-09 22:27:09,315 - backend - INFO - SHA 954ea7e6a53811fd458275c9a5138a751aa42aea marked as failed
+2026-04-09 22:28:15,832 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-09 22:28:15,833 - backend - INFO - SHA e614ff376227ac27c42c1ffe3669f35c4a546480 atomically claimed.
+2026-04-09 22:28:15,853 - backend - INFO - SHA e614ff376227ac27c42c1ffe3669f35c4a546480 marked as failed
+2026-04-09 22:28:58,756 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 22:30:04,386 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-09 22:30:34,758 - backend - ERROR - GITHUB_WEBHOOK_SECRET is not set in .env
+2026-04-09 22:30:34,767 - backend - INFO - SHA 3ddab890e5f5fcdb2b85c4eb1764c8add189ef92 atomically claimed.
+2026-04-09 22:30:34,793 - backend - INFO - SHA 3ddab890e5f5fcdb2b85c4eb1764c8add189ef92 marked as failed
+2026-04-09 22:32:05,784 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 22:32:22,291 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 22:35:07,462 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 22:35:07,468 - backend - INFO - SHA 67bd0f64e0957d3e34e93fa7892c9c3d8e5b63d5 atomically claimed.
+2026-04-09 22:35:07,503 - backend - INFO - SHA 67bd0f64e0957d3e34e93fa7892c9c3d8e5b63d5 marked as failed
+2026-04-09 22:35:39,247 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 22:36:19,566 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 22:36:19,570 - backend - INFO - SHA 2ad5ab1e90855b9b3c9c1cee122cf74a53cdaee1 atomically claimed.
+2026-04-09 22:36:19,591 - backend - INFO - SHA 2ad5ab1e90855b9b3c9c1cee122cf74a53cdaee1 marked as failed
+2026-04-09 22:38:14,513 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 22:40:28,331 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 22:45:49,343 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 22:45:49,351 - backend - INFO - SHA 3ddab890e5f5fcdb2b85c4eb1764c8add189ef92 atomically claimed.
+2026-04-09 22:45:49,353 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 22:45:49,353 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 22:45:49,353 - backend - INFO - [DEBUG] PR Number: 20 | SHA: 3ddab890e5f5fcdb2b85c4eb1764c8add189ef92
+2026-04-09 22:45:49,388 - backend - INFO - SHA 3ddab890e5f5fcdb2b85c4eb1764c8add189ef92 marked as failed
+2026-04-09 22:46:53,034 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 22:47:31,674 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 22:47:31,678 - backend - INFO - SHA a26b092b0c919390a132ee4ee10e581e3fb8f722 atomically claimed.
+2026-04-09 22:47:31,680 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 22:47:31,680 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 22:47:31,680 - backend - INFO - [DEBUG] PR Number: 20 | SHA: a26b092b0c919390a132ee4ee10e581e3fb8f722
+2026-04-09 22:47:31,701 - backend - INFO - SHA a26b092b0c919390a132ee4ee10e581e3fb8f722 marked as failed
+2026-04-09 22:47:54,104 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 22:56:08,232 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 22:58:11,902 - backend - INFO - [webhook] Top-level entry
+2026-04-09 22:58:11,912 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 22:58:11,917 - backend - INFO - SHA local-test-sha-999 atomically claimed.
+2026-04-09 22:58:11,918 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 22:58:11,918 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 22:58:11,918 - backend - INFO - [DEBUG] PR Number: 20 | SHA: local-test-sha-999
+2026-04-09 22:58:11,919 - backend - INFO - [Enterprise] Starting PR #20 | SHA: local-test-sha-999
+2026-04-09 22:58:11,919 - backend - CRITICAL - [V5-OBSERVABILITY] Pipeline failure: name 'asyncio' is not defined
+Traceback (most recent call last):
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 24, in db_retry
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 157, in _insert
+    cursor = await db.execute(
+             ^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 223, in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 63, in _connection_worker_thread
+    result = function()
+sqlite3.OperationalError: table prs has no column named status
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\main.py", line 150, in process_webhook
+    pr_id = await initiate_review(repo, pr_number, status="fetching_diff")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 164, in initiate_review
+    return await db_retry(_insert)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 29, in db_retry
+    await asyncio.sleep(delay * (attempt + 1))
+          ^^^^^^^
+NameError: name 'asyncio' is not defined. Did you forget to import 'asyncio'?
+2026-04-09 22:58:11,923 - backend - INFO - SHA local-test-sha-999 marked as failed
+2026-04-09 22:59:02,721 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 22:59:09,936 - backend - INFO - [webhook] Top-level entry
+2026-04-09 22:59:09,936 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 22:59:09,937 - backend - INFO - SHA local-test-sha-999 atomically claimed.
+2026-04-09 22:59:09,938 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 22:59:09,938 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 22:59:09,938 - backend - INFO - [DEBUG] PR Number: 20 | SHA: local-test-sha-999
+2026-04-09 22:59:09,938 - backend - INFO - [Enterprise] Starting PR #20 | SHA: local-test-sha-999
+2026-04-09 22:59:12,945 - backend - ERROR - Database operation failed after 3 attempts: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 22:59:12,946 - backend - CRITICAL - [V5-OBSERVABILITY] Pipeline failure: NOT NULL constraint failed: prs.bot_start_time
+Traceback (most recent call last):
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\main.py", line 150, in process_webhook
+    pr_id = await initiate_review(repo, pr_number, status="fetching_diff")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 172, in initiate_review
+    return await db_retry(_insert)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 25, in db_retry
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 165, in _insert
+    cursor = await db.execute(
+             ^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 223, in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 63, in _connection_worker_thread
+    result = function()
+sqlite3.IntegrityError: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 22:59:12,948 - backend - INFO - SHA local-test-sha-999 marked as failed
+2026-04-09 22:59:45,641 - backend - INFO - [webhook] Top-level entry
+2026-04-09 22:59:45,641 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 22:59:45,642 - backend - INFO - SHA local-test-sha-999 atomically claimed.
+2026-04-09 22:59:45,642 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 22:59:45,642 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 22:59:45,643 - backend - INFO - [DEBUG] PR Number: 20 | SHA: local-test-sha-999
+2026-04-09 22:59:45,643 - backend - INFO - [Enterprise] Starting PR #20 | SHA: local-test-sha-999
+2026-04-09 22:59:48,647 - backend - ERROR - Database operation failed after 3 attempts: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 22:59:48,647 - backend - CRITICAL - [V5-OBSERVABILITY] Pipeline failure: NOT NULL constraint failed: prs.bot_start_time
+Traceback (most recent call last):
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\main.py", line 150, in process_webhook
+    pr_id = await initiate_review(repo, pr_number, status="fetching_diff")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 172, in initiate_review
+    return await db_retry(_insert)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 25, in db_retry
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 165, in _insert
+    cursor = await db.execute(
+             ^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 223, in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 63, in _connection_worker_thread
+    result = function()
+sqlite3.IntegrityError: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 22:59:48,649 - backend - INFO - SHA local-test-sha-999 marked as failed
+2026-04-09 23:02:23,256 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 23:02:30,045 - backend - INFO - [webhook] Top-level entry
+2026-04-09 23:02:30,046 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 23:02:30,049 - backend - INFO - SHA local-test-sha-999 atomically claimed.
+2026-04-09 23:02:30,049 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 23:02:30,049 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 23:02:30,049 - backend - INFO - [DEBUG] PR Number: 20 | SHA: local-test-sha-999
+2026-04-09 23:02:30,049 - backend - INFO - [Enterprise] Starting PR #20 | SHA: local-test-sha-999
+2026-04-09 23:02:33,063 - backend - ERROR - Database operation failed after 3 attempts: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 23:02:33,064 - backend - CRITICAL - [V5-OBSERVABILITY] Pipeline failure: NOT NULL constraint failed: prs.bot_start_time
+Traceback (most recent call last):
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\main.py", line 150, in process_webhook
+    pr_id = await initiate_review(repo, pr_number, status="fetching_diff")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 173, in initiate_review
+    return await db_retry(_insert)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 26, in db_retry
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 166, in _insert
+    cursor = await db.execute(
+             ^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 223, in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 63, in _connection_worker_thread
+    result = function()
+sqlite3.IntegrityError: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 23:02:33,066 - backend - INFO - SHA local-test-sha-999 marked as failed
+2026-04-09 23:03:50,486 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 23:03:57,812 - backend - INFO - [webhook] Top-level entry
+2026-04-09 23:03:57,813 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 23:03:57,817 - backend - INFO - SHA local-test-sha-999 atomically claimed.
+2026-04-09 23:03:57,818 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 23:03:57,818 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 23:03:57,818 - backend - INFO - [DEBUG] PR Number: 20 | SHA: local-test-sha-999
+2026-04-09 23:03:57,818 - backend - INFO - [Enterprise] Starting PR #20 | SHA: local-test-sha-999
+2026-04-09 23:04:00,824 - backend - ERROR - Database operation failed after 3 attempts: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 23:04:00,824 - backend - CRITICAL - [V5-OBSERVABILITY] Pipeline failure: NOT NULL constraint failed: prs.bot_start_time
+Traceback (most recent call last):
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\main.py", line 151, in process_webhook
+    pr_id = await initiate_review(repo, pr_number, status="fetching_diff")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 173, in initiate_review
+    return await db_retry(_insert)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 26, in db_retry
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 166, in _insert
+    cursor = await db.execute(
+             ^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 223, in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 63, in _connection_worker_thread
+    result = function()
+sqlite3.IntegrityError: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 23:04:00,827 - backend - INFO - SHA local-test-sha-999 marked as failed
+2026-04-09 23:04:59,931 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 23:05:53,005 - backend - INFO - [webhook] Top-level entry
+2026-04-09 23:05:53,006 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 23:05:53,010 - backend - INFO - SHA local-test-sha-999 atomically claimed.
+2026-04-09 23:05:53,010 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 23:05:53,011 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 23:05:53,011 - backend - INFO - [DEBUG] PR Number: 20 | SHA: local-test-sha-999
+2026-04-09 23:05:53,011 - backend - INFO - [Enterprise] Starting PR #20 | SHA: local-test-sha-999
+2026-04-09 23:05:56,040 - backend - ERROR - Database operation failed after 3 attempts: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 23:05:56,041 - backend - CRITICAL - [V5-OBSERVABILITY] Pipeline failure: NOT NULL constraint failed: prs.bot_start_time
+Traceback (most recent call last):
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\main.py", line 151, in process_webhook
+    pr_id = await initiate_review(repo, pr_number, status="fetching_diff")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 174, in initiate_review
+    return await db_retry(_insert)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 26, in db_retry
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 167, in _insert
+    cursor = await db.execute(
+             ^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 223, in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 63, in _connection_worker_thread
+    result = function()
+sqlite3.IntegrityError: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 23:05:56,046 - backend - INFO - SHA local-test-sha-999 marked as failed
+2026-04-09 23:06:22,319 - backend - INFO - DB WORKING DIR: C:\Users\shivansh\Desktop\HCL Project\backend
+2026-04-09 23:06:22,319 - backend - INFO - DB ABS PATH: C:\Users\shivansh\Desktop\HCL Project\backend\reviews.db
+2026-04-09 23:06:22,324 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 23:06:49,845 - backend - INFO - [webhook] Top-level entry
+2026-04-09 23:06:49,845 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 23:06:49,852 - backend - INFO - SHA local-test-sha-999 atomically claimed.
+2026-04-09 23:06:49,852 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 23:06:49,852 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 23:06:49,853 - backend - INFO - [DEBUG] PR Number: 20 | SHA: local-test-sha-999
+2026-04-09 23:06:49,853 - backend - INFO - [Enterprise] Starting PR #20 | SHA: local-test-sha-999
+2026-04-09 23:06:52,868 - backend - ERROR - Database operation failed after 3 attempts: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 23:06:52,868 - backend - CRITICAL - [V5-OBSERVABILITY] Pipeline failure: NOT NULL constraint failed: prs.bot_start_time
+Traceback (most recent call last):
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\main.py", line 151, in process_webhook
+    pr_id = await initiate_review(repo, pr_number, status="fetching_diff")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 176, in initiate_review
+    return await db_retry(_insert)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 26, in db_retry
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 169, in _insert
+    cursor = await db.execute(
+             ^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 223, in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 63, in _connection_worker_thread
+    result = function()
+sqlite3.IntegrityError: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 23:06:52,871 - backend - INFO - SHA local-test-sha-999 marked as failed
+2026-04-09 23:07:01,473 - backend - INFO - DB WORKING DIR: C:\Users\shivansh\Desktop\HCL Project\backend
+2026-04-09 23:07:01,473 - backend - INFO - DB ABS PATH: C:\Users\shivansh\Desktop\HCL Project\backend\reviews_v6.db
+2026-04-09 23:07:01,482 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 23:07:08,273 - backend - INFO - [webhook] Top-level entry
+2026-04-09 23:07:08,273 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 23:07:08,274 - backend - INFO - SHA local-test-sha-999 atomically claimed.
+2026-04-09 23:07:08,274 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 23:07:08,275 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 23:07:08,275 - backend - INFO - [DEBUG] PR Number: 20 | SHA: local-test-sha-999
+2026-04-09 23:07:08,275 - backend - INFO - [Enterprise] Starting PR #20 | SHA: local-test-sha-999
+2026-04-09 23:07:08,276 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #20
+2026-04-09 23:07:09,228 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/20 "HTTP/1.1 200 OK"
+2026-04-09 23:07:10,339 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-09 23:07:10,351 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-09 23:07:10,351 - services.filter_service - INFO - [filter_service] Filtering issues
+2026-04-09 23:07:10,351 - services.filter_service - INFO - ✅ FILTER PASSED: 0 issues
+2026-04-09 23:07:10,352 - backend - INFO - SHA local-test-sha-999 marked as completed
+2026-04-09 23:07:10,353 - backend - INFO - 📈 Telemetry Finalized: PR ID 1 Status: success
+2026-04-09 23:07:22,103 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 23:07:27,837 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 23:11:57,313 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 23:11:57,319 - backend - INFO - SHA 3ddab890e5f5fcdb2b85c4eb1764c8add189ef92 atomically claimed.
+2026-04-09 23:11:57,320 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 23:11:57,320 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 23:11:57,321 - backend - INFO - [DEBUG] PR Number: 20 | SHA: 3ddab890e5f5fcdb2b85c4eb1764c8add189ef92
+2026-04-09 23:11:57,321 - backend - INFO - [Enterprise] Starting PR #20 | SHA: 3ddab890e5f5fcdb2b85c4eb1764c8add189ef92
+2026-04-09 23:12:00,340 - backend - ERROR - Database operation failed after 3 attempts: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 23:12:00,341 - backend - CRITICAL - [V5-OBSERVABILITY] Pipeline failure: NOT NULL constraint failed: prs.bot_start_time
+Traceback (most recent call last):
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\main.py", line 150, in process_webhook
+    pr_id = await initiate_review(repo, pr_number, status="fetching_diff")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 173, in initiate_review
+    return await db_retry(_insert)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 26, in db_retry
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\backend\stats_store.py", line 166, in _insert
+    cursor = await db.execute(
+             ^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 223, in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\shivansh\Desktop\HCL Project\.venv\Lib\site-packages\aiosqlite\core.py", line 63, in _connection_worker_thread
+    result = function()
+sqlite3.IntegrityError: NOT NULL constraint failed: prs.bot_start_time
+2026-04-09 23:12:00,343 - backend - INFO - SHA 3ddab890e5f5fcdb2b85c4eb1764c8add189ef92 marked as failed
+2026-04-09 23:12:37,965 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 23:18:34,771 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 23:22:01,127 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 23:25:03,255 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 23:25:03,260 - backend - INFO - SHA a26b092b0c919390a132ee4ee10e581e3fb8f722 atomically claimed.
+2026-04-09 23:25:03,266 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 23:25:03,267 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 23:25:03,268 - backend - INFO - [DEBUG] PR Number: 20 | SHA: a26b092b0c919390a132ee4ee10e581e3fb8f722
+2026-04-09 23:25:03,268 - backend - INFO - [Enterprise] Starting PR #20 | SHA: a26b092b0c919390a132ee4ee10e581e3fb8f722
+2026-04-09 23:25:03,270 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #20
+2026-04-09 23:25:04,539 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/20 "HTTP/1.1 200 OK"
+2026-04-09 23:25:06,091 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-09 23:25:06,146 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-09 23:25:06,147 - services.filter_service - INFO - [filter_service] Filtering issues
+2026-04-09 23:25:06,148 - services.filter_service - INFO - ✅ FILTER PASSED: 0 issues
+2026-04-09 23:25:06,152 - backend - INFO - SHA a26b092b0c919390a132ee4ee10e581e3fb8f722 marked as completed
+2026-04-09 23:25:06,154 - backend - INFO - 📈 Telemetry Finalized: PR ID 1 Status: success
+2026-04-09 23:30:47,312 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 23:30:47,315 - backend - INFO - SHA 48ce013289f5ea7e60b8898de7e898838c00a704 atomically claimed.
+2026-04-09 23:30:47,317 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 23:30:47,317 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 23:30:47,317 - backend - INFO - [DEBUG] PR Number: 22 | SHA: 48ce013289f5ea7e60b8898de7e898838c00a704
+2026-04-09 23:30:47,318 - backend - INFO - [Enterprise] Starting PR #22 | SHA: 48ce013289f5ea7e60b8898de7e898838c00a704
+2026-04-09 23:30:47,319 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #22
+2026-04-09 23:30:48,796 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/22 "HTTP/1.1 200 OK"
+2026-04-09 23:30:49,253 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-09 23:30:49,255 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-09 23:30:49,256 - services.filter_service - INFO - [filter_service] Filtering issues
+2026-04-09 23:30:49,256 - services.filter_service - INFO - ✅ FILTER PASSED: 0 issues
+2026-04-09 23:30:49,257 - backend - INFO - SHA 48ce013289f5ea7e60b8898de7e898838c00a704 marked as completed
+2026-04-09 23:30:49,258 - backend - INFO - 📈 Telemetry Finalized: PR ID 3 Status: success
+2026-04-09 18:13:08,146 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 23:46:14,807 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 23:51:06,955 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-09 23:51:26,777 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 23:51:26,791 - backend - INFO - 🛑 [webhook] SHA 48ce013289f5ea7e60b8898de7e898838c00a704 skip: active task exists and is not stale.
+2026-04-09 23:55:31,291 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-09 23:55:31,307 - backend - INFO - SHA 9226cca2a472bfda65b27e547b8e39a8637aa92a atomically claimed.
+2026-04-09 23:55:31,309 - backend - INFO - [DEBUG] Entered analysis_semaphore context
+2026-04-09 23:55:31,309 - backend - INFO - [DEBUG] Repo Full Name: Shivansh1146/HCL-Project
+2026-04-09 23:55:31,309 - backend - INFO - [DEBUG] PR Number: 23 | SHA: 9226cca2a472bfda65b27e547b8e39a8637aa92a
+2026-04-09 23:55:31,309 - backend - INFO - [Enterprise] Starting PR #23 | SHA: 9226cca2a472bfda65b27e547b8e39a8637aa92a
+2026-04-09 23:55:31,310 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #23
+2026-04-09 23:55:32,270 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/23 "HTTP/1.1 200 OK"
+2026-04-09 23:55:33,587 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-09 23:55:33,601 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-09 23:55:33,602 - services.filter_service - INFO - [filter_service] Filtering issues
+2026-04-09 23:55:33,602 - services.filter_service - INFO - ✅ FILTER PASSED: 0 issues
+2026-04-09 23:55:33,603 - backend - INFO - SHA 9226cca2a472bfda65b27e547b8e39a8637aa92a marked as completed
+2026-04-09 23:55:33,604 - backend - INFO - 📈 Telemetry Finalized: PR ID 5 Status: success
+2026-04-09 23:58:02,380 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 00:01:29,662 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).
+2026-04-10 00:01:31,906 - backend - WARNING - GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).

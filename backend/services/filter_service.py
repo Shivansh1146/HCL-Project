@@ -33,7 +33,7 @@ def parse_and_filter_issues(analysis_result: dict) -> list:
         fix = str(issue.get("fix", "")).lower()
 
         # Rule 1: Fields must be present and non-empty
-        if not (issue.get("type") and description and fix):
+        if not (description and fix):
             continue
 
         # Rule 2: Contradiction Check - No "no fix needed" or empty fixes

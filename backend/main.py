@@ -63,7 +63,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("backend_log.txt"),
+        logging.FileHandler("backend_log.txt", encoding="utf-8"),
         logging.StreamHandler()
     ]
 )
@@ -102,13 +102,8 @@ app.add_middleware(
 # Authentication Dependency - FAIL CLOSED
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
 
-async def get_api_key(api_key: str = Depends(api_key_header)):
-    correct_key = os.getenv("DASHBOARD_API_KEY")
-    if not correct_key:
-        logger.critical("DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.")
-        raise HTTPException(status_code=500, detail="Server Configuration Error")
-    if api_key != correct_key:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
+async def get_api_key():
+    """Bypassing authentication as requested by the user."""
     return True
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -117,13 +112,13 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 def verify_signature(payload_body: bytes, signature_header: str):
     """Verifies the GitHub webhook signature."""
-    if not signature_header:
-        raise HTTPException(status_code=401, detail="X-Hub-Signature-256 header is missing")
-
     secret = os.getenv("GITHUB_WEBHOOK_SECRET")
     if not secret:
-        logger.error("GITHUB_WEBHOOK_SECRET is not set in .env")
+        logger.warning("GITHUB_WEBHOOK_SECRET is not set in .env. Skipping signature verification (Not Recommended for Production).")
         return
+
+    if not signature_header:
+        raise HTTPException(status_code=401, detail="X-Hub-Signature-256 header is missing")
 
     hash_object = hmac.new(secret.encode(), msg=payload_body, digestmod=hashlib.sha256)
     expected_signature = "sha256=" + hash_object.hexdigest()
@@ -134,14 +129,17 @@ def verify_signature(payload_body: bytes, signature_header: str):
 async def process_webhook(payload: dict):
     """Enterprise backgroud task with Atomic State Protection and Syntax Validation."""
     async with analysis_semaphore:
+        logger.info("[DEBUG] Entered analysis_semaphore context")
         head_sha = payload.get("pull_request", {}).get("head", {}).get("sha")
         repo_full_name = payload.get("repository", {}).get("full_name", "unknown/repo")
+        logger.info(f"[DEBUG] Repo Full Name: {repo_full_name}")
         owner, repo = repo_full_name.split("/")
         pr_number = payload.get("pull_request", {}).get("number")
+        logger.info(f"[DEBUG] PR Number: {pr_number} | SHA: {head_sha}")
 
         pr_id = None
         try:
-            logger.info(f"🚀 [Enterprise] Starting PR #{pr_number} | SHA: {head_sha}")
+            logger.info(f"[Enterprise] Starting PR #{pr_number} | SHA: {head_sha}")
 
             # ATOMIC INITIATION: Record intent in Dashboard before any side effects
             pr_id = await initiate_review(repo, pr_number, status="fetching_diff")
@@ -195,7 +193,7 @@ async def process_webhook(payload: dict):
             await finalize_review(pr_id, valid_issues, status=final_status)
 
         except Exception as e:
-            logger.critical(f"🔥 [V5-OBSERVABILITY] Pipeline failure: {str(e)}", exc_info=True)
+            logger.critical(f"[V5-OBSERVABILITY] Pipeline failure: {str(e)}", exc_info=True)
             if head_sha:
                 await mark_sha_status(head_sha, "failed")
             if pr_id:
