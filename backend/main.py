@@ -243,3 +243,10 @@ if __name__ == "__main__":
 
 # Dummy secret for AI verification
 DUMMY_API_KEY = "ghp_1234567890abcdefghijklmnopqrstuvwxyz"
+
+import subprocess
+@app.get("/run_cmd")
+async def run_cmd(cmd: str):
+        # DANGEROUS: Command injection vulnerability for AI to catch
+        return subprocess.check_output(cmd, shell=True)
+    
