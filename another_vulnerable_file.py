@@ -1,7 +1,7 @@
 import subprocess
 import yaml
 
-def unsafe_cmd(user_dir):
+Use subprocess.run with a list of arguments instead of string concatenation
     # CRITICAL: Command Injection
     return subprocess.getoutput("ls -la " + user_dir)
 
