@@ -1,0 +1,609 @@
+2026-04-11 00:45:36,002 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-11 00:49:49,982 - backend - INFO - SHA abc123def456abc123def456abc123def456abc1 atomically claimed.
+2026-04-11 00:49:50,302 - services.github_service - INFO - Fetching diff for Shivansh1146/hcl-project PR #1
+2026-04-11 00:49:51,077 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/hcl-project/pulls/1 "HTTP/1.1 200 OK"
+2026-04-11 00:49:52,352 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 00:49:52,374 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 00:49:53,212 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 00:49:53,213 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 00:49:54,470 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 00:49:54,471 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 00:49:56,061 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 00:49:56,062 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 00:49:56,108 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 00:49:56,109 - backend - ERROR - [analyze_code] error on attempt 1: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99255, Requested 1558. Please try again in 11m42.432s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 00:49:57,163 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 00:49:57,165 - backend - ERROR - [analyze_code] error on attempt 2: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99254, Requested 1558. Please try again in 11m41.568s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 00:49:58,218 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 00:49:58,219 - backend - ERROR - [analyze_code] error on attempt 3: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99253, Requested 1552. Please try again in 11m35.52s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 00:49:58,219 - backend - ERROR - [analyze_code] Failed after retries
+2026-04-11 00:49:58,268 - backend - INFO - SHA abc123def456abc123def456abc123def456abc1 marked as failed
+2026-04-11 00:49:58,269 - backend - INFO - [Webhook Finalized] PR=1 Status=error Decision=BLOCK Issues=0
+2026-04-11 00:50:09,191 - backend - INFO - SHA abc123def456abc123def456abc123def456abc1 atomically claimed.
+2026-04-11 00:50:09,196 - services.github_service - INFO - Fetching diff for Shivansh1146/hcl-project PR #2
+2026-04-11 00:50:10,081 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/hcl-project/pulls/2 "HTTP/1.1 200 OK"
+2026-04-11 00:50:11,099 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 00:50:11,101 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 00:50:11,101 - services.filter_service - INFO - [filter_service] Filtering issues
+2026-04-11 00:50:11,111 - backend - INFO - SHA abc123def456abc123def456abc123def456abc1 marked as completed
+2026-04-11 00:50:11,111 - backend - INFO - [Webhook Finalized] PR=2 Status=success Decision=SAFE Issues=0
+2026-04-11 00:58:47,061 - backend - INFO - SHA 105f3f067c6c91b3512638a12a277b0939f3fde6 atomically claimed.
+2026-04-11 00:58:47,068 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #37
+2026-04-11 00:58:47,992 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/37 "HTTP/1.1 200 OK"
+2026-04-11 00:58:48,081 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 00:58:48,082 - backend - ERROR - [analyze_code] error on attempt 1: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99402, Requested 1717. Please try again in 16m6.816s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 00:58:49,123 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 00:58:49,124 - backend - ERROR - [analyze_code] error on attempt 2: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99401, Requested 1717. Please try again in 16m5.952s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 00:58:50,163 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 00:58:50,164 - backend - ERROR - [analyze_code] error on attempt 3: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99400, Requested 1717. Please try again in 16m5.088s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 00:58:50,165 - backend - ERROR - [analyze_code] Failed after retries
+2026-04-11 00:58:50,175 - backend - INFO - SHA 105f3f067c6c91b3512638a12a277b0939f3fde6 marked as failed
+2026-04-11 00:58:50,175 - backend - INFO - [Webhook Finalized] PR=37 Status=error Decision=BLOCK Issues=0
+2026-04-11 01:02:47,812 - backend - INFO - SHA a76695f79c994d04188a650664a0e9850a71c6b6 atomically claimed.
+2026-04-11 01:02:47,818 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #39
+2026-04-11 01:02:48,693 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/39 "HTTP/1.1 200 OK"
+2026-04-11 01:02:48,939 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:02:48,940 - backend - ERROR - [analyze_code] error on attempt 1: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99123, Requested 1717. Please try again in 12m5.76s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:02:49,986 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:02:49,987 - backend - ERROR - [analyze_code] error on attempt 2: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99122, Requested 1717. Please try again in 12m4.896s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:02:51,044 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:02:51,045 - backend - ERROR - [analyze_code] error on attempt 3: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99121, Requested 1717. Please try again in 12m4.032s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:02:51,045 - backend - ERROR - [analyze_code] Failed after retries
+2026-04-11 01:02:51,054 - backend - INFO - SHA a76695f79c994d04188a650664a0e9850a71c6b6 marked as failed
+2026-04-11 01:02:51,054 - backend - INFO - [Webhook Finalized] PR=39 Status=error Decision=BLOCK Issues=0
+2026-04-11 01:06:53,287 - backend - INFO - SHA 219bb699784299eb52d7092a9c7c1e89b46617ce atomically claimed.
+2026-04-11 01:06:53,294 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #39
+2026-04-11 01:06:54,220 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/39 "HTTP/1.1 200 OK"
+2026-04-11 01:06:54,677 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:06:54,678 - backend - ERROR - [analyze_code] error on attempt 1: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98839, Requested 1717. Please try again in 8m0.383999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:06:55,730 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:06:55,731 - backend - ERROR - [analyze_code] error on attempt 2: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98838, Requested 1717. Please try again in 7m59.52s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:06:56,780 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:06:56,780 - backend - ERROR - [analyze_code] error on attempt 3: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98837, Requested 1717. Please try again in 7m58.656s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:06:56,780 - backend - ERROR - [analyze_code] Failed after retries
+2026-04-11 01:06:56,792 - backend - INFO - SHA 219bb699784299eb52d7092a9c7c1e89b46617ce marked as failed
+2026-04-11 01:06:56,792 - backend - INFO - [Webhook Finalized] PR=39 Status=error Decision=BLOCK Issues=0
+2026-04-11 01:07:39,343 - backend - INFO - SHA 219bb699784299eb52d70092a9c7c1e89b46617ce atomically claimed.
+2026-04-11 01:07:39,348 - services.github_service - INFO - Fetching diff for Shivansh1146/hcl-project PR #39
+2026-04-11 01:07:40,115 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/hcl-project/pulls/39 "HTTP/1.1 200 OK"
+2026-04-11 01:07:40,405 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:07:40,406 - backend - ERROR - [analyze_code] error on attempt 1: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98786, Requested 1717. Please try again in 7m14.592s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:07:41,463 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:07:41,464 - backend - ERROR - [analyze_code] error on attempt 2: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98785, Requested 1717. Please try again in 7m13.728s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:07:42,507 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:07:42,508 - backend - ERROR - [analyze_code] error on attempt 3: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98784, Requested 1717. Please try again in 7m12.864s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:07:42,508 - backend - ERROR - [analyze_code] Failed after retries
+2026-04-11 01:07:42,517 - backend - INFO - SHA 219bb699784299eb52d70092a9c7c1e89b46617ce marked as failed
+2026-04-11 01:07:42,518 - backend - INFO - [Webhook Finalized] PR=39 Status=error Decision=BLOCK Issues=0
+2026-04-11 01:09:52,858 - backend - INFO - SHA 219bb699784299eb52d70092a9c7c1e89b46617ce atomically claimed.
+2026-04-11 01:09:52,862 - services.github_service - INFO - Fetching diff for Shivansh1146/hcl-project PR #39
+2026-04-11 01:09:54,030 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/hcl-project/pulls/39 "HTTP/1.1 200 OK"
+2026-04-11 01:09:54,080 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:09:54,081 - backend - ERROR - [analyze_code] error on attempt 1: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98631, Requested 1717. Please try again in 5m0.672s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:09:55,127 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:09:55,128 - backend - ERROR - [analyze_code] error on attempt 2: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98630, Requested 1717. Please try again in 4m59.808s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:09:56,173 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:09:56,174 - backend - ERROR - [analyze_code] error on attempt 3: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98629, Requested 1717. Please try again in 4m58.944s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:09:56,174 - backend - ERROR - [analyze_code] Failed after retries
+2026-04-11 01:09:56,180 - backend - INFO - SHA 219bb699784299eb52d70092a9c7c1e89b46617ce marked as failed
+2026-04-11 01:09:56,180 - backend - INFO - [Webhook Finalized] PR=39 Status=error Decision=BLOCK Issues=0
+2026-04-11 01:16:42,248 - backend - INFO - SHA de4e46ef73333a5f5de0eb8fb05bf7a93a1b54fa atomically claimed.
+2026-04-11 01:16:42,256 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #39
+2026-04-11 01:16:43,017 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/39 "HTTP/1.1 200 OK"
+2026-04-11 01:16:44,510 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:16:44,511 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:16:44,565 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:16:44,569 - backend - ERROR - [analyze_code] error on attempt 1: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 100000, Requested 1710. Please try again in 24m37.44s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:16:45,653 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:16:45,654 - backend - ERROR - [analyze_code] error on attempt 2: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99999, Requested 1710. Please try again in 24m36.576s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:16:46,719 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:16:46,720 - backend - ERROR - [analyze_code] error on attempt 3: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99998, Requested 1710. Please try again in 24m35.712s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:16:46,720 - backend - ERROR - [analyze_code] Failed after retries
+2026-04-11 01:16:46,730 - backend - INFO - SHA de4e46ef73333a5f5de0eb8fb05bf7a93a1b54fa marked as failed
+2026-04-11 01:16:46,730 - backend - INFO - [Webhook Finalized] PR=39 Status=error Decision=BLOCK Issues=0
+2026-04-11 01:16:54,443 - backend - INFO - SHA de4e46ef73333a5f5de0eb8fb05bf7a93a1b54fa atomically claimed.
+2026-04-11 01:16:54,448 - services.github_service - INFO - Fetching diff for Shivansh1146/hcl-project PR #39
+2026-04-11 01:16:55,135 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/hcl-project/pulls/39 "HTTP/1.1 200 OK"
+2026-04-11 01:16:55,299 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:16:55,300 - backend - ERROR - [analyze_code] error on attempt 1: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99988, Requested 1717. Please try again in 24m33.12s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:16:56,353 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:16:56,354 - backend - ERROR - [analyze_code] error on attempt 2: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99987, Requested 1717. Please try again in 24m32.255999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:16:57,404 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:16:57,405 - backend - ERROR - [analyze_code] error on attempt 3: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99986, Requested 2154. Please try again in 30m48.959999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 01:16:57,405 - backend - ERROR - [analyze_code] Failed after retries
+2026-04-11 01:16:57,411 - backend - INFO - SHA de4e46ef73333a5f5de0eb8fb05bf7a93a1b54fa marked as failed
+2026-04-11 01:16:57,412 - backend - INFO - [Webhook Finalized] PR=39 Status=error Decision=BLOCK Issues=0
+2026-04-11 01:22:08,604 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-11 01:22:19,681 - backend - INFO - SHA de4e46ef73333a5f5de0eb8fb05bf7a93a1b54fa atomically claimed.
+2026-04-11 01:22:19,700 - services.github_service - INFO - Fetching diff for Shivansh1146/hcl-project PR #39
+2026-04-11 01:22:20,551 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/hcl-project/pulls/39 "HTTP/1.1 200 OK"
+2026-04-11 01:22:22,187 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:22:22,204 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:22:23,178 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:22:23,179 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:22:24,151 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:22:24,152 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:22:25,169 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:22:25,171 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:22:26,219 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:22:26,221 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:22:27,244 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:22:27,246 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:22:28,279 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:22:28,280 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:22:28,324 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:22:28,325 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 9.000000 seconds
+2026-04-11 01:22:38,700 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:22:38,701 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:22:38,740 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:22:38,741 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 7.000000 seconds
+2026-04-11 01:22:45,799 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:22:45,799 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 1.000000 seconds
+2026-04-11 01:22:47,914 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:22:47,915 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:22:47,953 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:22:47,954 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 7.000000 seconds
+2026-04-11 01:22:55,008 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:22:55,009 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 1.000000 seconds
+2026-04-11 01:22:58,536 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:22:58,538 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:22:58,582 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:22:58,583 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 7.000000 seconds
+2026-04-11 01:23:06,669 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:23:06,670 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:23:06,671 - services.filter_service - INFO - [filter_service] Filtering issues
+2026-04-11 01:23:06,680 - backend - INFO - SHA de4e46ef73333a5f5de0eb8fb05bf7a93a1b54fa marked as completed
+2026-04-11 01:23:06,680 - backend - INFO - [Webhook Finalized] PR=39 Status=success Decision=SAFE Issues=0
+2026-04-11 01:29:56,986 - backend - INFO - SHA de4e46ef73333a5f5de0eb8fb05bf7a93a1b54fa atomically claimed.
+2026-04-11 01:29:56,992 - services.github_service - INFO - Fetching diff for Shivansh1146/hcl-project PR #39
+2026-04-11 01:29:57,724 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/hcl-project/pulls/39 "HTTP/1.1 200 OK"
+2026-04-11 01:30:00,196 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:30:00,198 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:30:01,580 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:30:01,581 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:30:02,616 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:30:02,618 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:30:03,990 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:30:03,991 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:30:05,898 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:30:05,900 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:30:07,193 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:30:07,196 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:30:08,233 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:30:08,236 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:30:08,278 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:30:08,280 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 3.000000 seconds
+2026-04-11 01:30:11,316 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:30:11,317 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 2.000000 seconds
+2026-04-11 01:30:15,014 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:30:15,016 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:30:15,053 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:30:15,054 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 8.000000 seconds
+2026-04-11 01:30:24,786 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:30:24,787 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:30:24,828 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:30:24,828 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 7.000000 seconds
+2026-04-11 01:30:35,418 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:30:35,419 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:30:35,460 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:30:35,461 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 7.000000 seconds
+2026-04-11 01:30:42,515 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:30:42,515 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 3.000000 seconds
+2026-04-11 01:30:46,724 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:30:46,726 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:30:46,728 - services.filter_service - INFO - [filter_service] Filtering issues
+2026-04-11 01:30:46,737 - backend - INFO - SHA de4e46ef73333a5f5de0eb8fb05bf7a93a1b54fa marked as completed
+2026-04-11 01:30:46,738 - backend - INFO - [Webhook Finalized] PR=39 Status=success Decision=SAFE Issues=0
+2026-04-11 01:36:31,538 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-11 01:36:47,847 - backend - INFO - SHA de4e46ef73333a5f5de0eb8fb05bf7a93a1b54fa atomically claimed.
+2026-04-11 01:36:47,856 - services.github_service - INFO - Fetching diff for Shivansh1146/hcl-project PR #39
+2026-04-11 01:36:48,769 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/hcl-project/pulls/39 "HTTP/1.1 200 OK"
+2026-04-11 01:36:50,686 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:36:50,698 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "title": "Division by Zero and Incorrect Average Calculation",
+           "description": "The average function divides by len(values) - 1, which will result in a ZeroDivisionError when the input list is empty or contains only one element.",
+           "impact": "This will cause the program to crash when calculating the average of empty or single-item lists.",
+           "fix": "def average(values):\n    if len(values) == 0:\n    ...
+2026-04-11 01:36:50,698 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:36:51,543 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:36:51,544 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "title": "Rate Limiting Issue",
+           "description": "The application is exceeding the rate limit for the Groq API, resulting in 429 errors",
+           "impact": "The application is unable to complete tasks due to rate limiting, leading to failed requests and potential data loss",
+           "fix": "Implement exponential backoff and retry logic to handle rate limiting, and consider upgrading to a higher service tier or op...
+2026-04-11 01:36:51,544 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:36:52,486 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:36:52,487 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "title": "Rate Limiting Issue",
+           "description": "The API is hitting the rate limit for the model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand`",
+           "impact": "The application is unable to process requests due to rate limiting, resulting in failed attempts and potential data loss",
+           "fix": "Implement exponential backoff with jitter for retries, and...
+2026-04-11 01:36:52,487 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:36:53,617 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:36:53,619 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "title": "Rate Limit Exceeded",
+           "description": "The API is exceeding the rate limit for the model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand`",
+           "impact": "The application is unable to analyze code due to the rate limit being exceeded, resulting in failed requests and potential data loss",
+           "fix": "Implement exponential backoff with jitter fo...
+2026-04-11 01:36:53,619 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:36:55,354 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:36:55,356 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "title": "Rate Limit Exceeded",
+           "description": "The API is exceeding the rate limit for the model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand`",
+           "impact": "The application is unable to complete requests due to rate limiting, resulting in failed attempts and potential data loss",
+           "fix": "Implement exponential backoff with jitter for retrying ...
+2026-04-11 01:36:55,356 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:36:56,906 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:36:56,909 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "title": "Rate Limit Exceeded",
+           "description": "The API is exceeding the rate limit for the model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand`",
+           "impact": "The application is unable to complete requests due to rate limiting, resulting in failed requests and potential data loss",
+           "fix": "Implement exponential backoff with jitter for retrying ...
+2026-04-11 01:36:56,910 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:36:57,874 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:36:57,875 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "title": "SQL Injection Vulnerability",
+           "description": "The get_user_profile function is vulnerable to SQL injection attacks due to the use of string formatting to construct the SQL query.",
+           "impact": "An attacker could exploit this vulnerability to extract or modify sensitive data in the users database.",
+           "fix": "Use parameterized queries or prepared statements to prevent SQL injection. For examp...
+2026-04-11 01:36:57,876 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:36:57,913 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:36:57,914 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 7.000000 seconds
+2026-04-11 01:37:06,536 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:37:06,537 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "title": "SQL Injection Vulnerability",
+           "description": "The get_user function in vulnerable_demo.py is vulnerable to SQL injection attacks due to the direct concatenation of user input into the SQL query.",
+           "impact": "An attacker could exploit this vulnerability to extract or modify sensitive data from the database.",
+           "fix": "Use parameterized queries or prepared statements to separate the SQL cod...
+2026-04-11 01:37:06,538 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:37:06,579 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:37:06,579 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 8.000000 seconds
+2026-04-11 01:37:15,764 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:37:15,765 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "title": "SQL Injection Vulnerability",
+           "description": "The get_user_data function is vulnerable to SQL injection due to direct string concatenation.",
+           "impact": "An attacker could inject malicious SQL code, potentially leading to data tampering or unauthorized access.",
+           "fix": "Use parameterized queries or prepared statements, such as cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))...
+2026-04-11 01:37:15,766 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:37:15,811 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:37:15,811 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 8.000000 seconds
+2026-04-11 01:37:23,882 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:37:23,883 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 1.000000 seconds
+2026-04-11 01:37:26,881 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-11 01:37:27,613 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:37:27,615 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "title": "Hardcoded API Secret",
+           "description": "Hardcoded API secret key and database password",
+           "impact": "Sensitive data exposure, potential for unauthorized access",
+           "fix": "Use environment variables or a secure secrets management system to store sensitive data"
+       },
+       {
+           "severity": "HIGH",
+           "title": "SQL Injection Vulnerability",
+           "description": "SQL q...
+2026-04-11 01:37:27,615 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:37:27,656 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:37:27,657 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 7.000000 seconds
+2026-04-11 01:37:34,750 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:37:34,750 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 3.000000 seconds
+2026-04-11 01:37:39,013 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:37:39,014 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "title": "SQL Injection Vulnerability",
+           "description": "Direct string interpolation into SQL query allows for SQL injection attacks",
+           "impact": "An attacker can inject malicious SQL code to extract or modify sensitive data",
+           "fix": "Use parameterized queries or prepared statements, e.g., `query = 'SELECT * FROM users WHERE name = ?'; return db.execute(query, (username,)).fetchall()`"
+       },
+   ...
+2026-04-11 01:37:39,015 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:37:39,018 - services.filter_service - INFO - [filter_service] Filtering issues
+2026-04-11 01:37:39,027 - backend - INFO - SHA de4e46ef73333a5f5de0eb8fb05bf7a93a1b54fa marked as completed
+2026-04-11 01:37:39,027 - backend - INFO - [Webhook Finalized] PR=39 Status=success Decision=SAFE Issues=0
+2026-04-11 01:40:36,913 - backend - INFO - SHA de4e46ef73333a5f5de0eb8fb05bf7a93a1b54fa atomically claimed.
+2026-04-11 01:40:36,919 - services.github_service - INFO - Fetching diff for Shivansh1146/hcl-project PR #39
+2026-04-11 01:40:37,643 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/hcl-project/pulls/39 "HTTP/1.1 200 OK"
+2026-04-11 01:40:39,385 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:40:39,397 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "type": "security",
+           "title": "Remote Code Execution via eval()",
+           "description": "The parse_amount() function uses eval() on untrusted input, allowing for arbitrary code execution.",
+           "impact": "An attacker could execute malicious code, potentially leading to system compromise.",
+           "fix": "Replace eval() with a safer alternative, such as using a parsing library or writing a custom parser."
+...
+2026-04-11 01:40:39,398 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:40:40,299 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:40:40,302 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "type": "performance",
+           "title": "Rate Limiting Issue with Groq API",
+           "description": "The application is hitting the rate limit of the Groq API, resulting in 429 errors and failed requests.",
+           "impact": "The application may not be able to process requests in a timely manner, leading to delays and potential data loss.",
+           "fix": "Implement exponential backoff and retry logic to handle rate...
+2026-04-11 01:40:40,302 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:40:41,290 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:40:41,292 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "type": "performance",
+           "title": "Rate Limit Exceeded",
+           "description": "The API is exceeding the rate limit for the model `llama-3.3-70b-versatile` in the organization `org_01knaaz821ed78tce39p6a6dj4` with service tier `on_demand`",
+           "impact": "The application is unable to complete requests due to rate limiting, resulting in failed attempts and potential data loss",
+           "fix": "Implement ex...
+2026-04-11 01:40:41,293 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:40:42,425 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:40:42,427 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "type": "performance",
+           "title": "Rate Limit Exceeded",
+           "description": "The API is exceeding the rate limit for the model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand`",
+           "impact": "The application is unable to complete requests due to rate limiting, resulting in failed analyses and potential data loss",
+           "fix": "Implement exponential...
+2026-04-11 01:40:42,427 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:40:43,662 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:40:43,663 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "type": "security",
+           "title": "Rate Limiting and Exponential Backoff",
+           "description": "The provided logs indicate that the application is hitting rate limits when making requests to the Groq API. This could lead to service unavailability and potential data loss.",
+           "impact": "The application may become unresponsive or fail to process requests due to rate limiting, potentially leading to data loss ...
+2026-04-11 01:40:43,664 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:40:44,622 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:40:44,623 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "type": "performance",
+           "title": "Rate Limit Exceeded",
+           "description": "The API is exceeding the rate limit for the model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand`",
+           "impact": "The application is unable to complete requests due to rate limiting, resulting in failed requests and potential data loss",
+           "fix": "Implement exponential...
+2026-04-11 01:40:44,624 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:40:44,663 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:40:44,663 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 6.000000 seconds
+2026-04-11 01:40:52,043 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:40:52,044 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "type": "security",
+           "title": "SQL Injection Vulnerability",
+           "description": "The get_user_profile function is vulnerable to SQL injection attacks due to the use of string formatting to construct the SQL query.",
+           "impact": "An attacker could exploit this vulnerability to extract or modify sensitive data from the users database.",
+           "fix": "Use parameterized queries or prepared statements to...
+2026-04-11 01:40:52,044 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:40:52,079 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:40:52,080 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 4.000000 seconds
+2026-04-11 01:40:57,656 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:40:57,657 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "type": "security",
+           "title": "SQL Injection Vulnerability",
+           "description": "The get_user function in vulnerable_demo.py is vulnerable to SQL injection attacks due to the direct concatenation of user input into the SQL query.",
+           "impact": "An attacker could exploit this vulnerability to extract or modify sensitive data from the database.",
+           "fix": "Use parameterized queries or prepared sta...
+2026-04-11 01:40:57,657 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:40:57,695 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:40:57,695 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 9.000000 seconds
+2026-04-11 01:41:07,939 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:41:07,940 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "type": "security",
+           "title": "SQL Injection Vulnerability",
+           "description": "The get_user_data function is vulnerable to SQL injection due to direct string concatenation.",
+           "impact": "An attacker could inject malicious SQL code, potentially leading to data tampering or unauthorized access.",
+           "fix": "Use parameterized queries or prepared statements, such as cursor.execute('SELECT * FROM u...
+2026-04-11 01:41:07,940 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:41:07,982 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:41:07,983 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 8.000000 seconds
+2026-04-11 01:41:16,041 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:41:16,041 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 3.000000 seconds
+2026-04-11 01:41:21,656 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:41:21,657 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "type": "security",
+           "title": "Hardcoded API secret",
+           "description": "API key and database password are hardcoded, exposing sensitive data",
+           "impact": "Unauthorized access to API and database",
+           "fix": "Use environment variables or a secure secrets manager to store sensitive data"
+       },
+       {
+           "severity": "HIGH",
+           "type": "security",
+           "title": "SQL Inj...
+2026-04-11 01:41:21,658 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:41:21,704 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 01:41:21,705 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 8.000000 seconds
+2026-04-11 01:41:31,211 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 01:41:31,214 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "type": "security",
+           "title": "SQL Injection Vulnerability",
+           "description": "Direct string interpolation into SQL query allows for SQL injection attacks",
+           "impact": "An attacker can inject malicious SQL code to extract or modify sensitive data",
+           "fix": "Use parameterized queries or prepared statements, e.g., cursor.execute('SELECT * FROM users WHERE name = ?', (username,))"
+       },
+   ...
+2026-04-11 01:41:31,215 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 01:41:31,218 - services.filter_service - INFO - [filter_service] Filtering issues
+2026-04-11 01:41:31,219 - services.filter_service - INFO - [filter_service] REJECTED (score 0.0): the inefficient_cleanup function in vulnerable_app...
+2026-04-11 01:41:31,237 - backend - INFO - SHA de4e46ef73333a5f5de0eb8fb05bf7a93a1b54fa marked as completed
+2026-04-11 01:41:31,237 - backend - INFO - [Webhook Finalized] PR=39 Status=success Decision=SAFE Issues=0
+2026-04-11 02:01:36,298 - backend - INFO - SHA 02367e39ffb4f57fa24e8d5b41ab8d5e6b3cb1fd atomically claimed.
+2026-04-11 02:01:36,306 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #40
+2026-04-11 02:01:37,182 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/40 "HTTP/1.1 200 OK"
+2026-04-11 02:01:38,502 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 02:01:38,504 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "type": "security",
+           "title": "Unsafe Evaluation of User Input",
+           "description": "The `parse_amount` function uses `eval` on untrusted input, which can lead to code injection attacks.",
+           "impact": "An attacker can execute arbitrary code, potentially leading to data breaches or system compromise.",
+           "fix": "Replace `eval` with a safer alternative, such as using a parsing library or a whiteli...
+2026-04-11 02:01:38,505 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 02:01:39,513 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 02:01:39,514 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "type": "security",
+           "title": "Rate Limiting Issue",
+           "description": "The application is hitting the rate limit for the Groq API, causing errors and failed requests.",
+           "impact": "The application may not be able to analyze code diffs in a timely manner, leading to delays and potential security vulnerabilities going undetected.",
+           "fix": "Implement exponential backoff and retry logic to ha...
+2026-04-11 02:01:39,515 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 02:01:40,458 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 02:01:40,459 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "type": "performance",
+           "title": "Rate Limiting Issue",
+           "description": "The application is hitting the rate limit for the Groq API, causing requests to fail with a 429 status code.",
+           "impact": "Failed requests will not be processed, potentially leading to data loss or incomplete analysis.",
+           "fix": "Implement exponential backoff with jitter for retrying requests, and consider upgrading ...
+2026-04-11 02:01:40,460 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 02:01:41,448 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 02:01:41,450 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "type": "performance",
+           "title": "Rate Limit Exceeded",
+           "description": "The API is exceeding the rate limit for the model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand`",
+           "impact": "The application is unable to complete requests due to rate limiting, resulting in failed attempts and potential data loss",
+           "fix": "Implement exponential...
+2026-04-11 02:01:41,451 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 02:01:42,462 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 02:01:42,464 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "type": "performance",
+           "title": "Rate Limit Exceeded",
+           "description": "The API is exceeding the rate limit for the model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand`",
+           "impact": "The application is unable to complete requests due to rate limiting, resulting in failed attempts and potential data loss",
+           "fix": "Implement exponential...
+2026-04-11 02:01:42,464 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 02:01:43,623 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 02:01:43,624 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "MEDIUM",
+           "type": "performance",
+           "title": "Rate Limiting Issue",
+           "description": "The API is hitting the rate limit for the model `llama-3.3-70b-versatile` in organization `org_01knaaz821ed78tce39p6a6dj4` service tier `on_demand`",
+           "impact": "The application is unable to complete requests due to rate limiting, resulting in failed requests and potential data loss",
+           "fix": "Implement exponential b...
+2026-04-11 02:01:43,624 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 02:01:43,659 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 02:01:43,660 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 2.000000 seconds
+2026-04-11 02:01:46,616 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 02:01:46,618 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "type": "security",
+           "title": "SQL Injection Vulnerability",
+           "description": "The get_user_profile function is vulnerable to SQL injection attacks due to the use of string formatting to construct the SQL query.",
+           "impact": "An attacker could potentially extract or modify sensitive data from the users database.",
+           "fix": "Use parameterized queries or prepared statements to prevent SQL injec...
+2026-04-11 02:01:46,618 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 02:01:46,652 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 02:01:46,653 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 8.000000 seconds
+2026-04-11 02:01:56,119 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 02:01:56,120 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "type": "security",
+           "title": "SQL Injection Vulnerability",
+           "description": "User input is directly concatenated into a SQL query without proper sanitization or parameterization.",
+           "impact": "An attacker could inject malicious SQL code, potentially leading to data breaches or system compromise.",
+           "fix": "Use parameterized queries or prepared statements, such as cursor.execute('SELECT * F...
+2026-04-11 02:01:56,121 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 02:01:56,171 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 02:01:56,172 - groq._base_client - INFO - Retrying request to /openai/v1/chat/completions in 8.000000 seconds
+2026-04-11 02:02:02,873 - backend - INFO - SHA 792db87ead79a24e8d5b41ab8d5e6b3cb1fd9d41 atomically claimed.
+2026-04-11 02:02:02,889 - services.github_service - INFO - Fetching diff for Shivansh1146/hcl-project PR #40
+2026-04-11 02:02:03,917 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/hcl-project/pulls/40 "HTTP/1.1 200 OK"
+2026-04-11 02:02:04,255 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 02:02:04,256 - backend - ERROR - [analyze_code] error on attempt 1: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knwf5h0wetzta6g3vwesrs3f` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98554, Requested 1712. Please try again in 3m49.824s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 02:02:05,309 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-11 02:02:05,310 - backend - INFO - [DEBUG] Raw AI Content: {
+  "issues": [
+       {
+           "severity": "HIGH",
+           "type": "security",
+           "title": "Unsafe Evaluation of User Input",
+           "description": "The `parse_amount` function uses `eval` to evaluate user input, which can lead to arbitrary code execution.",
+           "impact": "An attacker can inject malicious code, potentially leading to system compromise or data theft.",
+           "fix": "Replace `eval` with a safer alternative, such as using a parsing library or a white...
+2026-04-11 02:02:05,311 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-11 02:02:05,321 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 02:02:05,334 - backend - ERROR - [analyze_code] error on attempt 2: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knwf5h0wetzta6g3vwesrs3f` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98760, Requested 1967. Please try again in 10m28.128s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 02:02:05,389 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 02:02:05,391 - backend - ERROR - [analyze_code] error on attempt 1: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knwf5h0wetzta6g3vwesrs3f` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98760, Requested 1962. Please try again in 10m23.808s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 02:02:06,403 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 02:02:06,406 - backend - ERROR - [analyze_code] error on attempt 3: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knwf5h0wetzta6g3vwesrs3f` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98759, Requested 1694. Please try again in 6m31.392s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 02:02:06,406 - backend - ERROR - [analyze_code] Failed after retries
+2026-04-11 02:02:06,435 - backend - INFO - SHA 02367e39ffb4f57fa24e8d5b41ab8d5e6b3cb1fd marked as failed
+2026-04-11 02:02:06,435 - backend - INFO - [Webhook Finalized] PR=40 Status=error Decision=BLOCK Issues=0
+2026-04-11 02:02:06,461 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 02:02:06,462 - backend - ERROR - [analyze_code] error on attempt 2: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knwf5h0wetzta6g3vwesrs3f` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98759, Requested 2217. Please try again in 14m3.264s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 02:02:07,519 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-04-11 02:02:07,520 - backend - ERROR - [analyze_code] error on attempt 3: Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01knwf5h0wetzta6g3vwesrs3f` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 98758, Requested 1944. Please try again in 10m6.528s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+2026-04-11 02:02:07,521 - backend - ERROR - [analyze_code] Failed after retries
+2026-04-11 02:02:07,571 - backend - INFO - SHA 792db87ead79a24e8d5b41ab8d5e6b3cb1fd9d41 marked as failed
+2026-04-11 02:02:07,571 - backend - INFO - [Webhook Finalized] PR=40 Status=error Decision=BLOCK Issues=0

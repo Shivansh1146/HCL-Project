@@ -54,19 +54,38 @@ class AIService:
 
     async def _analyze_chunk_with_retry(self, diff_chunk: str) -> Dict[str, Any]:
         """Calls Groq with JSON mode and system prompt."""
-        system_prompt = """You are a Senior Code Quality and Security Engineer.
-Analyze the code diff and return a JSON object with issues found.
-STRICT RULES:
-- Return ONLY valid JSON.
-- limit output to MAX 5 issues per chunk.
-- Label minor inefficiencies as 'low'.
-- Label performance/bugs as 'medium'.
-- Label security vulnerabilities as 'high'.
-- Provide a REAL fix (actual code snippet for suggestion).
-- 'file' MUST match the file path in the diff.
-- 'line' MUST be the actual line number from the diff (int).
-- If no issues found, return {"issues": []}.
-- Detect Phrases like "no fix needed" and REJECT such issues entirely."""
+        system_prompt = """You are a Senior Production-Grade Security Engineer.
+Analyze code diffs for REAL issues. Return a RAW JSON object with NO external text.
+
+STRICT SEVERITY CALIBRATION:
+- HIGH: RCE, SQLi, Hardcoded Secrets/Auth Bypass, Severe Data Leakage.
+- MEDIUM: Logic flaws, XSS, unsafe resource handling, broken state machines.
+- LOW: Quality, style, efficiency, minor best practice violations.
+
+ENGINEERING-FIRST REMEDIATION:
+- Provide high-engineering fixes: restrict access, sanitize input, isolate logic, or use secure libraries.
+- DO NOT suggest "deleting the endpoint" unless the entire feature is inherently unsafe.
+- Be precise and technical. Avoid dramatic language like "system may be completely compromised."
+
+JSON STRUCTURE:
+{
+"issues": [
+  {
+    "severity": "HIGH|MEDIUM|LOW",
+    "type": "security|bug|performance|quality",
+    "title": "Precise name",
+    "description": "Exactly what is wrong",
+    "impact": "Realistic technical consequence",
+    "fix": "RAW code snippet or specific technical instruction"
+  }
+]
+}
+
+STRICT CONSTRAINTS:
+- No preamble like "Here is the JSON...". Return ONLY the JSON object.
+- If unsure, return {"issues": []}.
+- The 'fix' field must be valid code or highly specific technical remediation.
+"""
 
         user_prompt = f"Code Diff Chunk:\n{diff_chunk}"
 
@@ -80,10 +99,12 @@ STRICT RULES:
                         {"role": "user", "content": user_prompt}
                     ],
                     temperature=0.1,
-                    response_format={"type": "json_object"}
+                    response_format={"type": "json_object"},
+                    timeout=15.0
                 )
 
                 content = response.choices[0].message.content.strip()
+                logger.info(f"[DEBUG] Raw AI Content: {content[:500]}...")
                 parsed_json = json.loads(content)
                 logger.info(f"[analyze_code] success on attempt {attempt + 1}")
                 return parsed_json
@@ -93,22 +114,28 @@ STRICT RULES:
                 if attempt < max_retries - 1:
                     await asyncio.sleep(1)
 
-        logger.error("[analyze_code] Failed after retries, skipping chunk")
-        return {"issues": []}
+        logger.error("[analyze_code] Failed after retries")
+        return None  # Return None to signal total failure
 
-    def _get_line_aware_chunks(self, diff: str, max_size: int = 4000) -> list:
-        """Splits diff into chunks without breaking lines."""
+    def _get_hunk_aware_chunks(self, diff: str, max_size: int = 4000) -> list:
+        """Splits diff into chunks by hunk, preserving file context."""
         lines = diff.splitlines()
         chunks = []
         current_chunk = []
+        current_file_header = ""
         current_size = 0
 
         for line in lines:
+            # Capture file header
+            if line.startswith("+++ b/"):
+                current_file_header = line
+
             line_size = len(line) + 1
             if current_size + line_size > max_size and current_chunk:
                 chunks.append("\n".join(current_chunk))
-                current_chunk = []
-                current_size = 0
+                # Start new chunk with the same file header for context
+                current_chunk = [current_file_header] if current_file_header else []
+                current_size = len(current_file_header) + 1 if current_file_header else 0
 
             current_chunk.append(line)
             current_size += line_size
@@ -126,14 +153,16 @@ STRICT RULES:
         if not self.client:
             return {"status": "failed", "reason": "CLIENT_NOT_INITIALIZED", "issues": []}
 
-        chunks = self._get_line_aware_chunks(diff)
+        chunks = self._get_hunk_aware_chunks(diff)
         all_issues = []
         seen_descriptions = []
 
-        any_success = False
-
         for chunk in chunks:
             result = await self._analyze_chunk_with_retry(chunk)
+            if result is None:
+                # STRICT RELIABILITY: Any chunk failure = Total analysis failure
+                return {"status": "failed", "reason": "CHUNK_PROCESSING_ERROR", "issues": []}
+
             issues = result.get("issues", [])
 
             # If we got a result (even empty issues), it's a success for this chunk
@@ -160,11 +189,7 @@ STRICT RULES:
                     seen_descriptions.append(desc)
                     all_issues.append(issue)
 
-        if not any_success:
-            return {"status": "failed", "reason": "AI_ANALYSIS_FAILED", "issues": []}
-
-        status = "success" if len(chunks) == 1 or any_success else "partial"
-        return {"status": status, "issues": all_issues}
+        return {"status": "success", "issues": all_issues}
 
 def get_ai_service() -> AIService:
     return AIService()

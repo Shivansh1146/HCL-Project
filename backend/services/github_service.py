@@ -13,8 +13,10 @@ class GitHubService:
         self.token = os.getenv("GITHUB_TOKEN")
         if not self.token:
             logger.error("GITHUB_TOKEN is not set in environment variables")
+
+        # Use 'Bearer' prefix which is the modern standard for GitHub PATs and Apps
         self.headers = {
-            "Authorization": f"token {self.token}",
+            "Authorization": f"Bearer {self.token}" if self.token else "",
             "Accept": "application/vnd.github.v3+json",
         }
 
@@ -38,9 +40,10 @@ class GitHubService:
         headers["Accept"] = "application/vnd.github.v3.diff"
 
         try:
-            async with httpx.AsyncClient() as client:
+            # Explicitly follow redirects for diff fetching as GitHub may redirect to patch-diff.githubusercontent.com
+            async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
                 for attempt in range(3):
-                    response = await client.get(url, headers=headers, timeout=15.0)
+                    response = await client.get(url, headers=headers)
                     if response.status_code == 429:
                         # Adaptive Rate Limiting: Respect GitHub's Retry-After header
                         retry_after = response.headers.get("Retry-After")
@@ -48,6 +51,10 @@ class GitHubService:
                         logger.warning(f"Rate limited by GitHub. Waiting {wait}s (Retry-After)...")
                         await asyncio.sleep(wait)
                         continue
+
+                    if response.status_code == 401:
+                        logger.error(f"Unauthorized access to {url}. Token status: {'Present' if self.token else 'Missing'}")
+
                     response.raise_for_status()
                     return response.text
         except httpx.HTTPError as e:
@@ -60,13 +67,12 @@ class GitHubService:
         url = f"https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments"
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 for attempt in range(3):
                     response = await client.post(
                         url,
                         headers=self.headers,
-                        json={"body": comment},
-                        timeout=10.0
+                        json={"body": comment}
                     )
                     if response.status_code == 429:
                         retry_after = response.headers.get("Retry-After", (attempt + 1) * 2)
@@ -80,21 +86,41 @@ class GitHubService:
             logger.error(f"GitHub API Error in post_comment: {str(e)}")
             return False
 
-    async def post_inline_comment(self, owner: str, repo: str, pr_number: int, issue: Dict[str, Any], commit_sha: str) -> bool:
-        """Posts an inline comment with adaptive rate limiting and fallback."""
+    async def post_inline_comment(self, owner: str, repo: str, pr_number: int, issue: Dict[str, Any], commit_sha: str, suggestion: Optional[str] = None) -> bool:
+        """Posts an inline comment with adaptive rate limiting and optional code suggestion."""
         logger.info(f"Posting inline comment to {owner}/{repo} PR #{pr_number}")
         url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/comments"
 
-        body = issue.get("formatted_body", issue.get("description", ""))
+        severity = issue.get("severity", "medium").upper()
+        description = issue.get("description", "")
+        file_path = issue.get("file", "")
+
         try:
             line = int(issue.get("line", 1))
         except (ValueError, TypeError):
             line = 1
 
+        # Build comment body with optional suggestion
+        comment_body = f"""**🤖 AI Code Review ({severity})**
+
+## 📋 Issue
+{description}
+"""
+        if suggestion:
+            comment_body += f"""
+## 🔧 Suggested Fix
+{suggestion}
+
+---
+*💡 Click 'Commit suggestion' to apply this fix automatically*
+"""
+
+        comment_body += f"\n**Severity:** {severity} | **File:** `{file_path}` | **Line:** {line}"
+
         payload = {
-            "body": body,
+            "body": comment_body,
             "commit_id": commit_sha,
-            "path": issue.get("file", ""),
+            "path": file_path,
             "line": line,
             "side": "RIGHT"
         }
@@ -118,7 +144,7 @@ class GitHubService:
 
                     if response.status_code == 422:
                         logger.warning(f"Line mapping error for {issue.get('file')}:{line}. Falling back.")
-                        fallback_body = f"🔍 **AI Review Fallback** for `{issue.get('file')}` line `{line}`:\n\n{body}"
+                        fallback_body = f"🔍 **AI Review Fallback** for `{issue.get('file')}` line `{line}`:\n\n{comment_body}"
                         return await self.post_comment(owner, repo, pr_number, fallback_body)
 
                     response.raise_for_status()
@@ -141,5 +167,5 @@ async def fetch_diff(owner: str, repo: str, pr_number: int) -> Optional[str]:
 async def post_comment(owner: str, repo: str, pr_number: int, comment: str) -> bool:
     return await _github_service_instance.post_comment(owner, repo, pr_number, comment)
 
-async def post_inline_comment(owner: str, repo: str, pr_number: int, issue: Dict[str, Any], commit_sha: str) -> bool:
-    return await _github_service_instance.post_inline_comment(owner, repo, pr_number, issue, commit_sha)
+async def post_inline_comment(owner: str, repo: str, pr_number: int, issue: Dict[str, Any], commit_sha: str, suggestion: Optional[str] = None) -> bool:
+    return await _github_service_instance.post_inline_comment(owner, repo, pr_number, issue, commit_sha, suggestion)

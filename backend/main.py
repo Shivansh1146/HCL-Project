@@ -12,6 +12,12 @@ load_dotenv(os.path.join(BASE_DIR, ".env"), override=True)
 
 import uvicorn
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, Security
+
+# Verify critical environment variables
+if not os.getenv("GITHUB_TOKEN"):
+    print("CRITICAL: GITHUB_TOKEN is missing from .env")
+if not os.getenv("GROQ_API_KEY"):
+    print("CRITICAL: GROQ_API_KEY is missing from .env")
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.security import APIKeyHeader
@@ -24,17 +30,7 @@ from services.filter_service import parse_and_filter_issues
 from services.github_service import fetch_diff, post_comment, post_inline_comment
 from services.syntax_validator import SyntaxValidator
 from utils.formatter import format_inline_issue
-from stats_store import (
-    claim_sha_for_processing,
-    close_db,
-    finalize_review,
-    get_stats,
-    initialize_db,
-    initiate_review,
-    is_sha_processed,
-    mark_sha_status,
-    record_review,
-)
+import stats_store
 
 
 # Configure logging with Deep Secret Scrubbing
@@ -97,12 +93,12 @@ analysis_semaphore = asyncio.Semaphore(5)
 # Lifecycle Management: Persistent DB Connection
 @app.on_event("startup")
 async def startup_event():
-    await initialize_db()
+    await stats_store.initialize_db()
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    await close_db()
+    await stats_store.close_db()
 
 
 # CORS configuration
@@ -141,16 +137,14 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 def verify_signature(payload_body: bytes, signature_header: str):
-    """Verifies the GitHub webhook signature."""
-    if not signature_header:
-        raise HTTPException(
-            status_code=401, detail="X-Hub-Signature-256 header is missing"
-        )
-
+    """Verifies the GitHub webhook signature. Mandatory for production."""
     secret = os.getenv("GITHUB_WEBHOOK_SECRET")
     if not secret:
-        logger.error("GITHUB_WEBHOOK_SECRET is not set in .env")
-        return
+        logger.error("CRITICAL: GITHUB_WEBHOOK_SECRET is not set. Rejecting all webhooks.")
+        raise HTTPException(status_code=401, detail="Webhook secret configuration missing")
+
+    if not signature_header:
+        raise HTTPException(status_code=401, detail="X-Hub-Signature-256 header is missing")
 
     hash_object = hmac.new(secret.encode(), msg=payload_body, digestmod=hashlib.sha256)
     expected_signature = "sha256=" + hash_object.hexdigest()
@@ -160,7 +154,7 @@ def verify_signature(payload_body: bytes, signature_header: str):
 
 
 async def process_webhook(payload: dict):
-    """Enterprise backgroud task with Atomic State Protection and Syntax Validation."""
+    """Production-grade fail-safe pipeline with guaranteed finalization."""
     async with analysis_semaphore:
         head_sha = payload.get("pull_request", {}).get("head", {}).get("sha")
         repo_full_name = payload.get("repository", {}).get("full_name", "unknown/repo")
@@ -168,97 +162,91 @@ async def process_webhook(payload: dict):
         pr_number = payload.get("pull_request", {}).get("number")
 
         pr_id = None
-        try:
-            logger.info(f"🚀 [Enterprise] Starting PR #{pr_number} | SHA: {head_sha}")
+        # FAIL-SAFE DEFAULTS
+        final_status = "error"
+        decision = "BLOCK"
+        high_count = med_count = low_count = 0
+        valid_issues = []
 
-            # ATOMIC INITIATION: Record intent in Dashboard before any side effects
-            pr_id = await initiate_review(repo, pr_number, status="fetching_diff")
+        try:
+            logger.info(f"🚀 [Production] Starting PR #{pr_number} | SHA: {head_sha}")
+            pr_id = await stats_store.initiate_review(repo, pr_number, status="processing")
 
             # 1. Fetch Diff
             diff = await fetch_diff(owner, repo, pr_number)
-            if diff is None:
-                await mark_sha_status(head_sha, "failed")
-                await finalize_review(pr_id, [], status="error")
-                logger.info(
-                    f"[Webhook Summary] repo={repo_full_name} pr={pr_number} sha={head_sha} result=failed stage=fetch_diff"
-                )
+            if not diff:
+                # Handle empty/metadata PRs as SKIPPED/SAFE
+                final_status = "success"
+                decision = "SAFE"
+                logger.info(f"⏭️ PR #{pr_number} contains no code changes. Skipping.")
                 return
-
-            await initiate_review(
-                repo, pr_number, status="analyzing"
-            )  # Update status indicator
-            diff_mapping = DiffValidator.parse_diff_mapping(diff)
 
             # 2. AI Analysis
             analysis = await analyze_code(diff)
             if analysis.get("status") == "failed":
-                await mark_sha_status(head_sha, "failed")
-                await finalize_review(pr_id, [], status="error")
-                logger.info(
-                    f"[Webhook Summary] repo={repo_full_name} pr={pr_number} sha={head_sha} result=failed stage=analysis"
-                )
-                return
+                raise ValueError(f"Stage Failed: AI Analysis - {analysis.get('reason')}")
 
-            # 3. Multi-Layer Validation (Mapping + Syntax)
+            # 3. Validation & Filtering
             raw_issues = parse_and_filter_issues(analysis)
 
-            # Layer 1: Diff Mapping validation
-            mapped_issues = [
-                i for i in raw_issues if DiffValidator.validate_issue(i, diff_mapping)
-            ]
+            # Multi-Layer Pruning
+            mapped_issues = [i for i in raw_issues if DiffValidator.validate_issue(i, DiffValidator.parse_diff_mapping(diff))]
+            # Layer 2: Syntax Integrity - Downgrade instead of Prune
+            valid_issues = []
+            for i in mapped_issues:
+                if SyntaxValidator.validate_issue(i):
+                    valid_issues.append(i)
+                else:
+                    # Downgrade severity and flag for manual review
+                    i["severity"] = "low"
+                    i["description"] = f"[NEEDS REVIEW: SUGGESTION SYNTAX ERR] {i.get('description', '')}"
+                    valid_issues.append(i)
 
-            # Layer 2: Technical Integrity (Syntax) validation
-            valid_issues = [
-                i for i in mapped_issues if SyntaxValidator.validate_issue(i)
-            ]
+            # 4. Strict Decision Logic
+            high_count = sum(1 for i in valid_issues if str(i.get("severity", "")).lower() == "high")
+            med_count = sum(1 for i in valid_issues if str(i.get("severity", "")).lower() == "medium")
+            low_count = sum(1 for i in valid_issues if str(i.get("severity", "")).lower() == "low")
 
-            pruned_count = len(raw_issues) - len(valid_issues)
-            if pruned_count > 0:
-                logger.warning(
-                    f"🛡️ Multi-Layer Pruning: Removed {pruned_count} invalid issues"
-                )
+            # DATA INTEGRITY CHECK
+            if (high_count + med_count + low_count) != len(valid_issues):
+                logger.error(f"Integrity Mismatch: {high_count}+{med_count}+{low_count} != {len(valid_issues)}")
+                decision = "BLOCK"
+            else:
+                if high_count > 0:
+                    decision = "BLOCK"
+                elif med_count >= 3:
+                    decision = "REVIEW"
+                else:
+                    decision = "SAFE"
 
-            status = analysis.get("status", "success")
+            # 5. Commenting
+            if valid_issues:
+                diff_mapping = DiffValidator.parse_diff_mapping(diff)
+                for issue in valid_issues:
+                    suggestion = DiffValidator.generate_suggestion(issue, diff_mapping)
+                    await post_inline_comment(owner, repo, pr_number, issue, head_sha, suggestion=suggestion)
 
-            if not valid_issues:
-                await mark_sha_status(head_sha, "completed")
-                await finalize_review(pr_id, [], status=status)
-                logger.info(
-                    f"[Webhook Summary] repo={repo_full_name} pr={pr_number} sha={head_sha} result=completed issues=0 comments=0"
-                )
-                return
-
-            # 4. Commenting
-            await finalize_review(pr_id, [], status="commenting")
-            success_comments = 0
-            for issue in valid_issues:
-                issue_payload = dict(issue)
-                issue_payload["formatted_body"] = format_inline_issue(issue)
-                if await post_inline_comment(
-                    owner, repo, pr_number, issue_payload, head_sha
-                ):
-                    success_comments += 1
-
-            final_status = status if success_comments > 0 else "error"
-            await mark_sha_status(
-                head_sha, "completed" if success_comments > 0 else "failed"
-            )
-            await finalize_review(pr_id, valid_issues, status=final_status)
-            logger.info(
-                f"[Webhook Summary] repo={repo_full_name} pr={pr_number} sha={head_sha} result={final_status} issues={len(valid_issues)} comments={success_comments}"
-            )
+            final_status = "success"
 
         except Exception as e:
-            logger.critical(
-                f"🔥 [V5-OBSERVABILITY] Pipeline failure: {str(e)}", exc_info=True
-            )
-            if head_sha:
-                await mark_sha_status(head_sha, "failed")
+            logger.critical(f"🔥 Fail-Safe Triggered: {str(e)}", exc_info=True)
+            final_status = "error"
+            decision = "BLOCK"
+
+        finally:
             if pr_id:
-                await finalize_review(pr_id, [], status="error")
-            logger.info(
-                f"[Webhook Summary] repo={repo_full_name} pr={pr_number} sha={head_sha} result=failed stage=exception"
-            )
+                await stats_store.finalize_review(
+                    pr_id, valid_issues,
+                    status=final_status,
+                    decision_status=decision,
+                    high=high_count,
+                    medium=med_count,
+                    low=low_count
+                )
+            if head_sha:
+                await stats_store.mark_sha_status(head_sha, "completed" if final_status == "success" else "failed")
+
+            logger.info(f"[Webhook Finalized] PR={pr_number} Status={final_status} Decision={decision} Issues={len(valid_issues)}")
 
 
 @app.post("/webhook")
@@ -276,7 +264,7 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
         return {"status": "error", "reason": "MISSING_SHA"}
 
     # ATOMIC CLAIMING: Integrated State Recovery + Race Protection
-    if not await claim_sha_for_processing(head_sha):
+    if not await stats_store.claim_sha_for_processing(head_sha):
         logger.info(
             f"🛑 [webhook] SHA {head_sha} skip: active task exists and is not stale."
         )
@@ -290,7 +278,7 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
 async def stats(page: int = 1, authenticated: bool = Depends(get_api_key)):
     limit = 15
     offset = (page - 1) * limit
-    return await get_stats(limit=limit, offset=offset)
+    return await stats_store.get_stats(limit=limit, offset=offset)
 
 
 @app.get("/api/health")

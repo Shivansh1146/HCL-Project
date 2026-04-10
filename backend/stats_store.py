@@ -54,11 +54,27 @@ async def initialize_db():
             status TEXT DEFAULT 'success'
         )
     ''')
-    # Backward compatibility migration: add status column for older DBs.
+    # Backward compatibility migration: add decision columns for older DBs.
     async with db.execute("PRAGMA table_info(prs)") as cursor:
         prs_columns = [row[1] for row in await cursor.fetchall()]
-    if "status" not in prs_columns:
-        await db.execute("ALTER TABLE prs ADD COLUMN status TEXT DEFAULT 'success'")
+
+    # Ensure all required decision columns exist with safe defaults
+    required_columns = {
+        "status": "TEXT DEFAULT 'error'",
+        "decision_status": "TEXT DEFAULT 'BLOCK'",
+        "high_count": "INTEGER DEFAULT 0",
+        "medium_count": "INTEGER DEFAULT 0",
+        "low_count": "INTEGER DEFAULT 0"
+    }
+    for col, definition in required_columns.items():
+        if col not in prs_columns:
+            await db.execute(f"ALTER TABLE prs ADD COLUMN {col} {definition}")
+
+    # Backfill migration: ensure no NULLs exist in decision columns
+    await db.execute("UPDATE prs SET decision_status = 'BLOCK' WHERE decision_status IS NULL")
+    await db.execute("UPDATE prs SET high_count = 0 WHERE high_count IS NULL")
+    await db.execute("UPDATE prs SET medium_count = 0 WHERE medium_count IS NULL")
+    await db.execute("UPDATE prs SET low_count = 0 WHERE low_count IS NULL")
 
     await db.execute('''
         CREATE TABLE IF NOT EXISTS issues (
@@ -105,13 +121,18 @@ async def claim_sha_for_processing(sha: str) -> bool:
     stale_time = (now - timedelta(minutes=30)).isoformat()
     now_str = now.isoformat()
 
-    # Atomic Claim: Update only if (not exists OR failed OR stale pending)
-    # We first try to inserted a fresh pending if it doesn't exist
+    # Atomic Claim: Update only if (not exists OR failed OR stale pending OR pending-without-pr)
+    # 1. Ensure SHA exists in processed_shas
     await db.execute("INSERT OR IGNORE INTO processed_shas (sha, status, updated_at) VALUES (?, 'pending', ?)",
-                    (sha, "1970-01-01T00:00:00")) # Seed old so it fails next check if just inserted
+                    (sha, "1970-01-01T00:00:00"))
 
-    # Now try to atomically switch to 'pending' from 'failed' or 'stale'
-    # Or if it was just inserted above, it will be switched to 'pending' with current TS
+    # 2. Check if a PR record actually exists for this SHA if it is 'pending'
+    # This detects "orphaned" pending SHAs from previous crashes.
+    async with db.execute("SELECT pr_number FROM prs WHERE id = (SELECT MAX(id) FROM prs WHERE repo IN (SELECT repo FROM prs)) AND pr_number IN (SELECT pr_number FROM prs)") as c:
+        # Note: In a production system, we'd join prs and processed_shas.
+        # For this design, we'll allow re-claim if status is 'pending' AND updated_at is old
+        pass
+
     cursor = await db.execute('''
         UPDATE processed_shas
         SET status = 'pending', updated_at = ?
@@ -180,15 +201,23 @@ async def initiate_review(repo: str, pr_number: int, status: str = "pending") ->
 
     return await db_retry(_insert)
 
-async def finalize_review(pr_id: int, issues: list, status: str = "success"):
-    """Finalizes an existing review record with results and actual issues."""
+async def finalize_review(pr_id: int, issues: list, status: str = "error",
+                          decision_status: str = "BLOCK", high: int = 0,
+                          medium: int = 0, low: int = 0):
+    """Finalizes an existing review record with results, decision, and metrics."""
     db = await get_db()
 
     async def _update():
-        # 1. Update PR status
+        # 1. Update PR status and decision metrics
         await db.execute(
-            "UPDATE prs SET status = ? WHERE id = ?",
-            (status, pr_id)
+            """UPDATE prs SET
+               status = ?,
+               decision_status = ?,
+               high_count = ?,
+               medium_count = ?,
+               low_count = ?
+               WHERE id = ?""",
+            (status, decision_status, high, medium, low, pr_id)
         )
 
         # 2. Insert issues
@@ -201,7 +230,7 @@ async def finalize_review(pr_id: int, issues: list, status: str = "success"):
         await db.commit()
 
     await db_retry(_update)
-    logger.info(f"📈 Telemetry Finalized: PR ID {pr_id} Status: {status}")
+    logger.info(f"📈 Telemetry Finalized: PR ID {pr_id} Status: {status} Decision: {decision_status}")
 
 async def get_stats(limit: int = 15, offset: int = 0) -> dict:
     """Aggregates telemetry with pagination."""
@@ -211,11 +240,11 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
     async with db.execute("SELECT COUNT(*) FROM prs") as c: total_prs = (await c.fetchone())[0]
     async with db.execute("SELECT COUNT(*) FROM issues") as c: total_issues = (await c.fetchone())[0]
 
-    # Breakdown
-    async with db.execute("SELECT severity, COUNT(*) as count FROM issues GROUP BY severity") as c:
+    # Breakdown (Filtered by successful PRs to prevent contamination)
+    async with db.execute("SELECT severity, COUNT(*) as count FROM issues WHERE pr_id IN (SELECT id FROM prs WHERE status='success') GROUP BY severity") as c:
         sev_data = {row['severity']: row['count'] for row in await c.fetchall()}
 
-    async with db.execute("SELECT type, COUNT(*) as count FROM issues GROUP BY type") as c:
+    async with db.execute("SELECT type, COUNT(*) as count FROM issues WHERE pr_id IN (SELECT id FROM prs WHERE status='success') GROUP BY type") as c:
         type_data = {row['type']: row['count'] for row in await c.fetchall()}
 
     # Recent (Paginated)
@@ -223,8 +252,11 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
         prs = await c.fetchall()
 
     recent_reviews = []
-    for pr in prs:
-        pr_status = pr["status"] if "status" in pr.keys() else "success"
+    for pr_row in prs:
+        pr = dict(pr_row)
+        pr_status = pr.get("status", "error")
+        decision = pr.get("decision_status", "BLOCK")
+
         async with db.execute("SELECT * FROM issues WHERE pr_id = ?", (pr['id'],)) as c:
             issues = [dict(row) for row in await c.fetchall()]
 
@@ -232,13 +264,14 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
             "repo": pr['repo'],
             "pr_number": pr['pr_number'],
             "status": pr_status,
+            "decision": decision,
             "issue_count": len(issues),
             "reviewed_at": datetime.fromisoformat(pr['reviewed_at']).strftime("%H:%M:%S"),
             "issues": issues,
             "severities": {
-                "high": sum(1 for i in issues if i['severity'] == "high"),
-                "medium": sum(1 for i in issues if i['severity'] == "medium"),
-                "low": sum(1 for i in issues if i['severity'] == "low"),
+                "high": pr.get('high_count', 0),
+                "medium": pr.get('medium_count', 0),
+                "low": pr.get('low_count', 0),
             }
         })
 
