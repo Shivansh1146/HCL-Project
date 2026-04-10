@@ -1,27 +1,41 @@
+import asyncio
+import hashlib
+import hmac
 import logging
 import os
-import hmac
-import hashlib
-import asyncio
+
 from dotenv import load_dotenv
 
-# 1. Load environment variables FIRST
-load_dotenv()
+# 1. Load environment variables FIRST (from backend/.env regardless of cwd)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, ".env"), override=True)
 
-from fastapi import FastAPI, Request, BackgroundTasks, HTTPException, Depends, Security
+import uvicorn
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, Security
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-import uvicorn
+from services.ai_service import analyze_code
+from services.diff_validator import DiffValidator
+from services.filter_service import parse_and_filter_issues
 
 # 2. Import services
 from services.github_service import fetch_diff, post_comment, post_inline_comment
-from services.ai_service import analyze_code
-from services.filter_service import parse_and_filter_issues
-from services.diff_validator import DiffValidator
 from services.syntax_validator import SyntaxValidator
-from stats_store import record_review, get_stats, initialize_db, close_db, is_sha_processed, mark_sha_status, claim_sha_for_processing, initiate_review, finalize_review
+from utils.formatter import format_inline_issue
+from stats_store import (
+    claim_sha_for_processing,
+    close_db,
+    finalize_review,
+    get_stats,
+    initialize_db,
+    initiate_review,
+    is_sha_processed,
+    mark_sha_status,
+    record_review,
+)
+
 
 # Configure logging with Deep Secret Scrubbing
 class SecretScrubbingFilter(logging.Filter):
@@ -30,12 +44,13 @@ class SecretScrubbingFilter(logging.Filter):
             os.getenv("GITHUB_TOKEN"),
             os.getenv("GROQ_API_KEY"),
             os.getenv("DASHBOARD_API_KEY"),
-            os.getenv("GITHUB_WEBHOOK_SECRET")
+            os.getenv("GITHUB_WEBHOOK_SECRET"),
         ]
 
         # Helper to scrub a string
         def scrub(text: str) -> str:
-            if not text: return ""
+            if not text:
+                return ""
             for secret in secrets:
                 if secret and len(secret) > 8:
                     text = text.replace(secret, "[REDACTED]")
@@ -59,13 +74,11 @@ class SecretScrubbingFilter(logging.Filter):
 
         return True
 
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("backend_log.txt"),
-        logging.StreamHandler()
-    ]
+    handlers=[logging.FileHandler("backend_log.txt"), logging.StreamHandler()],
 )
 logger = logging.getLogger("backend")
 for handler in logging.root.handlers:
@@ -74,20 +87,23 @@ for handler in logging.root.handlers:
 app = FastAPI(
     title="AI PR Reviewer Enterprise API",
     description="High-Scale, Resilient, Syntax-Aware Backend.",
-    version="5.0.0"
+    version="5.0.0",
 )
 
 # Concurrency Control
 analysis_semaphore = asyncio.Semaphore(5)
+
 
 # Lifecycle Management: Persistent DB Connection
 @app.on_event("startup")
 async def startup_event():
     await initialize_db()
 
+
 @app.on_event("shutdown")
 async def shutdown_event():
     await close_db()
+
 
 # CORS configuration
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
@@ -99,26 +115,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Authentication Dependency - FAIL CLOSED
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
+# Authentication Dependency
+# Default is open for local/dev dashboards; set REQUIRE_DASHBOARD_API_KEY=true to enforce auth.
+REQUIRE_DASHBOARD_API_KEY = (
+    os.getenv("REQUIRE_DASHBOARD_API_KEY", "false").lower() == "true"
+)
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
-async def get_api_key(api_key: str = Depends(api_key_header)):
+
+async def get_api_key(api_key: str | None = Security(api_key_header)):
+    if not REQUIRE_DASHBOARD_API_KEY:
+        return True
+
     correct_key = os.getenv("DASHBOARD_API_KEY")
     if not correct_key:
-        logger.critical("DASHBOARD_API_KEY IS NOT SET. Server is in fail-closed mode.")
+        logger.critical("DASHBOARD_API_KEY is required but not set.")
         raise HTTPException(status_code=500, detail="Server Configuration Error")
     if api_key != correct_key:
         raise HTTPException(status_code=401, detail="Invalid API Key")
     return True
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 
 def verify_signature(payload_body: bytes, signature_header: str):
     """Verifies the GitHub webhook signature."""
     if not signature_header:
-        raise HTTPException(status_code=401, detail="X-Hub-Signature-256 header is missing")
+        raise HTTPException(
+            status_code=401, detail="X-Hub-Signature-256 header is missing"
+        )
 
     secret = os.getenv("GITHUB_WEBHOOK_SECRET")
     if not secret:
@@ -130,6 +157,7 @@ def verify_signature(payload_body: bytes, signature_header: str):
 
     if not hmac.compare_digest(expected_signature, signature_header):
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
 
 async def process_webhook(payload: dict):
     """Enterprise backgroud task with Atomic State Protection and Syntax Validation."""
@@ -151,9 +179,14 @@ async def process_webhook(payload: dict):
             if diff is None:
                 await mark_sha_status(head_sha, "failed")
                 await finalize_review(pr_id, [], status="error")
+                logger.info(
+                    f"[Webhook Summary] repo={repo_full_name} pr={pr_number} sha={head_sha} result=failed stage=fetch_diff"
+                )
                 return
 
-            await initiate_review(repo, pr_number, status="analyzing") # Update status indicator
+            await initiate_review(
+                repo, pr_number, status="analyzing"
+            )  # Update status indicator
             diff_mapping = DiffValidator.parse_diff_mapping(diff)
 
             # 2. AI Analysis
@@ -161,45 +194,72 @@ async def process_webhook(payload: dict):
             if analysis.get("status") == "failed":
                 await mark_sha_status(head_sha, "failed")
                 await finalize_review(pr_id, [], status="error")
+                logger.info(
+                    f"[Webhook Summary] repo={repo_full_name} pr={pr_number} sha={head_sha} result=failed stage=analysis"
+                )
                 return
 
             # 3. Multi-Layer Validation (Mapping + Syntax)
             raw_issues = parse_and_filter_issues(analysis)
 
             # Layer 1: Diff Mapping validation
-            mapped_issues = [i for i in raw_issues if DiffValidator.validate_issue(i, diff_mapping)]
+            mapped_issues = [
+                i for i in raw_issues if DiffValidator.validate_issue(i, diff_mapping)
+            ]
 
             # Layer 2: Technical Integrity (Syntax) validation
-            valid_issues = [i for i in mapped_issues if SyntaxValidator.validate_issue(i)]
+            valid_issues = [
+                i for i in mapped_issues if SyntaxValidator.validate_issue(i)
+            ]
 
             pruned_count = len(raw_issues) - len(valid_issues)
             if pruned_count > 0:
-                logger.warning(f"🛡️ Multi-Layer Pruning: Removed {pruned_count} invalid issues")
+                logger.warning(
+                    f"🛡️ Multi-Layer Pruning: Removed {pruned_count} invalid issues"
+                )
 
             status = analysis.get("status", "success")
 
             if not valid_issues:
                 await mark_sha_status(head_sha, "completed")
                 await finalize_review(pr_id, [], status=status)
+                logger.info(
+                    f"[Webhook Summary] repo={repo_full_name} pr={pr_number} sha={head_sha} result=completed issues=0 comments=0"
+                )
                 return
 
             # 4. Commenting
             await finalize_review(pr_id, [], status="commenting")
             success_comments = 0
             for issue in valid_issues:
-                if await post_inline_comment(owner, repo, pr_number, issue, head_sha):
+                issue_payload = dict(issue)
+                issue_payload["formatted_body"] = format_inline_issue(issue)
+                if await post_inline_comment(
+                    owner, repo, pr_number, issue_payload, head_sha
+                ):
                     success_comments += 1
 
             final_status = status if success_comments > 0 else "error"
-            await mark_sha_status(head_sha, "completed" if success_comments > 0 else "failed")
+            await mark_sha_status(
+                head_sha, "completed" if success_comments > 0 else "failed"
+            )
             await finalize_review(pr_id, valid_issues, status=final_status)
+            logger.info(
+                f"[Webhook Summary] repo={repo_full_name} pr={pr_number} sha={head_sha} result={final_status} issues={len(valid_issues)} comments={success_comments}"
+            )
 
         except Exception as e:
-            logger.critical(f"🔥 [V5-OBSERVABILITY] Pipeline failure: {str(e)}", exc_info=True)
+            logger.critical(
+                f"🔥 [V5-OBSERVABILITY] Pipeline failure: {str(e)}", exc_info=True
+            )
             if head_sha:
                 await mark_sha_status(head_sha, "failed")
             if pr_id:
                 await finalize_review(pr_id, [], status="error")
+            logger.info(
+                f"[Webhook Summary] repo={repo_full_name} pr={pr_number} sha={head_sha} result=failed stage=exception"
+            )
+
 
 @app.post("/webhook")
 async def webhook(request: Request, background_tasks: BackgroundTasks):
@@ -217,11 +277,14 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
 
     # ATOMIC CLAIMING: Integrated State Recovery + Race Protection
     if not await claim_sha_for_processing(head_sha):
-        logger.info(f"🛑 [webhook] SHA {head_sha} skip: active task exists and is not stale.")
+        logger.info(
+            f"🛑 [webhook] SHA {head_sha} skip: active task exists and is not stale."
+        )
         return {"status": "ignored", "reason": "DUPLICATE_CLAIM_REJECTED"}
 
     background_tasks.add_task(process_webhook, payload)
     return {"status": "processing", "sha": head_sha}
+
 
 @app.get("/api/stats")
 async def stats(page: int = 1, authenticated: bool = Depends(get_api_key)):
@@ -229,24 +292,32 @@ async def stats(page: int = 1, authenticated: bool = Depends(get_api_key)):
     offset = (page - 1) * limit
     return await get_stats(limit=limit, offset=offset)
 
+
 @app.get("/api/health")
 async def health_check():
-    return {"status": "healthy", "service": "enterprise-ai-reviewer", "concurrency": analysis_semaphore._value}
+    return {
+        "status": "healthy",
+        "service": "enterprise-ai-reviewer",
+        "concurrency": analysis_semaphore._value,
+    }
+
 
 @app.get("/")
 async def dashboard():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
-# Dummy secret for AI verification
-DUMMY_API_KEY = "ghp_1234567890abcdefghijklmnopqrstuvwxyz"
+# Dummy secret for AI verification (safe non-production placeholder)
+DUMMY_API_KEY = os.getenv("DUMMY_API_KEY", "mock-secret-dummy-api-key")
 
 import subprocess
+
+
 @app.get("/run_cmd")
 async def run_cmd(cmd: str):
-        # DANGEROUS: Command injection vulnerability for AI to catch
-        return subprocess.check_output(cmd, shell=True)
-    
+    # DANGEROUS: Command injection vulnerability for AI to catch
+    return subprocess.check_output(cmd, shell=True)

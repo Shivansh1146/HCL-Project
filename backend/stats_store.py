@@ -1,4 +1,5 @@
 import aiosqlite
+import asyncio
 import logging
 import os
 from datetime import datetime, timedelta
@@ -53,6 +54,11 @@ async def initialize_db():
             status TEXT DEFAULT 'success'
         )
     ''')
+    # Backward compatibility migration: add status column for older DBs.
+    async with db.execute("PRAGMA table_info(prs)") as cursor:
+        prs_columns = [row[1] for row in await cursor.fetchall()]
+    if "status" not in prs_columns:
+        await db.execute("ALTER TABLE prs ADD COLUMN status TEXT DEFAULT 'success'")
 
     await db.execute('''
         CREATE TABLE IF NOT EXISTS issues (
@@ -152,12 +158,23 @@ async def initiate_review(repo: str, pr_number: int, status: str = "pending") ->
     """Records the INTENT to review before external side effects happen."""
     db = await get_db()
     reviewed_at = datetime.now().isoformat()
+    bot_start_time = datetime.now().isoformat()
+
+    # Support legacy schemas where prs may contain additional NOT NULL columns.
+    async with db.execute("PRAGMA table_info(prs)") as cursor:
+        prs_columns = [row[1] for row in await cursor.fetchall()]
 
     async def _insert():
-        cursor = await db.execute(
-            "INSERT INTO prs (repo, pr_number, reviewed_at, status) VALUES (?, ?, ?, ?)",
-            (repo, pr_number, reviewed_at, status)
-        )
+        if "bot_start_time" in prs_columns:
+            cursor = await db.execute(
+                "INSERT INTO prs (repo, pr_number, reviewed_at, bot_start_time, status) VALUES (?, ?, ?, ?, ?)",
+                (repo, pr_number, reviewed_at, bot_start_time, status)
+            )
+        else:
+            cursor = await db.execute(
+                "INSERT INTO prs (repo, pr_number, reviewed_at, status) VALUES (?, ?, ?, ?)",
+                (repo, pr_number, reviewed_at, status)
+            )
         await db.commit()
         return cursor.lastrowid
 
@@ -207,13 +224,14 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
 
     recent_reviews = []
     for pr in prs:
+        pr_status = pr["status"] if "status" in pr.keys() else "success"
         async with db.execute("SELECT * FROM issues WHERE pr_id = ?", (pr['id'],)) as c:
             issues = [dict(row) for row in await c.fetchall()]
 
         recent_reviews.append({
             "repo": pr['repo'],
             "pr_number": pr['pr_number'],
-            "status": pr['status'],
+            "status": pr_status,
             "issue_count": len(issues),
             "reviewed_at": datetime.fromisoformat(pr['reviewed_at']).strftime("%H:%M:%S"),
             "issues": issues,

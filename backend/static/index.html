@@ -684,26 +684,12 @@
         currentPR: null,
         activeTab: 'all',
         lastFeedJson: "",
-        expandedPRKey: null,
-        apiKey: localStorage.getItem('dashboard_api_key') || ""
+        expandedPRKey: null
     };
 
     async function fetchStats() {
         try {
-            const headers = {};
-            if (state.apiKey) headers["X-API-Key"] = state.apiKey;
-
-            const res = await fetch("/api/stats", { headers });
-
-            if (res.status === 401) {
-                const key = prompt("Action Required: Enter Dashboard API Key");
-                if (key) {
-                    state.apiKey = key;
-                    localStorage.setItem('dashboard_api_key', key);
-                    fetchStats();
-                    return;
-                }
-            }
+            const res = await fetch("/api/stats");
 
             if (!res.ok) throw new Error(`API Error: ${res.status}`);
 

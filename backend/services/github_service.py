@@ -1,7 +1,8 @@
+import asyncio
 import os
-import requests
 import logging
 from typing import Tuple, Dict, Any, Optional
+import httpx
 
 logger = logging.getLogger(__name__)
 
