@@ -13,7 +13,12 @@ def unsafe_cmd(user_dir):
 def parse_config(yaml_string):
     # CRITICAL: Insecure YAML Unserialization
     return yaml.load(yaml_string)
+Avoid using insecure YAML unserialization methods. Instead, use a safe deserialization method. Replace the vulnerable code with:
+```python
+import yaml
 
+def parse_config(yaml_string):
+    return yaml.safe_load(yaml_string)
 def print_password():
     # CRITICAL: Hardcoded Secret
     super_secret = "AKIA-FAKE-AWS-KEY-55555"
