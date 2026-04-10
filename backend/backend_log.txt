@@ -2316,3 +2316,27 @@ iVBORw0KGgoAAAANSUhEUgAAAZAAAAGZCAMAAACQbpc2AAADAFBMVEWEBz6FAD6FAD6GAD+MAEGOAEOK
 2026-04-10 20:21:38,454 - backend - INFO - SHA manual-20260410145058 marked as completed
 2026-04-10 20:21:38,458 - backend - INFO - [Webhook Summary] repo=Shivansh1146/HCL-Project pr=31 sha=manual-20260410145058 result=completed issues=0 comments=0
 2026-04-10 20:23:41,951 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 20:50:52,095 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 20:56:42,510 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 21:04:30,945 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 21:04:32,065 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 21:05:09,713 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 21:08:34,116 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 21:09:32,330 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 21:09:33,361 - backend - INFO - Database initialized (Persistent Mode)
+2026-04-10 21:22:28,779 - backend - INFO - SHA 86af59ad4a7e0437ec7ae92e96cede20862cfd5b atomically claimed.
+2026-04-10 21:22:28,928 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #37
+2026-04-10 21:22:30,185 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/37 "HTTP/1.1 200 OK"
+2026-04-10 21:22:31,575 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 21:22:31,648 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 21:22:31,649 - services.filter_service - INFO - [filter_service] Filtering issues
+2026-04-10 21:22:31,663 - backend - INFO - SHA 86af59ad4a7e0437ec7ae92e96cede20862cfd5b marked as completed
+2026-04-10 21:22:31,673 - backend - INFO - [Webhook Summary] repo=Shivansh1146/HCL-Project pr=37 sha=86af59ad4a7e0437ec7ae92e96cede20862cfd5b result=completed issues=0 comments=0
+2026-04-10 21:25:30,287 - backend - INFO - SHA 99f62d5ebbc8c87ab851eb76cb0f826ebb935930 atomically claimed.
+2026-04-10 21:25:30,291 - services.github_service - INFO - Fetching diff for Shivansh1146/HCL-Project PR #37
+2026-04-10 21:25:31,132 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/Shivansh1146/HCL-Project/pulls/37 "HTTP/1.1 200 OK"
+2026-04-10 21:25:32,221 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-04-10 21:25:32,222 - backend - INFO - [analyze_code] success on attempt 1
+2026-04-10 21:25:32,223 - services.filter_service - INFO - [filter_service] Filtering issues
+2026-04-10 21:25:32,231 - backend - INFO - SHA 99f62d5ebbc8c87ab851eb76cb0f826ebb935930 marked as completed
+2026-04-10 21:25:32,234 - backend - INFO - [Webhook Summary] repo=Shivansh1146/HCL-Project pr=37 sha=99f62d5ebbc8c87ab851eb76cb0f826ebb935930 result=completed issues=0 comments=0

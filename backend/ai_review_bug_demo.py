@@ -1,5 +1,6 @@
 """Intentional bug demo file for PR-based AI review."""
 
+
 def average(values):
     # Bug: divides by len(values)-1 and crashes on empty/single-item lists.
     return sum(values) / (len(values) - 1)
