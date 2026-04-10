@@ -1,7 +1,8 @@
-import re
 import logging
+import re
 
 logger = logging.getLogger("backend")
+
 
 class DiffValidator:
     """Parses unified diffs to validate AI-suggested line mappings."""
@@ -32,14 +33,11 @@ class DiffValidator:
 
             if current_file:
                 if line.startswith("+"):
-                    # This is an added/modified line
                     mapping[current_file].add(current_line_in_file)
                     current_line_in_file += 1
                 elif line.startswith("-"):
-                    # This is a removed line (doesn't count towards new line numbers)
                     continue
                 else:
-                    # Context line
                     current_line_in_file += 1
 
         return mapping
@@ -53,12 +51,27 @@ class DiffValidator:
         except (ValueError, TypeError):
             return False
 
-        if not file_path or file_path not in mapping:
+        if not file_path:
+            return False
+
+        # Flexible file matching — handles path prefix mismatches
+        matched_key = None
+        for key in mapping:
+            if key.endswith(file_path) or file_path.endswith(key) or file_path in key:
+                matched_key = key
+                break
+
+        if not matched_key:
             logger.warning(f"[DiffValidator] File not in diff: {file_path}")
             return False
 
-        if line_num not in mapping[file_path]:
-            logger.warning(f"[DiffValidator] Line {line_num} not in added lines for {file_path}")
-            return False
+        # Lenient line matching — allow ±5 lines tolerance
+        valid_lines = mapping[matched_key]
+        for valid_line in valid_lines:
+            if abs(valid_line - line_num) <= 5:
+                return True
 
-        return True
+        logger.warning(
+            f"[DiffValidator] Line {line_num} not in added lines for {file_path}"
+        )
+        return False
