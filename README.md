@@ -230,12 +230,16 @@ HCL Project/
 ├── Dockerfile                   # Production container config (Root context)
 ├── docker-compose.yml           # Service orchestration & persistence
 ├── README.md                    # Project documentation
+├── vulnerable_verification.py   # Intentionally vulnerable code for testing
+├── send_webhook.py              # Utility to trigger webhook manually
 ├── backend/
 │   ├── main.py                  # FastAPI app — webhook pipeline + dashboard routes
 │   ├── stats_store.py           # Persistent SQLite telemetry engine
 │   ├── reviews.db               # SQLite database (Git ignored)
 │   ├── requirements.txt         # Production dependencies (gunicorn included)
 │   ├── .env                     # API keys — never commit
+│   ├── vulnerable_test.py       # Internal security test script
+│   ├── test_ai.py               # AI service integration test
 │   ├── static/
 │   │   └── index.html           # Live dashboard (Refined Glassmorphism UI)
 │   ├── services/
@@ -247,6 +251,30 @@ HCL Project/
 │       └── formatter.py         # GitHub markdown comment formatter
 ├── .gitignore
 └── README.md
+```
+
+---
+
+## 🧪 Testing & Verification
+
+### 1. AI Integration Test
+Verify that the Groq AI service is correctly analyzing diffs and returning JSON issues.
+```bash
+cd backend
+python test_ai.py
+```
+
+### 2. Security Vulnerability Test
+An intentionally vulnerable script is provided to verify the AI's detection capabilities (SQLi, Command Injection, etc.).
+```bash
+python vulnerable_verification.py
+```
+
+### 3. Webhook Simulation
+Trigger a manual webhook event to test the full pipeline (Induction → Analysis → Response).
+```bash
+# Ensure localtunnel and backend are running first
+python send_webhook.py
 ```
 
 ---
@@ -268,14 +296,3 @@ HCL Project/
 ---
 
 *Built with Python · FastAPI · Groq · GitHub REST API*
-
-Test AI Review v2
-
-
-# AI Review Test
-This is a test to verify the AI reviewer.
-
-
-# Final AI Review Verification
-This PR is created to verify the AI review functionality after restoring the webhook.
-The code should be reviewed for any potential issues.
