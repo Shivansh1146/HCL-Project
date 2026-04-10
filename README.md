@@ -261,6 +261,51 @@ HCL Project/
 
 ## 🧪 Testing & Verification
 
+### 0. Manual End-to-End Verification (Step-by-Step)
+Use this checklist to verify the project manually on Windows before testing GitHub integration.
+
+```bash
+# 1) Open terminal at project root
+cd "C:\Users\shivansh\Desktop\HCL Project"
+
+# 2) Activate virtual environment
+.\.venv\Scripts\Activate.ps1
+
+# 3) Install/update backend dependencies
+pip install -r .\backend\requirements.txt
+
+# 4) Start backend
+cd .\backend
+python -m uvicorn main:app --reload --port 8000
+```
+
+Expected startup output:
+- `Uvicorn running on http://127.0.0.1:8000`
+
+In your browser, verify:
+- `http://127.0.0.1:8000/api/health` returns healthy JSON
+- `http://127.0.0.1:8000/api/stats` returns telemetry JSON
+- `http://127.0.0.1:8000/` loads dashboard UI (no API-key prompt by default)
+
+Open a second terminal (project root, venv active) and run:
+
+```bash
+python .\send_webhook.py
+```
+
+Expected result:
+- HTTP status `200`
+- Response like: `{"status":"processing","sha":"..."}`
+
+Optional GitHub webhook validation:
+
+```bash
+npx -y localtunnel --port 8000
+```
+
+Then set GitHub Webhook **Payload URL** to:
+- `https://<your-url>.loca.lt/webhook`
+
 ### 1. AI Integration Test
 Verify that the Groq AI service is correctly analyzing diffs and returning JSON issues.
 ```bash
