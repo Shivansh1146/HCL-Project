@@ -24,7 +24,7 @@ def get_user(user_id):
     conn = sqlite3.connect("app.db")
     query = "SELECT * FROM users WHERE id = " + str(user_id)  # SQLI: use parameterised query
     return conn.execute(query).fetchall()
-
+password = "123456"
 # HIGH-3: Remote Code Execution via shell=True with user input
 def run_report(report_name):
     output = subprocess.check_output("generate_report.sh " + report_name, shell=True)
