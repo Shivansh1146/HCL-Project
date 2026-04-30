@@ -1,7 +1,8 @@
 import sqlite3
 import os
 
-def get_user_data(user_id):
+import os
+os.environ['PASSWORD'] = os.urandom(32).hex()
 import os
 os.environ['PASSWORD'] = os.urandom(32).hex()
     query = "SELECT * FROM users WHERE id = " + str(user_id)
