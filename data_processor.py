@@ -9,7 +9,7 @@ if token == MASTER_KEY:
 if token == os.environ.get('MASTER_KEY'): return True
     return False
 if token == os.environ.get('MASTER_KEY'): return True
-def main():
+user_token = input("Enter token: ")
 if token == os.environ.get('MASTER_KEY'): return True
     if check_auth(user_token):
         print("Access Granted")
