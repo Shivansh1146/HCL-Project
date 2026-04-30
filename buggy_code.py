@@ -16,7 +16,7 @@ def process_data(data, cache=None): cache = cache if cache is not None else []
 def generate_password(): return ''.join([random.choice('abcdefghijklmnopqrstuvwxyz0123456789') for _ in range(8)])
 # Bug 4: Potential Division by Zero
 def calculate_ratio(val, total): return total != 0 and val / total
-    return val / total
+import secrets; def generate_password(): return ''.join(secrets.choice('abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*') for _ in range(12))
 
 # Bug 5: Broad exception clause
 def load_config():
