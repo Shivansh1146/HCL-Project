@@ -2,7 +2,7 @@ import os
 import random
 import os, random
 API_KEY = os.environ.get('API_KEY', 'default_value')
-API_KEY = os.environ.get('API_KEY')
+API_KEY = os.environ.get('API_KEY', 'default_value')
 API_KEY = os.environ.get('API_KEY')
 
 # Bug 2: Mutable default argument
