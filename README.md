@@ -19,12 +19,13 @@ A key feature is its deep GitHub integration: the system posts inline review com
 
 ## ✨ Key Features
 
-- **🚀 Real-Time Webhook Pipeline**: FastAPI `BackgroundTasks` handle induction instantly to prevent GitHub timeouts.
-- **🧠 AI-Powered Insights**: LLaMA-based analysis catches SQL injection, hardcoded secrets, and logic bugs.
+- **🚀 Sequential Analysis Pipeline**: Processes PRs chunk-by-chunk to ensure **100% coverage** without hitting Groq API rate limits.
+- **🧠 Precise AI Feedback**: Optimized prompting eliminates false positives (e.g., ignored mitigated SQLi) and provides specific, technical remediation.
 - **📊 Glassmorphism Dashboard**: Premium SaaS-style Command Center with live telemetry and spectral severity metrics.
 - **🛡️ SQLite Persistence**: Full history of reviews and issues stored persistently in `reviews.db`.
-- **🔍 Anti-Hallucination Engine**: Custom validator cross-checks AI findings against raw git diffs for near-zero false positives.
-- **✨ Decision Intelligence**: Actionable PR status (Block Merge vs. Safe) for rapid decision making.
+- **✨ GitHub Suggestions UI**: Automatically posts inline comments using GitHub's native ````suggestion` syntax for one-click fixes.
+- **🔍 Intelligent Deduplication**: Advanced logic filters out redundant findings for the same file, line, and issue type.
+
 
 ---
 
@@ -134,7 +135,8 @@ The validator locates the actual code line using the diff's hunk headers and lin
 
 ## 📊 Live Analytics Dashboard
 
-Accessible at `http://localhost:8000/` — auto-refreshes every 3 seconds.
+Accessible at `http://localhost:8001/` — auto-refreshes every 3 seconds.
+
 
 - **Status bar:** Shows backend offline warning if connection is lost
 - **Actionable Insights:** Decision-first guidance (e.g., "Block Merge" vs "Safe to Merge")
@@ -182,13 +184,15 @@ Set `REQUIRE_DASHBOARD_API_KEY=true` to require `X-API-Key` on `/api/stats`.
 
 ```bash
 cd backend
-python -m uvicorn main:app --reload --port 8000
+python -m uvicorn main:app --reload --port 8001
+
 ```
 
 ### 4. Expose via Tunnel
 
 ```bash
-npx -y localtunnel --port 8000
+npx -y localtunnel --port 8001
+
 # → your url is: https://xxxx.loca.lt
 ```
 
@@ -213,11 +217,13 @@ docker-compose up --build -d
 
 # Option B: Manual build and run
 docker build -t ai-reviewer .
-docker run -p 8000:8000 -v "${PWD}/backend/reviews.db:/app/reviews.db" ai-reviewer
+docker run -p 8001:8001 -v "${PWD}/backend/reviews.db:/app/reviews.db" ai-reviewer
+
 ```
 
 ### 2. Monitoring
-- **Dashboard**: Still accessible at `http://localhost:8000/`
+- **Dashboard**: Still accessible at `http://localhost:8001/`
+
 - **Logs**: View real-time container logs with `docker-compose logs -f`
 
 ### 3. Persistence
@@ -284,16 +290,19 @@ pip install -r .\backend\requirements.txt
 
 # 4) Start backend
 cd .\backend
-python -m uvicorn main:app --reload --port 8000
+python -m uvicorn main:app --reload --port 8001
+
 ```
 
 Expected startup output:
-- `Uvicorn running on http://127.0.0.1:8000`
+- `Uvicorn running on http://127.0.0.1:8001`
+
 
 In your browser, verify:
-- `http://127.0.0.1:8000/api/health` returns healthy JSON
-- `http://127.0.0.1:8000/api/stats` returns telemetry JSON
-- `http://127.0.0.1:8000/` loads dashboard UI (no API-key prompt by default)
+- `http://127.0.0.1:8001/api/health` returns healthy JSON
+- `http://127.0.0.1:8001/api/stats` returns telemetry JSON
+- `http://127.0.0.1:8001/` loads dashboard UI (no API-key prompt by default)
+
 
 Open a second terminal (project root, venv active) and run:
 
@@ -308,7 +317,8 @@ Expected result:
 Optional GitHub webhook validation:
 
 ```bash
-npx -y localtunnel --port 8000
+npx -y localtunnel --port 8001
+
 ```
 
 Then set GitHub Webhook **Payload URL** to:
