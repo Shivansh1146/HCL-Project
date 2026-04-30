@@ -10,6 +10,7 @@ from services.github_service import fetch_diff, post_comment, post_inline_commen
 from services.ai_service import get_ai_service
 from services.diff_validator import DiffValidator
 from services.syntax_validator import SyntaxValidator
+from services.filter_service import parse_and_filter_issues
 from stats_store import initialize_db, get_stats, record_review, finalize_review, claim_sha_for_processing, is_sha_processed, mark_sha_status, upsert_review
 import stats_store
 
@@ -136,7 +137,10 @@ async def process_webhook(payload: dict):
                     final_status = analysis.get("status", "success")
                     decision = "SAFE" # Initial assumption before issue counting
                     # Step 4 — Validation & Filtering
+                    # [STRICT 3-LAYER FILTERING]
                     raw_issues = analysis.get("issues", [])
+                    raw_issues = parse_and_filter_issues({"issues": raw_issues}, diff)
+                    
                     diff_mapping = DiffValidator.parse_diff_mapping(diff)
 
                     # Step 5 — Syntax check, Deduplication & Split Logic (Requirement 7)
@@ -177,7 +181,11 @@ async def process_webhook(payload: dict):
                     low_count  = sum(1 for i in valid_issues if str(i.get("severity", "")).lower() == "low")
 
                     rule_based_count = analysis.get("rule_based_count", 0)
-                    decision = compute_decision(high_count, med_count, low_count, total_chunks, processed_chunks)
+                    
+                    # Apply Confidence Kill Switch from AI Service or based on counts
+                    decision = analysis.get("decision_status", "SAFE")
+                    if decision == "SAFE":
+                        decision = compute_decision(high_count, med_count, low_count, total_chunks, processed_chunks)
                     
                     # Deterministic Override: Static scanner beats AI
                     if rule_based_count > 0:

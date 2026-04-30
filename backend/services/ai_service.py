@@ -79,53 +79,43 @@ class AIService:
     async def _analyze_chunk_with_retry(self, diff_chunk: str) -> Optional[Dict[str, Any]]:
         """Sends a single diff chunk to Groq with retry logic and JSON validation."""
         system_prompt = """
-ACT AS: A Senior Offensive Security Engineer and Backend Reliability Expert.
+You are a senior security-focused code reviewer. Act as a static analyzer, not a teacher.
 
-TASK:
-Analyze the provided code diff and identify critical bugs, security vulnerabilities, and reliability failures.
+Rules:
+1. DO NOT report issues that are already mitigated.
+   - Example: Parameterized SQL queries are SAFE -> do not flag SQL injection.
 
-STRICT SEVERITY CALIBRATION:
-- HIGH: RCE, SQLi, Hardcoded Secrets/Auth Bypass, Severe Data Leakage.
-- MEDIUM: Real bug, reliability issue, or significant logic flaw.
-- LOW: Quality, style, efficiency, or minor best practice violations.
-- Never inflate severity without strong technical justification.
+2. ONLY report real, exploitable issues. 
+   - No hypothetical or generic advice.
 
-FALSE POSITIVE GUARD:
-- DO NOT report SQL Injection if the query already uses parameterized execution (e.g., `execute(query, params)` or prepared statements).
-- If a vulnerability is already mitigated or handled in code, do NOT mark it as HIGH/MEDIUM. Either ignore it or mark it as LOW.
-- If the code is safe, explicitly return NO issues instead of forcing one.
+3. Fix must:
+   - Modify ONLY the affected line(s).
+   - Keep original logic intact.
+   - Be minimal and correct.
+   - NEVER replace unrelated code.
+   - Fix must look like a precise code patch, NOT a full rewrite.
 
-ANTI-VAGUE RULE (REJECT GENERIC FEEDBACK):
-- ALL feedback must be specific and technical.
-- REJECT and DO NOT use phrases like: "improve security", "optimize code", "consider best practices", "ensure safety".
-- Identify the EXACT technical failure and provide the EXACT technical fix.
+4. If you are NOT 100% sure -> DO NOT report the issue.
 
-ACTIONABLE FIX ENFORCEMENT:
-- Every reported issue MUST include a direct code fix in the 'fix' field.
-- The fix MUST modify the provided code snippet directly. Generic architectural advice is BANNED.
-- Keep fixes minimal, precise, and committable.
+5. NEVER give generic suggestions like:
+   - "use ORM"
+   - "improve performance"
+   - "refactor code"
 
-JSON STRUCTURE:
+6. Output ONLY valid JSON in this format:
 {
-"issues": [
-  {
-    "severity": "HIGH|MEDIUM|LOW",
-    "type": "security|bug|performance|quality",
-    "title": "Precise name",
-    "description": "Exactly what is wrong",
-    "impact": "Realistic technical consequence",
-    "line": 3, 
-    "file": "filename.py",
-    "fix": "replacement code ONLY"
-  }
-]
+  "issues": [
+    {
+      "severity": "HIGH|MEDIUM|LOW",
+      "type": "security|bug|performance|quality",
+      "title": "Precise name",
+      "description": "Exactly what is wrong",
+      "line": 3,
+      "file": "filename.py",
+      "fix": "replacement code ONLY"
+    }
+  ]
 }
-
-STRICT CONSTRAINTS:
-- No preamble. Return ONLY the JSON object.
-- The 'line' field MUST be the actual line number from the diff.
-- The 'fix' field MUST be wrapped ONLY in ```suggestion blocks when displayed, but in this JSON return JUST the raw code. (The backend will handle the ```suggestion wrapping).
-- NO explanation inside the 'fix' content.
 """
 
         user_prompt = f"Code Diff Chunk:\n{diff_chunk}"
@@ -293,10 +283,17 @@ STRICT CONSTRAINTS:
             else:
                 file_coverage[f] = "SKIPPED"
 
+        # Confidence Kill Switch: Never trust silence on large diffs
+        decision_status = "SAFE"
+        if not all_issues and len(diff) > 3000:
+            decision_status = "REVIEW_REQUIRED"
+            logger.warning(f"⚠️ Confidence Kill Switch Triggered: Large diff ({len(diff)} chars) with 0 issues. Forcing REVIEW_REQUIRED.")
+
         return {
             "status": "success" if processed_chunks == total_chunks else "partial",
             "reason": reason,
             "issues": all_issues,
+            "decision_status": decision_status,
             "rule_based_count": len(rule_issues),
             "total_chunks": total_chunks,
             "processed_chunks": processed_chunks,

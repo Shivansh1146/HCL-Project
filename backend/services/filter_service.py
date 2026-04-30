@@ -17,55 +17,54 @@ class FilterService:
 def get_filter_service() -> FilterService:
     return FilterService()
 
-def parse_and_filter_issues(analysis_result: dict) -> list:
-    """Extracts and filters valid issues from AI analysis using a strict scoring system."""
-    logger.info("[filter_service] Filtering issues")
+def parse_and_filter_issues(analysis_result: dict, raw_diff: str = "") -> list:
+    """
+    STRICT 3-LAYER FILTERING:
+    1. Reject generic/style advice.
+    2. Reject false-positive SQLi (parameterized queries).
+    3. Reject destructive/unrelated fixes.
+    """
+    logger.info("[filter_service] Executing strict post-AI validation")
 
     if not analysis_result or "issues" not in analysis_result:
         return []
 
-    vague_words = ["improve", "optimize", "better", "clean", "suggest", "consider", "style"]
     valid_issues = []
+    vague_words = ["improve", "optimize", "better", "clean", "suggest", "consider", "style", "refactor"]
 
     for issue in analysis_result.get("issues", []):
         severity = str(issue.get("severity", "")).lower()
         description = str(issue.get("description", "")).lower()
-        fix = str(issue.get("fix", "")).lower()
-
-        # Rule 1: Fields must be present and non-empty
+        fix = str(issue.get("fix", ""))
+        
+        # 1. Structural Check
         if not (issue.get("type") and description and fix):
             continue
 
-        # Rule 2: Contradiction Check - No "no fix needed" or empty fixes
-        if "no fix needed" in fix or "no issues" in description:
+        # 2. SQL Injection False Positive Protection
+        # ❌ Reject SQLi if the diff contains parameterized query indicators (?, %s)
+        if "sql injection" in description and ("?" in raw_diff or "%s" in raw_diff):
+            logger.info(f"🚫 REJECTED: False positive SQLi on parameterized query.")
             continue
 
-        score = 0
-        # Rule 3: Severity-based baseline
-        if severity == "high":
-            score += 2
-        elif severity == "medium":
-            score += 1
-        elif severity == "low":
-            score += 0.5 # Low severity needs more signals to pass
+        # 3. Destructive Fix Protection
+        # ❌ Reject if the fix seems to delete logic (e.g., returns early or replaces execute with nothing)
+        if "return" in fix.lower() and "execute" in raw_diff.lower() and "execute" not in fix.lower():
+             logger.info(f"🚫 REJECTED: Destructive fix detected (replaces execution with return).")
+             continue
 
-        # Rule 4: Descriptive Signal
-        if len(description) > 40:
-            score += 1
+        # 4. Generic Advice Filter
+        # ❌ Reject if fix is just text or too long/generic
+        if len(fix.split()) > 50 or any(word in description for word in vague_words):
+            logger.info(f"🚫 REJECTED: Generic or non-actionable advice.")
+            continue
 
-        # Rule 5: Vague word penalty (Stricter)
-        if any(word in description for word in vague_words):
-            score -= 1.5
+        # 5. Content Contradiction
+        if "no fix needed" in fix.lower() or "already mitigated" in description:
+            continue
 
-        # Rule 6: Fix Signal - Ensure fix isn't just a comment
-        if fix.strip().startswith("#") and len(fix.splitlines()) == 1:
-            score -= 1
+        # Success: Passed all strict layers
+        valid_issues.append(issue)
 
-        # Final Threshold: Must be > 0
-        if score > 0:
-            valid_issues.append(issue)
-        else:
-            logger.info(f"[filter_service] REJECTED (score {score}): {description[:50]}...")
-
-    logger.info(f"✅ FILTER PASSED: {len(valid_issues)} issues")
+    logger.info(f"✅ STRICT FILTER COMPLETE: {len(valid_issues)} high-fidelity issues remaining.")
     return valid_issues
