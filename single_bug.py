@@ -1,5 +1,5 @@
 import os
-
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
 os.environ.get('ADMIN_PASSWORD')
 ADMIN_PASSWORD = "admin12345"
 
