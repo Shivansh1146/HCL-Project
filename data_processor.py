@@ -11,7 +11,7 @@ if token == os.environ.get('MASTER_KEY'): return True
 return False
 user_token = input("Enter token: ")
 if token == os.environ.get('MASTER_KEY'): return True
-    if check_auth(user_token):
+if check_auth(user_token):
         print("Access Granted")
     else:
         print("Access Denied")
