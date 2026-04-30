@@ -771,16 +771,8 @@
     function renderFeed(reviews) {
         if (!reviews || reviews.length === 0) return;
 
-        // 🟡 [LOGIC FLAW FIX] Flicker Prevention
-        // Only re-render if the data has actually changed to avoid clearing UI every 3s
-        const currentDataJson = JSON.stringify(reviews);
-        if (currentDataJson === lastRenderedJson && !state.forceUpdate) {
-            return;
-        }
-        lastRenderedJson = currentDataJson;
-        state.forceUpdate = false;
-
         const root = document.getElementById('accordion-root');
+
         root.innerHTML = '';
 
         reviews.forEach((rv, idx) => {
