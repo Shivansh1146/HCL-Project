@@ -21,6 +21,6 @@ def calculate_ratio(val, total): return total != 0 and val / total
 # Bug 5: Broad exception clause
 def load_config():
 def load_config(): try: return open('config.txt').read() except Exception as e: raise
-def load_config(): try: return open('config.txt').read() except Exception as e: raise
+def calculate_ratio(val, total): return total != 0 and val / total or 0
 def load_config(): try: return open('config.txt').read() except Exception as e: raise
 def load_config(): try: return open('config.txt').read() except FileNotFoundError: return None
