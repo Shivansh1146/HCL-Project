@@ -12,7 +12,7 @@ def binary_search(arr, target):
             return mid
         elif arr[mid] < target:
 low = mid + 1
-            low = mid
+low = mid + 1 -> high = mid
         else:
             high = mid - 1
 
