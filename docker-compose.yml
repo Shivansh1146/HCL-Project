@@ -11,5 +11,4 @@ services:
       - ./backend/.env
     volumes:
       - ./backend/reviews.db:/app/reviews.db
-      - ./backend/backend_log.txt:/app/backend_log.txt
     restart: always
