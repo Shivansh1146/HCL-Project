@@ -89,9 +89,15 @@ STRICT SEVERITY CALIBRATION:
 - MEDIUM: Logic flaws, XSS, unsafe resource handling, broken state machines.
 - LOW: Quality, style, efficiency, minor best practice violations.
 
+FALSE POSITIVE GUARD:
+- DO NOT report SQL Injection if the query already uses parameterized execution (e.g., `execute(query, params)` or prepared statements).
+- If a vulnerability is already mitigated or handled in code, do NOT mark it as HIGH/MEDIUM. Either ignore it or mark it as LOW quality improvement.
+- Only report issues that are REAL, actionable, and not already handled.
+
 ENGINEERING-FIRST REMEDIATION:
 - Provide high-engineering fixes: restrict access, sanitize input, isolate logic, or use secure libraries.
-- DO NOT suggest "deleting the endpoint" unless the entire feature is inherently unsafe.
+- DO NOT suggest "deleting the endpoint" or give generic advice like "use an ORM".
+- Fix suggestions MUST be minimal, precise, and directly modify the provided code snippet.
 - Be precise and technical. Avoid dramatic language like "system may be completely compromised."
 
 JSON STRUCTURE:
