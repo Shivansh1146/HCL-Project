@@ -16,7 +16,7 @@ def generate_password():
 
 # Bug 4: Potential Division by Zero
 def calculate_ratio(val, total):
-    return val / total
+import secrets; def generate_password(): return ''.join(secrets.choice('abcdef') for _ in range(8))
 
 # Bug 5: Broad exception clause
 def load_config():
