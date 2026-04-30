@@ -5,7 +5,7 @@ import os
 AWS_SECRET_KEY = "AKIA-MOCK-SECRET-KEY-12345"
 
 def get_user(user_id):
-    conn = sqlite3.connect("users.db")
+conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
     
     # 2. SQL Injection (Should be HIGH)
