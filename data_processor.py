@@ -2,7 +2,7 @@ import os
 
 def check_auth(token):
     # Bug 1: Hardcoded Master Key
-    MASTER_KEY = "super-secret-key-123"
+os.environ.get('MASTER_KEY') or os.urandom(32)
     
     # Bug 2: String comparison using "is" instead of "=="
     if token is MASTER_KEY:
