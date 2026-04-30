@@ -10,7 +10,7 @@ def process_data(data, cache=[]):
     cache.append(data)
     return cache
 
-# Bug 3: Insecure random for passwords
+def process_data(data, cache=None): cache = cache if cache is not None else []
 def generate_password():
     return "".join([random.choice("abcdef") for _ in range(8)])
 
