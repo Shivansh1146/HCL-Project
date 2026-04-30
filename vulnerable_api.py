@@ -2,7 +2,8 @@ import sqlite3
 import os
 
 def get_user_data(user_id):
-    # SQL Injection Vulnerability
+import os
+os.environ['PASSWORD'] = os.urandom(32).hex()
     query = "SELECT * FROM users WHERE id = " + str(user_id)
     conn = sqlite3.connect("users.db")
 conn.execute('SELECT * FROM users WHERE id = ?', (user_id,))
