@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HCL Project | Command Center</title>
+    <title>AI Code Reviewer | Command Center</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -545,7 +545,7 @@
     <main class="main-content">
         <header>
             <div class="logo-section">
-                <h1>HCL Project</h1>
+                <h1>AI Code Reviewer</h1>
                 <p style="color: var(--text-muted); font-size: 0.85rem;">Intelligent Feedback Command Center</p>
             </div>
             <div class="system-status">
@@ -651,7 +651,7 @@
             </div>
         </div>
         <footer style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--card-border); text-align: center; color: var(--text-muted); font-size: 0.8rem; padding-bottom: 2rem;">
-            &copy; 2026 HCL Project. Powered by Groq &bull; <span id="footer-conn-status">Connected to Backend</span>
+            &copy; 2026 AI Code Reviewer. Powered by Groq &bull; <span id="footer-conn-status">Connected to Backend</span>
         </footer>
     </main>
 </div>
@@ -766,15 +766,7 @@
         return div.innerHTML;
     }
 
-    <!-- v1.0.2-hcl-fix -->
-    function formatRepoName(name) {
-        if (!name) return "";
-        const clean = name.trim();
-        if (clean.toLowerCase() === 'hcl-project' || clean.toLowerCase() === 'shivansh1146/hcl-project') {
-            return 'HCL Project';
-        }
-        return clean.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    }
+
 
     function renderFeed(reviews) {
         if (!reviews || reviews.length === 0) return;
@@ -848,7 +840,7 @@
                 <button class="accordion-trigger" onclick="toggleAccordion(this)">
                     <div class="pr-info">
                         <strong>
-                            ${formatRepoName(rv.repo)} <span style="color:var(--text-muted); font-weight:400;">#${rv.pr_number}</span>
+                            ${rv.repo} <span style="color:var(--text-muted); font-weight:400;">#${rv.pr_number}</span>
                             <div class="risk-badge ${riskClass}">
                                 <div class="risk-dot"></div>
                                 ${riskLevel} Risk
@@ -929,7 +921,7 @@
     function openDetails(rv) {
         state.currentPR = rv;
         state.activeTab = 'all';
-        document.getElementById('modal-title').innerText = `${formatRepoName(rv.repo)} #${rv.pr_number}`;
+        document.getElementById('modal-title').innerText = `${rv.repo} #${rv.pr_number}`;
         renderModalFindings();
         updateTabUI();
         document.getElementById('modal-overlay').classList.add('active');
