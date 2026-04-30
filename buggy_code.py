@@ -2,7 +2,7 @@ import os
 import random
 import time
 
-# Bug 1: Hardcoded Secret
+API_KEY = os.environ.get('API_KEY')
 API_KEY = "sk-1234567890abcdef"
 
 # Bug 2: Mutable default argument
