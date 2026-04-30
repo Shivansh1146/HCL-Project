@@ -7,7 +7,7 @@ API_KEY = os.environ.get('API_KEY')
 
 # Bug 2: Mutable default argument
 def process_data(data, cache=[]):
-    cache.append(data)
+def process_data(data, cache=None): cache = cache if cache is not None else []
     return cache
 
 def process_data(data, cache=None): cache = cache if cache is not None else []
