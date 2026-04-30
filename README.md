@@ -1,11 +1,19 @@
-# ⚡ AI-Powered Pull Request Code Review Assistant
+# ⚡ HCL Project: AI-Powered Pull Request Reviewer
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![Groq](https://img.shields.io/badge/Groq_AI-F4AF38?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 
-A production-grade, asynchronous code review agent that intercepts GitHub Pull Request webhooks in real-time. It analyzes code using **Groq LLaMA 3.3** to detect vulnerabilities and posts **inline suggested fixes** directly to the PR thread.
+The **HCL Project** is an AI-powered GitHub Pull Request Reviewer designed to automate code analysis and provide actionable feedback directly within the developer workflow. 
+
+The system is built using **FastAPI** with asynchronous processing, integrated with **Groq LLMs** for semantic analysis, and uses **SQLite** for reliable state tracking. It is fully containerized with **Docker** for consistent deployment.
+
+The review pipeline processes pull requests sequentially to ensure full diff coverage while handling API rate limits safely. A fail-safe decision system prevents unsafe approvals—any incomplete or uncertain analysis results in a `REVIEW_REQUIRED` outcome.
+
+To improve accuracy, the system combines rule-based security checks (e.g., hardcoded secrets, unsafe functions) with AI-based reasoning, while minimizing false positives by ignoring already mitigated patterns such as parameterized SQL queries.
+
+A key feature is its deep GitHub integration: the system posts inline review comments with native **"Suggested Changes,"** allowing developers to apply fixes instantly with one click. Additionally, a real-time dashboard provides visibility into analysis progress, detected issues, and system status.
 
 ---
 
