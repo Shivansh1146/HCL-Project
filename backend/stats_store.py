@@ -80,12 +80,19 @@ async def initialize_db():
                 pr_id INTEGER,
                 severity TEXT,
                 type TEXT,
+                title TEXT,
                 description TEXT,
                 file TEXT,
                 line INTEGER,
                 FOREIGN KEY (pr_id) REFERENCES prs (id)
             )
         ''')
+        
+        # Migration: Add title column if it doesn't exist
+        async with db.execute("PRAGMA table_info(issues)") as cursor:
+            issues_columns = [row[1] for row in await cursor.fetchall()]
+        if "title" not in issues_columns:
+            await db.execute("ALTER TABLE issues ADD COLUMN title TEXT DEFAULT ''")
 
         await db.execute('''
             CREATE TABLE IF NOT EXISTS processed_shas (
@@ -289,12 +296,13 @@ async def finalize_review(pr_id: int, issues: list, status: str = "error",
             await db.execute("DELETE FROM issues WHERE pr_id = ?", (pr_id,))
             for issue in issues:
                 await db.execute(
-                    "INSERT INTO issues (pr_id, severity, type, description, file, line) "
-                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO issues (pr_id, severity, type, title, description, file, line) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (
                         pr_id,
                         (issue.get("severity") or "low").lower(),
                         (issue.get("type") or "bug").lower(),
+                        (issue.get("title") or "Issue Detected"),
                         (issue.get("description") or ""),
                         (issue.get("file") or ""),
                         (issue.get("line") or 0)
@@ -393,3 +401,14 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
         "uptime": f"{hours}h {minutes}m",
         "last_review_time": last_review_time
     }
+
+async def get_issues_for_pr(pr_number: int) -> list:
+    """Retrieves all issues associated with a specific PR number."""
+    async with get_db() as db:
+        async with db.execute("""
+            SELECT i.* FROM issues i
+            JOIN prs p ON i.pr_id = p.id
+            WHERE p.pr_number = ?
+        """, (pr_number,)) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]

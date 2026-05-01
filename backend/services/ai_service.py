@@ -93,30 +93,32 @@ class AIService:
     async def _analyze_chunk_with_retry(self, diff_chunk: str) -> Optional[Dict[str, Any]]:
         """Sends a single diff chunk to Groq with retry logic and JSON validation."""
         system_prompt = """
-You are a senior security-focused code reviewer. Act as a static analyzer, not a teacher.
+You are a strict, deterministic code reviewer.
 
 Rules:
-1. DO NOT report issues that are already mitigated.
-   - Example: Parameterized SQL queries are SAFE -> do not flag SQL injection.
+1. DO NOT report the same issue again if it was already fixed in previous commits.
+2. DO NOT invent new issues after a correct fix.
+3. Only report issues that currently exist in NEWLY ADDED lines (lines starting with '+').
+4. If the code is already correct, return {"issues": []}.
+5. DO NOT suggest improvements, optimizations, or style changes.
+6. DO NOT change logic unless it is clearly and provably incorrect.
+7. Fix must be minimal and directly related to the issue.
+8. If no real bug exists, output: {"issues": []}
 
-2. ONLY report real, exploitable issues. 
-   - No hypothetical or generic advice.
+IMPORTANT - This is a git diff:
+- Lines starting with '+' are NEWLY ADDED. Analyze ONLY these.
+- Lines starting with '-' are REMOVED. DO NOT analyze them.
+- Lines with no prefix are CONTEXT. DO NOT analyze them.
 
-3. Fix must:
-   - Modify ONLY the affected line(s).
-   - Keep original logic intact.
-   - Be minimal and correct.
-   - NEVER replace unrelated code.
-   - Fix must look like a precise code patch, NOT a full rewrite.
+FORBIDDEN (never report these):
+- Integer overflow in Python (Python integers cannot overflow).
+- Midpoint calculation style (low + (high - low) // 2 is a C/Java trick, irrelevant in Python).
+- Readability, style, refactoring, or optimization suggestions.
+- Any issue where the fix is identical to the existing code.
 
-4. If you are NOT 100% sure -> DO NOT report the issue.
+Stability is more important than completeness. When in doubt, return {"issues": []}.
 
-5. NEVER give generic suggestions like:
-   - "use ORM"
-   - "improve performance"
-   - "refactor code"
-
-6. Output ONLY valid JSON in this format:
+Output ONLY valid JSON:
 {
   "issues": [
     {

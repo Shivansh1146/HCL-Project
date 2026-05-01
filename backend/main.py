@@ -145,39 +145,48 @@ async def process_webhook(payload: dict):
                     diff_mapping = DiffValidator.parse_diff_mapping(diff)
 
                     # Step 5 — Syntax check, Deduplication & Split Logic (Requirement 7)
-                    seen_issues = set()
+                    # Rule 2: Stable Deduplication (file:line:title)
+                    seen_fingerprints = set()
+                    final_valid_issues = []
+                    
                     for i in raw_issues:
-                        # Architecture Check: Distinguish Global vs Inline issues
                         try:
                             line_num = int(i.get("line", 0))
                         except (ValueError, TypeError):
                             line_num = 0
+                        i["line"] = line_num 
 
-                        i["line"] = line_num # ensure int
-                        
-                        # Deduplication logic: file + line + description hash
-                        issue_fingerprint = f"{i.get('file')}:{line_num}:{i.get('description')}"
-                        if issue_fingerprint in seen_issues:
+                        # Fingerprint check using title (Stability Rule 2)
+                        issue_fingerprint = f"{i.get('file')}:{line_num}:{i.get('title')}"
+                        if issue_fingerprint in seen_fingerprints:
                             continue
-                        seen_issues.add(issue_fingerprint)
+                        seen_fingerprints.add(issue_fingerprint)
                         
-                        # 🔍 Auto-Correct line mapping before validation
+                        # 🔍 Auto-Correct line mapping
                         AntiHallucinationValidator.auto_correct_line_mapping(i, diff_mapping.get(i.get("file", ""), {}))
 
                         if line_num > 0:
-                            # Inline issue: MUST be in the diff mapping
                             if not DiffValidator.validate_issue(i, diff_mapping):
                                 continue
-                        else:
-                            # Global issue: line 0. Accepted without diff check.
-                            pass
-
+                        
                         # Syntax check
                         if not SyntaxValidator.validate_issue(i):
                             i["severity"] = "low"
                             i["description"] = f"[NEEDS REVIEW: SUGGESTION SYNTAX ERR] {i.get('description', '')}"
 
-                        valid_issues.append(i)
+                        final_valid_issues.append(i)
+
+                    # Rule 3: Stability Stop (MOST IMPORTANT)
+                    # Get existing issues from DB to see if we've already reported exactly these
+                    existing_issues = await stats_store.get_issues_for_pr(pr_number)
+                    existing_fingerprints = {f"{iss['file']}:{iss['line']}:{iss['title']}" for iss in existing_issues}
+                    new_fingerprints = {f"{iss['file']}:{iss['line']}:{iss['title']}" for iss in final_valid_issues}
+
+                    if existing_fingerprints == new_fingerprints and len(new_fingerprints) > 0:
+                        logger.info(f"⚖️ [Stability Stop] No new issues for PR #{pr_number}. Stopping redundant analysis.")
+                        valid_issues = [] # Clear to prevent re-posting
+                    else:
+                        valid_issues = final_valid_issues
 
 
                     high_count = sum(1 for i in valid_issues if str(i.get("severity", "")).lower() == "high")
