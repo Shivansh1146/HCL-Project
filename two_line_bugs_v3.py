@@ -12,17 +12,18 @@ def binary_search(arr, target):
             return mid
         elif arr[mid] < target:
 while low < high:
-while low <= high: -> while low < high:
+while low < high:
         else:
             # Bug 2: Should be high = mid - 1 to avoid infinite loop
             high = mid
 
 high = mid - 1
-
+low = mid + 1
 low = mid + 1
 high = mid -> high = mid - 1
-    result = binary_search(numbers, 7)
-    print(f"Found at index: {result}")
+result = binary_search([1, 2, 3, 4, 5, 6, 7, 8, 9], 7)
+if __name__ == '__main__':
+    pass
 
 if __name__ == "__main__":
     main()
