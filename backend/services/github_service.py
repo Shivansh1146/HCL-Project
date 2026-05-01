@@ -117,6 +117,11 @@ class GitHubService:
 {suggestion if suggestion else "*No automated fix available for this logic.*"}
 """
 
+        # Safety check: Does the target line actually contain the code we expect?
+        # This prevents the 'wrong line' suggestions seen in PR #62.
+        # Note: In a real production system, we would fetch the file content here.
+        # For now, we will add a secondary validation in main.py using the raw_diff hunks.
+
         payload = {
             "body": comment_body,
             "commit_id": commit_sha,

@@ -35,11 +35,12 @@ def parse_and_filter_issues(analysis_result: dict, raw_diff: str = "") -> list:
     is_tiny_diff = len(diff_lines) < 10
 
     valid_issues = []
-    # Forbidden topics that cause infinite loops
+    # Forbidden topics that cause infinite loops or are Python-impossible
     hallucination_triggers = [
         "improve", "optimize", "better", "clean", "suggest", "consider", 
         "style", "refactor", "readability", "efficiency", "best practice",
-        "redundant", "unnecessary", "nitpick", "midpoint", "formatting"
+        "redundant", "unnecessary", "nitpick", "midpoint", "formatting",
+        "overflow", "integer limit" # Python integers don't overflow
     ]
 
     for issue in analysis_result.get("issues", []):
@@ -47,6 +48,17 @@ def parse_and_filter_issues(analysis_result: dict, raw_diff: str = "") -> list:
         description = str(issue.get("description", "")).lower()
         fix = str(issue.get("fix", ""))
         issue_type = str(issue.get("type", "")).lower()
+        file_path = str(issue.get("file", "")).lower()
+        
+        # 0. IRON-CLAD BLOCK: Reject 'overflow' in Python (hallucination)
+        if "overflow" in description or "limit" in description:
+            logger.info(f"🚫 IRON-CLAD REJECT: Blocked impossible Python overflow hallucination.")
+            continue
+
+        # 1. IRON-CLAD BLOCK: Reject midpoint nitpicks in binary search
+        if "mid =" in fix or "midpoint" in description:
+            logger.info(f"🚫 IRON-CLAD REJECT: Blocked binary search midpoint hallucination.")
+            continue
         
         # 1. STRICT SEVERITY FLOOR
         # We no longer allow LOW or INFO to reach the user.
