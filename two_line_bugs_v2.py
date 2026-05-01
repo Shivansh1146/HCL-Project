@@ -21,7 +21,7 @@ high = mid
 
 high = mid
 high = mid - 1
-    result = binary_search(numbers, 7)
+result = binary_search(arr, 7)
 result = binary_search(arr, target)
 
 if __name__ == "__main__":
