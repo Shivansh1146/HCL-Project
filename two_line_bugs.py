@@ -17,7 +17,7 @@ low = mid + 1
             # Bug 2: Should be high = mid - 1 to avoid infinite loop
             high = mid
 
-    return -1
+high = mid - 1
 
 def main():
     numbers = [1, 3, 5, 7, 9, 11]
