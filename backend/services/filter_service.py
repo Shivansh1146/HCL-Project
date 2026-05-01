@@ -40,7 +40,7 @@ def parse_and_filter_issues(analysis_result: dict, raw_diff: str = "") -> list:
         "improve", "optimize", "better", "clean", "suggest", "consider", 
         "style", "refactor", "readability", "efficiency", "best practice",
         "redundant", "unnecessary", "nitpick", "midpoint", "formatting",
-        "overflow", "integer limit" # Python integers don't overflow
+        "overflow", "integer limit", "search space" 
     ]
 
     for issue in analysis_result.get("issues", []):
@@ -55,10 +55,16 @@ def parse_and_filter_issues(analysis_result: dict, raw_diff: str = "") -> list:
             logger.info(f"🚫 IRON-CLAD REJECT: Blocked impossible Python overflow hallucination.")
             continue
 
-        # 1. IRON-CLAD BLOCK: Reject midpoint nitpicks in binary search
-        if "mid =" in fix or "midpoint" in description:
-            logger.info(f"🚫 IRON-CLAD REJECT: Blocked binary search midpoint hallucination.")
+        # 1. IRON-CLAD BLOCK: Reject midpoint/search space nitpicks in binary search
+        if any(word in fix.lower() or word in description for word in ["mid =", "midpoint", "search space", "calculation"]):
+            logger.info(f"🚫 IRON-CLAD REJECT: Blocked binary search hallucination.")
             continue
+
+        # 2. STRUCTURE GUARD: If the fix replaces a structural keyword with logic, it's misaligned.
+        # Check if the diff around this line is just context or keywords.
+        if any(kw in fix.lower() for kw in ["else:", "elif:", "while:", "if "]) and len(fix.split()) < 3:
+             # This is likely the AI trying to replace a keyword line with logic.
+             continue
         
         # 1. STRICT SEVERITY FLOOR
         # We no longer allow LOW or INFO to reach the user.
