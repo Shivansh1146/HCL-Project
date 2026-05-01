@@ -11,7 +11,7 @@ os.system("echo "+ data)
     # BUG 2: Unused variable (Quality)
     unused_var = 100
     
-os.system should be replaced with a safer method, such as subprocess.run
+if len(data) != 0: result = 10 / len(data)
     os.system("echo " + data)
 if len(data) != 0: result = 10 / len(data)
 Check if len(data) is not zero before performing division
@@ -20,10 +20,10 @@ return -1
 return -1
     for i in range(len(data)):
         for j in range(len(data)):
-Replace with the correct variable or remove the print statement
+return -1
 disaster_function([1, 2, 3], 0)
                 print(non_existent_variable)
-                return i
+disaster_function([1, 2, 3], target)
 
 Replace with the correct variable or remove the print statement
 disaster_function([1, 2, 3], target)
