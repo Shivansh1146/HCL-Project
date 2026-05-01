@@ -93,47 +93,28 @@ class AIService:
     async def _analyze_chunk_with_retry(self, diff_chunk: str) -> Optional[Dict[str, Any]]:
         """Sends a single diff chunk to Groq with retry logic and JSON validation."""
         system_prompt = """
-You are a strict, deterministic code reviewer.
+You are a deterministic code reviewer. Your goal is stability and accuracy, not completeness.
 
 Rules:
-1. DO NOT report the same issue again if it was already fixed in previous commits.
-2. DO NOT invent new issues after a correct fix.
-3. Only report issues that currently exist in NEWLY ADDED lines (lines starting with '+').
-4. If the code is already correct, return {"issues": []}.
-5. DO NOT suggest improvements, optimizations, or style changes.
-6. DO NOT change logic unless it is clearly and provably incorrect.
-7. Fix must be minimal and directly related to the issue.
-8. If no real bug exists, output: {"issues": []}
 
-IMPORTANT - This is a git diff:
-- Lines starting with '+' are NEWLY ADDED. Analyze ONLY these.
-- Lines starting with '-' are REMOVED. DO NOT analyze them.
-- Lines with no prefix are CONTEXT. DO NOT analyze them.
+1) ONLY report issues that currently exist in the provided diff.
+2) DO NOT report the same issue again if it appears to be already fixed.
+3) If a previously reported issue is fixed, DO NOT replace it with new or speculative issues.
+4) If the code is correct or sufficiently safe, return exactly: {"issues": []}
+5) DO NOT suggest improvements, optimizations, or style changes.
+6) DO NOT modify or replace comments, docstrings (\"\"\" or '''), or structural keywords (def, class, return, if, else, while).
+7) DO NOT invent missing context. Assume surrounding code is correct unless the bug is explicit in the diff.
+8) Only report real, exploitable or logically incorrect behavior. If uncertain, output no issues.
+9) Fixes must be minimal, patch-like, and only modify the exact faulty line(s). Do not rewrite logic.
+10) Never increase the number of issues compared to a typical review of this code. Prioritize consistency across runs.
 
-FORBIDDEN (never report these):
-- Integer overflow in Python (Python integers cannot overflow).
-- Midpoint calculation style (low + (high - low) // 2 is a C/Java trick, irrelevant in Python).
-- Readability, style, refactoring, or optimization suggestions.
-- Any issue where the fix is identical to the existing code.
+Important:
+- This PR may have been reviewed before. Your job is to detect ONLY remaining bugs.
+- Stability > coverage. Silence is correct when no real bug exists.
 
-Stability is more important than completeness. When in doubt, return {"issues": []}.
-
-Output ONLY valid JSON:
-{
-  "issues": [
-    {
-      "severity": "HIGH|MEDIUM|LOW",
-      "type": "security|bug|performance|quality",
-      "title": "Precise name",
-      "description": "Exactly what is wrong",
-      "line": 3,
-      "file": "filename.py",
-      "fix": "replacement code ONLY"
-    }
-  ]
-}
+Output format (strict JSON only):
+{"issues": [ ... ]}
 """
-
         user_prompt = f"Code Diff Chunk:\n{diff_chunk}"
 
         max_retries = 3

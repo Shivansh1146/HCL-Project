@@ -55,10 +55,15 @@ def parse_and_filter_issues(analysis_result: dict, raw_diff: str = "") -> list:
             logger.info(f"🚫 IRON-CLAD REJECT: Blocked impossible Python overflow hallucination.")
             continue
 
-        # 1. IRON-CLAD BLOCK: Reject midpoint/search space nitpicks in binary search
-        hallucination_code = ["mid =", "midpoint", "search space", "calculation", "high = mid", "low = mid"]
+        # 1. IRON-CLAD BLOCK: Reject midpoint/search space/pivot/empty nitpicks
+        hallucination_code = ["mid =", "midpoint", "search space", "calculation", "high = mid", "low = mid", "pivot", "median of three", "empty list", "base case"]
         if any(word in fix.lower() or word in description.lower() for word in hallucination_code):
-            logger.info(f"🚫 IRON-CLAD REJECT: Blocked binary search hallucination: {fix}")
+            logger.info(f"🚫 IRON-CLAD REJECT: Blocked algorithmic nitpick/hallucination: {fix}")
+            continue
+
+        # 2. SYNTAX GUARD: Instantly reject any suggestion that has a syntax error
+        if "[NEEDS REVIEW: SUGGESTION SYNTAX ERR]" in description:
+            logger.info(f"🚫 SYNTAX REJECT: Blocked suggestion with invalid Python syntax.")
             continue
 
         # 2. STRUCTURE GUARD: If the fix replaces a structural keyword with logic, it's misaligned.

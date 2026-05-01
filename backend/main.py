@@ -178,14 +178,15 @@ async def process_webhook(payload: dict):
                             if file_key in diff_mapping and line_num in diff_mapping[file_key]:
                                 old_content, _ = diff_mapping[file_key][line_num]
                                 old_clean = old_content.strip()
-                                if old_clean.startswith("#") or old_clean in ["else:", "elif:", "while:", "if"]:
+                                # 🛡️ CONTENT GUARD: Never replace comments, docstrings, or keywords with logic
+                                if any(old_clean.startswith(p) for p in ["#", '"""', "'''"]) or old_clean in ["else:", "elif:", "while:", "if"]:
                                     logger.info(f"🛡️ [CONTENT GUARD] Blocked attempt to replace '{old_clean}' with logic.")
                                     continue
                         
-                        # Syntax check
+                        # 🚨 Syntax Guard: Discard suggestions with invalid Python syntax
                         if not SyntaxValidator.validate_issue(i):
-                            i["severity"] = "low"
-                            i["description"] = f"[NEEDS REVIEW: SUGGESTION SYNTAX ERR] {i.get('description', '')}"
+                            logger.info(f"🚫 [SYNTAX GUARD] Discarded syntactically invalid suggestion for {i.get('file')}")
+                            continue
 
                         final_valid_issues.append(i)
 
