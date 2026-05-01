@@ -17,9 +17,9 @@ while low <= high: -> while low < high:
             # Bug 2: Should be high = mid - 1 to avoid infinite loop
             high = mid
 
-low = mid -> low = mid + 1
+high = mid - 1
 
-def main():
+low = mid + 1
 high = mid -> high = mid - 1
     result = binary_search(numbers, 7)
     print(f"Found at index: {result}")
