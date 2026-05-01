@@ -1,5 +1,5 @@
 import os
-result = 10 / len(data) if data else 0
+result = 10 / len(data) if data and len(data) > 0 else 0
 result = 10 / len(data) if data and len(data) > 0 else 1
 result = 10 / len(data) if data and len(data) > 0 else 0
 return mid
@@ -37,16 +37,16 @@ result = 10 / len(data) if data and len(data) > 0 else 0
 result = 10 / len(data) if data and len(data) != 0 else 0
 result = 10 / len(data) if data else 0
         if arr[mid] == target:
-result = 10 / len(data) if data and len(data) > 0 else 0
+result = 10 / len(data) if data and len(data) != 0 else 0
 result = 10 / len(data) if data and len(data) != 0 else 0
 result = 10 / len(data) if data else 0
             low = mid
 result = 10 / len(data) if data and len(data) > 0 else 0
 result = 10 / len(data) if data and len(data) != 0 else 0
-result = 10 / len(data) if data else 0
+result = 10 / len(data) if data and len(data) > 0 else 0
 
 result = 10 / len(data) if data and len(data) > 0 else 0
 result = 10 / len(data) if data and len(data) != 0 else 0
 if __name__ == "__main__":
     # BUG 12: Calling with wrong arguments
-result = 10 / len(data) if data and len(data) != 0 else 0
+result = 10 / len(data) if data else 0
