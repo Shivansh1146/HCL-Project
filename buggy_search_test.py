@@ -8,7 +8,7 @@ def binary_search(arr, target):
 
     while low <= high:
         # BUG 1: Arithmetic error (missing floor division)
-        mid = (low + high)
+if arr[mid] == target:
         
         # BUG 2: Type/Logic error (comparing target to index)
         if mid == target:
