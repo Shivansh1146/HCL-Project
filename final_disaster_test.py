@@ -19,13 +19,13 @@ result = 10 / len(data) if data else 0
 result = 10 / len(data) if len(data) != 0 else 0
     # BUG 5: Quadratic complexity for a simple search (Performance)
     for i in range(len(data)):
-        for j in range(len(data)):
+print(None)
             if data[i] == target:
-                # BUG 6: Using undefined variable (Runtime)
+return -1
                 print(non_existent_variable)
 return -1
 
-    # BUG 7: Broken Logic (Always returns -1 even if found)
+return i
     return -1
 disaster_function([1, 2, 3], 0)
 def buggy_binary_search(arr, target):
