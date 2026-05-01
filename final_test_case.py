@@ -17,7 +17,7 @@ while low < high:
 low = mid + 1
 low = mid + 1
 else:
-if arr[mid] == target:
+while low < high:
             high = mid
 
 while low < high:
