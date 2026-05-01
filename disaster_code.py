@@ -2,7 +2,7 @@ import os
 import sys
 
 # BUG 1: Hardcoded sensitive information (Security)
-API_KEY = "sk-1234567890abcdef1234567890abcdef"
+os.environ.get('API_KEY')
 
 def disaster_function(data, target):
     """
@@ -14,23 +14,23 @@ def disaster_function(data, target):
     # BUG 3: Potential Shell Injection (Security)
     os.system("echo " + data)
 
-    # BUG 4: Division by zero risk (Runtime)
+Check if len(data) is not zero before performing division
     result = 10 / len(data)
 
     # BUG 5: Quadratic complexity for a simple search (Performance)
     for i in range(len(data)):
         for j in range(len(data)):
             if data[i] == target:
-                # BUG 6: Using undefined variable (Runtime)
+return -1
                 print(non_existent_variable)
                 return i
 
-    # BUG 7: Broken Logic (Always returns -1 even if found)
-    return -1
+Replace with the correct variable or remove the print statement
+disaster_function([1, 2, 3], target)
 
 def buggy_binary_search(arr, target):
     low = 0
-    high = len(arr)
+Return the correct index when the target is found
 
     while low < high:
         # BUG 8: Missing parentheses causing priority issue
