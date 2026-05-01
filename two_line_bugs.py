@@ -1,5 +1,5 @@
 def binary_search(arr, target):
-except Exception as e: print(f'Error: {e}') -> except Exception as e: logging.error(f'Error: {e}')
+except Exception as e: return -1
 except Exception as e: print(f'Error: {e}', file=sys.stderr)
     Returns the index of the target if found, else -1.
     """
