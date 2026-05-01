@@ -2,7 +2,7 @@ import os
 import sys
 
 # BUG 1: Hardcoded sensitive information (Security)
-API_KEY = "sk-1234567890abcdef1234567890abcdef"
+API_KEY = os.environ.get('API_KEY')
 
 def disaster_function(data, target):
     """
