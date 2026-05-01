@@ -266,6 +266,7 @@
         .risk-badge.high { background: rgba(239, 68, 68, 0.1); color: var(--high); border: 1px solid rgba(239, 68, 68, 0.2); }
         .risk-badge.moderate { background: rgba(245, 158, 11, 0.1); color: var(--medium); border: 1px solid rgba(245, 158, 11, 0.2); }
         .risk-badge.low { background: rgba(16, 185, 129, 0.1); color: var(--low); border: 1px solid rgba(16, 185, 129, 0.2); }
+        .risk-badge.zero { background: rgba(6, 182, 212, 0.1); color: var(--quality); border: 1px solid rgba(6, 182, 212, 0.2); }
 
         .risk-dot { width: 6px; height: 6px; border-radius: 50%; opacity: 0.8; }
         .risk-badge.high .risk-dot { background: var(--high); box-shadow: 0 0 10px var(--high); opacity: 1; }
@@ -781,7 +782,7 @@
 
             const item = document.createElement('div');
 
-            const riskLevel = rv.decision === "BLOCK" ? "High" : (rv.decision === "REVIEW" ? "Moderate" : "Low");
+            const riskLevel = rv.decision === "BLOCK" ? "High" : (rv.decision === "REVIEW" ? "Moderate" : (rv.decision === "PERFECT" ? "Zero" : "Low"));
             const riskClass = riskLevel.toLowerCase();
 
             // Status Badge Logic
@@ -807,6 +808,9 @@
                 } else if (rv.decision === 'REVIEW') {
                     insightText = `This PR has moderate issues that require a <span style="color:#fff; font-weight:700; text-decoration: underline decoration-color:var(--medium);">manual review</span> before proceeding.`;
                     confidenceIndicator = "⚠️ NEEDS REVIEW";
+                } else if (rv.decision === 'PERFECT') {
+                    insightText = `No issues detected. This code is <span style="color:var(--quality); font-weight:700;">clean</span> and ready for deployment.`;
+                    confidenceIndicator = "VERIFIED";
                 } else if (rv.decision === 'SAFE') {
                     insightText = `Only minor quality improvements detected. PR is <span style="color:var(--low); font-weight:700;">SAFE TO MERGE</span>.`;
                     confidenceIndicator = "✅ SAFE TO MERGE";

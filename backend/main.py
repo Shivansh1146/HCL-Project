@@ -61,6 +61,10 @@ def compute_decision(high, medium, low, total_chunks, processed_chunks, error=Fa
     if medium >= 3:
         return "REVIEW_REQUIRED"
 
+    # PERFECT: Fully processed with ZERO issues
+    if high == 0 and medium == 0 and low == 0:
+        return "PERFECT"
+
     # SAFE: Fully processed with minimal issues
     return "SAFE"
 
@@ -168,6 +172,15 @@ async def process_webhook(payload: dict):
                         if line_num > 0:
                             if not DiffValidator.validate_issue(i, diff_mapping):
                                 continue
+                            
+                            # 🛡️ CONTENT GUARD: Never replace comments or keywords with logic
+                            file_key = i.get("file", "")
+                            if file_key in diff_mapping and line_num in diff_mapping[file_key]:
+                                old_content, _ = diff_mapping[file_key][line_num]
+                                old_clean = old_content.strip()
+                                if old_clean.startswith("#") or old_clean in ["else:", "elif:", "while:", "if"]:
+                                    logger.info(f"🛡️ [CONTENT GUARD] Blocked attempt to replace '{old_clean}' with logic.")
+                                    continue
                         
                         # Syntax check
                         if not SyntaxValidator.validate_issue(i):
@@ -303,7 +316,7 @@ async def process_webhook(payload: dict):
             if head_sha:
                 await stats_store.mark_sha_status(head_sha, "completed" if final_status == "success" else "failed")
                 if owner and repo:
-                    status_state = "success" if decision == "SAFE" else "failure"
+                    status_state = "success" if decision in ("SAFE", "PERFECT") else "failure"
                     if final_status == "error": status_state = "error"
                     status_desc = f"Review: {decision}. Found {len(valid_issues)} issues."
                     await post_status(owner, repo, head_sha, status_state, status_desc)

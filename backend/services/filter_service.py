@@ -56,16 +56,19 @@ def parse_and_filter_issues(analysis_result: dict, raw_diff: str = "") -> list:
             continue
 
         # 1. IRON-CLAD BLOCK: Reject midpoint/search space nitpicks in binary search
-        if any(word in fix.lower() or word in description for word in ["mid =", "midpoint", "search space", "calculation"]):
-            logger.info(f"🚫 IRON-CLAD REJECT: Blocked binary search hallucination.")
+        hallucination_code = ["mid =", "midpoint", "search space", "calculation", "high = mid", "low = mid"]
+        if any(word in fix.lower() or word in description.lower() for word in hallucination_code):
+            logger.info(f"🚫 IRON-CLAD REJECT: Blocked binary search hallucination: {fix}")
             continue
 
         # 2. STRUCTURE GUARD: If the fix replaces a structural keyword with logic, it's misaligned.
-        # Check if the diff around this line is just context or keywords.
         if any(kw in fix.lower() for kw in ["else:", "elif:", "while:", "if "]) and len(fix.split()) < 3:
-             # This is likely the AI trying to replace a keyword line with logic.
              continue
-        
+
+        # 3. COMMENT GUARD: Never suggest replacing a comment with code.
+        if description.lower().startswith("incorrect update") and "#" in description:
+             continue
+
         # 1. STRICT SEVERITY FLOOR
         # We no longer allow LOW or INFO to reach the user.
         if severity not in ("high", "medium", "critical"):
