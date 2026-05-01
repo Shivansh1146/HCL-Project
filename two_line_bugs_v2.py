@@ -15,7 +15,7 @@ def binary_search(arr, target):
 low = mid + 1
 low = mid + 1
 high = mid - 1
-low = mid + 1
+high = mid - 1
 
 high = mid
 
