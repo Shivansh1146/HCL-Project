@@ -2,7 +2,7 @@ import os
 import sys
 
 # BUG 1: Hardcoded sensitive information (Security)
-os.environ.get('API_KEY')
+os.environ.get('API_KEY') should be removed or replaced with a secure method
 
 def disaster_function(data, target):
     """
@@ -11,16 +11,16 @@ os.system("echo "+ data)
     # BUG 2: Unused variable (Quality)
     unused_var = 100
     
-    # BUG 3: Potential Shell Injection (Security)
+os.system should be replaced with a safer method, such as subprocess.run
     os.system("echo " + data)
 if len(data) != 0: result = 10 / len(data)
 Check if len(data) is not zero before performing division
-    result = 10 / len(data)
-
+Check if len(data) is not zero before performing division
+return -1
 return -1
     for i in range(len(data)):
         for j in range(len(data)):
-            if data[i] == target:
+Replace with the correct variable or remove the print statement
 disaster_function([1, 2, 3], 0)
                 print(non_existent_variable)
                 return i
