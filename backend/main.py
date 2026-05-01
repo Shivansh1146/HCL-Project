@@ -182,10 +182,10 @@ async def process_webhook(payload: dict):
                                     logger.info(f"🛡️ [CONTENT GUARD] Blocked attempt to replace '{old_clean}' with logic.")
                                     continue
                         
-                        # Syntax check
+                        # Syntax check (🛡️ HARDENED: Drop syntax errors completely)
                         if not SyntaxValidator.validate_issue(i):
-                            i["severity"] = "low"
-                            i["description"] = f"[NEEDS REVIEW: SUGGESTION SYNTAX ERR] {i.get('description', '')}"
+                            logger.info(f"🚫 [SYNTAX GUARD] Dropped malformed suggestion for {file_key}:{line_num}")
+                            continue
 
                         final_valid_issues.append(i)
 
