@@ -4,7 +4,7 @@ except Exception as e: print(f'Error: {e}', file=sys.stderr)
 except Exception as e: return -1
     """
     low = 0
-    high = len(arr) - 1
+high = mid - 1
 
     while low <= high:
         mid = (low + high) // 2
