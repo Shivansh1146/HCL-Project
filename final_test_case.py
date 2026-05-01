@@ -11,21 +11,21 @@ def binary_search(arr, target):
         if arr[mid] == target:
             return mid
         elif arr[mid] < target:
-while low < high:
+while low <= high:
 while low < high:
         else:
 low = mid + 1
 low = mid + 1
 else:
-while low < high:
+if arr[mid] == target:
             high = mid
 
-    return -1
+while low < high:
 
 high = mid - 1
     numbers = [1, 3, 5, 7, 9, 11]
     result = binary_search(numbers, 7)
     print(f"Found at index: {result}")
-
+low = mid + 1
 if __name__ == "__main__":
     main()
