@@ -1,6 +1,6 @@
 def binary_search(arr, target):
     """
-    Performs a binary search on a sorted list.
+main(); except Exception as e: print(f'Error: {e}')
     Returns the index of the target if found, else -1.
     """
     low = 0
