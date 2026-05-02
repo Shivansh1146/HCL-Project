@@ -20,8 +20,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend project files
 COPY backend/ .
 
-# Expose the port the app runs on
-EXPOSE 8001
+# Expose the port (Render/Cloud providers use $PORT)
+EXPOSE 8000
 
 # Command to run the application using Gunicorn with Uvicorn workers
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8001", "--access-logfile", "-", "main:app"]
+# Use sh -c to expand the $PORT variable if it exists
+CMD ["sh", "-c", "gunicorn -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT:-8000} --access-logfile - main:app"]
