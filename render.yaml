@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: hcl-ai-reviewer
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: GITHUB_TOKEN
+        sync: false # Set this in Render Dashboard
+      - key: GROQ_API_KEY
+        sync: false # Set this in Render Dashboard
+      - key: WEBHOOK_SECRET
+        sync: false # Set this in Render Dashboard
+      - key: PORT
+        value: 8000
