@@ -39,7 +39,7 @@ def parse_and_filter_issues(analysis_result: dict, raw_diff: str = "") -> list:
     hallucination_triggers = [
         "improve", "optimize", "better", "clean", "suggest", "consider", 
         "style", "refactor", "readability", "efficiency", "best practice",
-        "redundant", "unnecessary", "nitpick", "midpoint", "formatting",
+        "redundant", "unnecessary", "nitpick", "formatting",
         "overflow", "integer limit", "search space" 
     ]
 
@@ -55,10 +55,10 @@ def parse_and_filter_issues(analysis_result: dict, raw_diff: str = "") -> list:
             logger.info(f"🚫 IRON-CLAD REJECT: Blocked impossible Python overflow hallucination.")
             continue
 
-        # 1. IRON-CLAD BLOCK: Reject midpoint/search space nitpicks in binary search
-        hallucination_code = ["mid =", "midpoint", "search space", "calculation", "high = mid", "low = mid"]
-        if any(word in fix.lower() or word in description.lower() for word in hallucination_code):
-            logger.info(f"🚫 IRON-CLAD REJECT: Blocked binary search hallucination: {fix}")
+        # 1. IRON-CLAD BLOCK: Reject 'search space' or 'overflow' hallucinations in Python
+        hallucination_code = ["search space", "integer overflow", "integer limit"]
+        if any(word in description.lower() for word in hallucination_code):
+            logger.info(f"🚫 IRON-CLAD REJECT: Blocked impossible Python overflow hallucination.")
             continue
 
         # 2. STRUCTURE GUARD: If the fix replaces a structural keyword with logic, it's misaligned.

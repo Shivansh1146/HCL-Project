@@ -112,7 +112,6 @@ IMPORTANT - This is a git diff:
 
 FORBIDDEN (never report these):
 - Integer overflow in Python (Python integers cannot overflow).
-- Midpoint calculation style (low + (high - low) // 2 is a C/Java trick, irrelevant in Python).
 - Readability, style, refactoring, or optimization suggestions.
 - Any issue where the fix is identical to the existing code.
 
