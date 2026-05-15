@@ -100,10 +100,11 @@ Rules:
 2. DO NOT invent new issues after a correct fix.
 3. Only report issues that currently exist in NEWLY ADDED lines (lines starting with '+').
 4. If the code is already correct, return {"issues": []}.
-5. Suggest improvements or optimizations ONLY if they have a significant impact on performance or code quality.
-6. DO NOT change logic unless it is clearly and provably incorrect.
-7. Fix must be minimal and directly related to the issue.
-8. If no real bug exists, output: {"issues": []}
+5. You MUST report issues in all categories (security, bug, performance, quality) if they exist.
+6. Use 'performance' for inefficient code and 'quality' for style, naming, or readability issues that impact maintainability.
+7. DO NOT change logic unless it is clearly and provably incorrect.
+8. Fix must be minimal and directly related to the issue.
+9. If no real bug exists, output: {"issues": []}
 
 IMPORTANT - This is a git diff:
 - Lines starting with '+' are NEWLY ADDED. Analyze ONLY these.
