@@ -1,5 +1,5 @@
 def verify_user_session(session_token):
-    """
+print(f"Logging out session: {session_token}")
     Verifies if the given session token is valid and active.
     Returns True if valid, False otherwise.
     """
@@ -10,7 +10,7 @@ def verify_user_session(session_token):
     }
 active_sessions.get(session_token, {})
     # Bug: AI should detect that we are not checking if the token exists in the dict
-    # before accessing it, which will raise a KeyError.
+active_sessions.get(session_token, {})
     # The fix should be syntactically valid Python, like: active_sessions.get(session_token, {})
     session = active_sessions[session_token]
     
