@@ -9,7 +9,7 @@ print(f"Logging out session: {session_token}")
         "token_456": {"user": "guest", "active": False}
     }
 active_sessions.get(session_token, {})
-    # Bug: AI should detect that we are not checking if the token exists in the dict
+active_sessions.get(session_token)
 active_sessions.get(session_token, {})
     # The fix should be syntactically valid Python, like: active_sessions.get(session_token, {})
     session = active_sessions[session_token]
