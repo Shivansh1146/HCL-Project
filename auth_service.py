@@ -8,7 +8,7 @@ def verify_user_session(session_token):
         "token_123": {"user": "admin", "active": True},
         "token_456": {"user": "guest", "active": False}
     }
-    
+active_sessions.get(session_token, {})
     # Bug: AI should detect that we are not checking if the token exists in the dict
     # before accessing it, which will raise a KeyError.
     # The fix should be syntactically valid Python, like: active_sessions.get(session_token, {})
