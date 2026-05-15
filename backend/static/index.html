@@ -287,7 +287,7 @@
             width: 100%;
             padding: 1.25rem 0.5rem;
             display: grid;
-            grid-template-columns: 1fr auto auto;
+            grid-template-columns: 1fr auto auto auto;
             gap: 1rem;
             align-items: center;
             cursor: pointer;
@@ -539,7 +539,7 @@
         @media (max-width: 640px) {
             .stat-card { grid-column: span 12; }
             .accordion-trigger { grid-template-columns: 1fr auto; gap: 0.5rem; }
-            .accordion-trigger > *:nth-child(2) { display: none; }
+            .accordion-trigger > *:nth-child(2), .accordion-trigger > *:nth-child(3) { display: none; }
             .main-content { padding: 1.5rem; }
         }
     </style>
@@ -851,7 +851,11 @@
                         </strong>
                         <span class="pr-meta">Last evaluated &bull; ${new Date(rv.reviewed_at).toLocaleTimeString()}</span>
                     </div>
-                    <!-- Removed duplicate severity pills to clean up UI -->
+                    <div class="tag-pill" style="margin-right: 1.5rem; opacity: 0.8;">
+                        ${(rv.severities.high || 0) > 0 ? `<div class="sev-badge high" style="padding:1px 6px;">HIGH ${rv.severities.high}</div>` : ''}
+                        ${(rv.severities.medium || 0) > 0 ? `<div class="sev-badge medium" style="padding:1px 6px;">MED ${rv.severities.medium}</div>` : ''}
+                        ${(rv.severities.low || 0) > 0 ? `<div class="sev-badge low" style="padding:1px 6px;">LOW ${rv.severities.low}</div>` : ''}
+                    </div>
                     <div class="badge ${statusBadgeClass}">${statusLabel}</div>
                     <div class="chevron">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
