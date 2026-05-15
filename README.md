@@ -128,9 +128,11 @@ HCL Project/
 ## 👤 Author
 
 **Shivansh**
+
 This project was fully designed, developed, and implemented by Shivansh Jaiswal.
 - GitHub: [Shivansh1146](https://github.com/Shivansh1146)
 - Project: [HCL AI Code Reviewer](https://github.com/Shivansh1146/hcl-project)
+  
 Note: Some minor commits from collaborators were temporary/testing contributions and do not reflect project ownership or core development.
 
 
