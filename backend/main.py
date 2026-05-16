@@ -474,17 +474,22 @@ async def admin_mock_review(request: Request):
     decision = compute_decision(high, medium, low, 1, 1)
     explanation = generate_decision_explanation(high, medium, low, 1, 1, high)
 
-    await upsert_review(
+    pr_id = await upsert_review(
         repo="HCL-Project",
         pr_number=pr_number,
+        status="success"
+    )
+
+    await finalize_review(
+        pr_id=pr_id,
+        issues=issues,
         status="success",
-        decision=decision,
+        decision_status=decision,
         high=high,
         medium=medium,
         low=low,
         total_chunks=1,
         processed_chunks=1,
-        issues=issues,
         rule_based_count=high,
         decision_explanation=explanation
     )
