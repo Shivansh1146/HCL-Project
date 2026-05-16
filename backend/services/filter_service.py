@@ -50,9 +50,9 @@ def parse_and_filter_issues(analysis_result: dict, raw_diff: str = "") -> list:
         issue_type = str(issue.get("type", "")).lower()
         file_path = str(issue.get("file", "")).lower()
 
-        # STRICT SEVERITY FLOOR: Drop LOW/INFO issues entirely
-        if severity not in ("high", "medium", "critical"):
-            logger.info(f"🚫 THROTTLED: Low severity issue blocked.")
+        # SEVERITY FLOOR: Drop only INFO/unknown severity issues
+        if severity not in ("high", "medium", "low", "critical"):
+            logger.info(f"🚫 THROTTLED: Unknown/info severity issue blocked.")
             continue
 
         # HIGH/CRITICAL security issues always pass — hallucination guards only apply to MEDIUM
@@ -65,8 +65,8 @@ def parse_and_filter_issues(analysis_result: dict, raw_diff: str = "") -> list:
                 logger.info(f"🚫 IRON-CLAD REJECT: Blocked impossible Python overflow hallucination.")
                 continue
 
-            # TINY DIFF PROTECTION: Only HIGH passes on tiny diffs
-            if is_tiny_diff:
+            # TINY DIFF PROTECTION: Only block MEDIUM on tiny diffs (not LOW)
+            if is_tiny_diff and severity == "medium":
                 logger.info(f"🚫 THROTTLED: Medium issue blocked on tiny diff to prevent loops.")
                 continue
 
