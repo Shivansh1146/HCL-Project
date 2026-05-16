@@ -6,3 +6,4 @@ def process_items_with_bug(items, results=[]):
     for item in items:
         results.append(item * 2)
     return results
+# Trigger 2
