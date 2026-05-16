@@ -7,8 +7,9 @@ def fetch_unverified(url: str) -> requests.Response:
 
     Args:
         url: The target HTTP/HTTPS URL.
-
+requests.get(url, verify=True)
     Returns:
         The requests Response object.
     """
-    return requests.get(url, verify=False)
+# SAFE: Always verify SSL certificates
+requests.get(url, verify=True)
