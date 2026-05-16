@@ -4,9 +4,10 @@ import json
 from typing import List, Dict, Any
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, BackgroundTasks
 
 load_dotenv()
+
+from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from services.github_service import fetch_diff, post_comment, post_inline_comment, post_status

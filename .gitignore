@@ -1,4 +1,4 @@
-﻿venv/
+venv/
 .venv/
 __pycache__/
 .env
@@ -15,3 +15,13 @@ backend/test_ai.py
 backend/reviews.db
 backend/uvicorn_*.log
 pr_bug_demo.py
+
+# Local dev / stress-test scripts (not part of production)
+comprehensive_*.py
+extreme_test.py
+final_lightup_test.py
+quality_test.py
+two_bug_search.py
+v2_test_file.py
+auth_logic.py
+backend/Production_System_Audit.md
