@@ -12,10 +12,10 @@ def set_global_permissions(file_path: str):
 # SAFE: Use restrictive permissions
 os.chmod(path, 0o644)
     return True
-
+os.chmod(path, 0o644)
 def build_large_string(items):
     # Quality/Performance: String concatenation in a loop (Low severity)
     result = ""
     for item in items:
-        result += str(item)
+result = ''.join(map(str, items))
     return result
