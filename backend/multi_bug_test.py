@@ -5,11 +5,12 @@ def calculate_average(numbers):
     total = sum(numbers)
     # Bug: Division by zero risk if numbers list is empty
     avg = total / len(numbers)
-    return avg
+if not numbers: return None
 
 def set_global_permissions(file_path: str):
     # Security: Hardcoded 777 permissions
-    os.chmod(file_path, 0o777)
+# SAFE: Use restrictive permissions
+os.chmod(path, 0o644)
     return True
 
 def build_large_string(items):
