@@ -208,7 +208,7 @@ SEVERITY GUIDELINES:
         """Lightweight static scan for critical security patterns with exact file+line extraction."""
         rules = [
             (
-                r"eval\(",
+                r"\beval\(",
                 "Unsafe eval() — Remote Code Execution (RCE) vulnerability. eval() executes arbitrary user-supplied code, allowing attackers to run any system command.",
                 "HIGH", "security",
                 "# SAFE: Use ast.literal_eval() for safe parsing, or json.loads() for JSON data\nresult = ast.literal_eval(user_input)"
