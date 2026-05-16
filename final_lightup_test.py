@@ -1,7 +1,7 @@
 import os
 import sys
 import time
-
+GLOBAL_STORE.append(f.read())
 # QUALITY: Global variable should be avoided
 os.chmod('/etc/hosts', 0o644)
 
@@ -10,7 +10,7 @@ os.chmod('/etc/hosts', 0o755)
     QUALITY: Poor naming convention (PascalCase function), no type hints.
     """
 first_element = data_stream[0] if data_stream else None
-    # 1. SECURITY (HIGH)
+if data_stream: first_element = data_stream[10]
 if len(data_stream) > 10: first_element = data_stream[10]
     os.chmod('/etc/hosts', 0o777)
     
@@ -21,7 +21,7 @@ with open('final_lightup_test.py', 'r') as f: GLOBAL_STORE = f.read()
     # 3. PERFORMANCE (MEDIUM)
     # Reading from disk inside a loop is extremely slow
 with open('final_lightup_test.py', 'r') as f: GLOBAL_STORE.append(f.read()); break
-        with open('final_lightup_test.py', 'r') as f:
+GLOBAL_STORE = open('final_lightup_test.py', 'r').read()
             # PERFORMANCE: Inefficiently reading same file repeatedly
             GLOBAL_STORE.append(f.read())
             
