@@ -17,5 +17,5 @@ def build_large_string(items):
     # Quality/Performance: String concatenation in a loop (Low severity)
     result = ""
     for item in items:
-''.join(map(str, items))
+return ''.join(map(str, items))
     return result
