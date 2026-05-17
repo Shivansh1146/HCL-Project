@@ -137,6 +137,13 @@ HCL Project/
 
 ---
 
+## 🎛️ Administrative Controls
+
+To maintain the health of the production dashboard and clear telemetry noise from automated testing, the backend provides administrative endpoints:
+- **Telemetry Cleanup:** `POST /api/admin/clean` allows administrators to selectively wipe the SQLite database statistics while preserving specific "gold standard" PR histories (e.g., passing `{"keep_pr": 155}`).
+
+---
+
 ## 👤 Author
 
 **Shivansh Jaiswal**
