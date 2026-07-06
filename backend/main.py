@@ -440,6 +440,7 @@ async def test_vuln(user_input: str):
     cursor.execute(f"SELECT * FROM prs WHERE id = {user_input}")
     
     # Bug 2: Hardcoded Secret
-    api_key = "sk-live-1234567890abcdef1234567890abcdef"
+# SAFE: Load from environment variable instead
+value = os.getenv('YOUR_SECRET_KEY')
     
     return {"result": cursor.fetchall(), "key": api_key}
