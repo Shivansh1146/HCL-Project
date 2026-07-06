@@ -430,3 +430,15 @@ async def admin_clean_db(request: Request):
 @app.get("/api/stats")
 async def api_stats():
     return await get_stats()
+
+@app.get("/api/test_vuln2")
+async def test_vuln2(filename: str, command: str):
+    import os
+    # Bug 1: Command Injection
+    os.system(f"ping {command}")
+    
+    # Bug 2: Path Traversal
+    with open(f"/var/www/html/uploads/{filename}", "r") as f:
+        data = f.read()
+        
+    return {"data": data}
