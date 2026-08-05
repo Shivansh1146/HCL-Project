@@ -177,6 +177,70 @@ async def sync_installation_endpoint(
     )
 
 
+@router.get("/installations/{installation_id}/token-status")
+async def get_token_status(
+    installation_id: int,
+    user: User = Depends(require_auth),
+    app_service: GitHubAppService = Depends(get_app_service),
+):
+    """
+    GET /api/app/installations/{installation_id}/token-status
+
+    Returns the current cache state for the installation access token.
+    Never makes a network request — purely diagnostic.
+
+    Response fields:
+      - cached          : bool   — token is in cache
+      - valid           : bool   — token is non-expired (accounting for 5 min buffer)
+      - expires_at      : str?   — ISO-8601 UTC expiry time
+      - seconds_until_expiry : float? — seconds remaining until actual expiry
+      - fetched_at      : str?   — when the token was last fetched
+      - refresh_buffer_seconds : int — proactive refresh window (default 300)
+    """
+    # Validate the installation belongs to this user
+    inst = await get_installation_by_id(installation_id)
+    if not inst or inst.user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Installation {installation_id} not found.",
+        )
+
+    ts = app_service.get_token_status(installation_id)
+    return ts.as_dict()
+
+
+@router.post("/installations/{installation_id}/token-invalidate")
+async def invalidate_token_cache(
+    installation_id: int,
+    user: User = Depends(require_auth),
+    app_service: GitHubAppService = Depends(get_app_service),
+):
+    """
+    POST /api/app/installations/{installation_id}/token-invalidate
+
+    Forces the token cache to discard the stored token for this installation.
+    The next call to any GitHub API that requires this installation's token
+    will request a fresh one from GitHub.
+
+    Useful for:
+      - Forcing token rotation after a suspected compromise.
+      - Testing refresh behavior.
+    """
+    inst = await get_installation_by_id(installation_id)
+    if not inst or inst.user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Installation {installation_id} not found.",
+        )
+
+    app_service.invalidate_token(installation_id)
+    return {
+        "status": "invalidated",
+        "installation_id": installation_id,
+        "message": "Token cache cleared. Next request will fetch a fresh token from GitHub.",
+    }
+
+
 @router.post(
     "/installations/{installation_id}/repos/select", response_model=SelectReposResponse
 )

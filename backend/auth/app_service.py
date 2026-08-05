@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx
 import jwt  # PyJWT
 from auth.models import AccountType, Installation, InstallationStatus, SelectedRepo
+from auth.token_cache import InstallationTokenCache, TokenStatus
 from auth.store import (
     get_installation_by_id,
     get_installations_for_user,
@@ -45,13 +46,16 @@ class GitHubAppService:
         self.app_name = os.getenv("GITHUB_APP_NAME", "").strip()
         self.install_url = os.getenv("GITHUB_APP_INSTALL_URL", "").strip()
 
-        # Debug prints to verify environment variable loading
-        print("=== GitHub App Debug ===")
-        print("APP_ID:", os.getenv("GITHUB_APP_ID"))
-        print("APP_NAME:", os.getenv("GITHUB_APP_NAME"))
-        print("APP_SLUG:", os.getenv("GITHUB_APP_SLUG"))
-        print("PRIVATE_KEY_PATH:", os.getenv("GITHUB_APP_PRIVATE_KEY_PATH"))
-        print("========================")
+        # Initialise the token cache — bound to this service's fetch function
+        self._token_cache = InstallationTokenCache(
+            fetch_fn=self._fetch_token_from_github
+        )
+
+        logger.info(
+            "GitHubAppService initialised. app_id=%s configured=%s",
+            self.app_id or "(none)",
+            self.has_app_credentials(),
+        )
 
     def get_installation_url(self) -> str:
         """Return the GitHub installation page configured for this App."""
@@ -94,9 +98,6 @@ class GitHubAppService:
             resp = await client.get(
                 f"{GITHUB_API_BASE}/app/installations", headers=headers
             )
-            print("[DEBUG] GET", f"{GITHUB_API_BASE}/app/installations")
-            print("[DEBUG] Status:", resp.status_code)
-            print("[DEBUG] Response:", resp.text)
             if resp.status_code != 200:
                 logger.warning(
                     "Unable to list GitHub App installations: %s", resp.status_code
@@ -158,11 +159,51 @@ class GitHubAppService:
             return ""
 
     async def get_installation_access_token(self, installation_id: int) -> str:
-        """Fetches a temporary installation access token from GitHub API for an installation."""
+        """
+        Return a valid installation access token.
+
+        Uses the InstallationTokenCache:
+          - Returns a cached token if it won't expire within 5 minutes.
+          - Otherwise fetches a fresh token from GitHub (with retry).
+          - Serializes concurrent requests for the same installation.
+        Falls back to GITHUB_TOKEN env var when JWT credentials are absent.
+        """
+        if not self.has_app_credentials():
+            fallback = os.getenv("GITHUB_TOKEN", "")
+            if fallback:
+                logger.warning(
+                    "[TokenCache] No app credentials — using GITHUB_TOKEN fallback "
+                    "for installation %d.",
+                    installation_id,
+                )
+            return fallback
+
+        try:
+            return await self._token_cache.get_token(installation_id)
+        except RuntimeError as exc:
+            logger.error(
+                "[TokenCache] Could not obtain token for installation %d: %s",
+                installation_id,
+                str(exc),
+            )
+            return ""
+
+    async def _fetch_token_from_github(
+        self, installation_id: int
+    ) -> tuple[str, str]:
+        """
+        Low-level fetcher called exclusively by InstallationTokenCache.
+
+        Calls POST /app/installations/{id}/access_tokens with a fresh JWT.
+        Returns (token_string, expires_at_iso_string).
+        Raises httpx.HTTPStatusError on non-2xx responses so the cache
+        can retry transient failures.
+        """
         app_jwt = self.generate_app_jwt()
         if not app_jwt:
-            # Return global GITHUB_TOKEN if app JWT setup is missing
-            return os.getenv("GITHUB_TOKEN", "")
+            raise RuntimeError(
+                "Cannot generate GitHub App JWT — check GITHUB_APP_ID and private key."
+            )
 
         url = f"{GITHUB_API_BASE}/app/installations/{installation_id}/access_tokens"
         headers = {
@@ -172,9 +213,34 @@ class GitHubAppService:
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(url, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
-            return data.get("token", "")
+            resp.raise_for_status()   # raises HTTPStatusError on 4xx/5xx
+
+        data = resp.json()
+        token_str = data.get("token", "")
+        expires_at = data.get("expires_at", "")  # e.g. "2024-01-01T02:00:00Z"
+
+        if not token_str:
+            raise ValueError(
+                f"GitHub API returned empty token for installation {installation_id}."
+            )
+
+        logger.info(
+            "[TokenCache] GitHub issued token for installation %d  expires_at=%s",
+            installation_id,
+            expires_at,
+        )
+        return token_str, expires_at
+
+    def get_token_status(self, installation_id: int) -> TokenStatus:
+        """
+        Return diagnostic cache status for a given installation.
+        Never makes a network request — safe to call at any time.
+        """
+        return self._token_cache.token_status(installation_id)
+
+    def invalidate_token(self, installation_id: int) -> None:
+        """Force the next call to get_installation_access_token to fetch a fresh token."""
+        self._token_cache.invalidate(installation_id)
 
     async def sync_installation_from_github(
         self, installation_id: int, user_id: Optional[int] = None
@@ -192,10 +258,11 @@ class GitHubAppService:
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(url, headers=headers)
-            print("[DEBUG] GET", url)
-            print("[DEBUG] Status:", resp.status_code)
-            print("[DEBUG] Response:", resp.text)
             if resp.status_code != 200:
+                logger.warning(
+                    "sync_installation_from_github: GET %s returned %s",
+                    url, resp.status_code,
+                )
                 return None
             data = resp.json()
 
@@ -232,12 +299,10 @@ class GitHubAppService:
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(url, headers=headers)
-            print("[DEBUG] GET", url)
-            print("[DEBUG] Status:", resp.status_code)
-            print("[DEBUG] Response:", resp.text)
             if resp.status_code != 200:
                 logger.error(
-                    f"Failed to fetch repos for installation {installation_id}: {resp.text}"
+                    "Failed to fetch repos for installation %d: %s",
+                    installation_id, resp.text,
                 )
                 return []
             data = resp.json()
@@ -258,9 +323,6 @@ class GitHubAppService:
             response = await client.get(
                 f"{GITHUB_API_BASE}/user/installations", headers=headers
             )
-            print("[DEBUG] GET", f"{GITHUB_API_BASE}/user/installations")
-            print("[DEBUG] Status:", response.status_code)
-            print("[DEBUG] Response:", response.text)
             if response.status_code != 200:
                 logger.warning(
                     "Unable to synchronize GitHub App installations: %s",
