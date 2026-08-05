@@ -11,10 +11,14 @@ Tests:
 """
 
 import asyncio
-import pytest
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+from auth.dependencies import require_auth
+from auth.models import User
+from fastapi.testclient import TestClient
+from main import app
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -52,6 +56,7 @@ FAKE_REPOS = [
 # 1-3: sync_repos_in_db
 # ---------------------------------------------------------------------------
 
+
 class TestSyncReposInDb:
     """Tests for auth.store.sync_repos_in_db using a real in-memory SQLite DB."""
 
@@ -63,7 +68,8 @@ class TestSyncReposInDb:
             db = await aiosqlite.connect(":memory:")
             db.row_factory = aiosqlite.Row
             await db.execute("PRAGMA foreign_keys = ON;")
-            await db.execute("""
+            await db.execute(
+                """
                 CREATE TABLE IF NOT EXISTS repositories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     github_repo_id INTEGER UNIQUE NOT NULL,
@@ -88,7 +94,8 @@ class TestSyncReposInDb:
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
-            """)
+            """
+            )
             await db.commit()
             return db
 
@@ -97,6 +104,7 @@ class TestSyncReposInDb:
     def test_sync_inserts_new_repos(self):
         async def _run():
             from auth.store import sync_repos_in_db
+
             db = await self._setup_db()
             # Patch get_db to return our in-memory db
             from contextlib import asynccontextmanager
@@ -118,8 +126,9 @@ class TestSyncReposInDb:
 
     def test_sync_updates_existing_repo(self):
         async def _run():
-            from auth.store import sync_repos_in_db
             from contextlib import asynccontextmanager
+
+            from auth.store import sync_repos_in_db
 
             db = await self._setup_db()
 
@@ -143,8 +152,9 @@ class TestSyncReposInDb:
 
     def test_sync_marks_removed_repos_inactive(self):
         async def _run():
-            from auth.store import sync_repos_in_db
             from contextlib import asynccontextmanager
+
+            from auth.store import sync_repos_in_db
 
             db = await self._setup_db()
 
@@ -178,12 +188,14 @@ class TestSyncReposInDb:
 # 4: get_repos_for_user shape check
 # ---------------------------------------------------------------------------
 
+
 class TestGetReposForUser:
     def test_returns_correct_shape(self):
         async def _run():
-            from auth.store import get_repos_for_user
             from contextlib import asynccontextmanager
             from unittest.mock import patch
+
+            from auth.store import get_repos_for_user
 
             # Fake installation
             fake_inst = MagicMock()
@@ -193,7 +205,8 @@ class TestGetReposForUser:
 
             db = await aiosqlite.connect(":memory:")
             db.row_factory = aiosqlite.Row
-            await db.execute("""
+            await db.execute(
+                """
                 CREATE TABLE repositories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     github_repo_id INTEGER,
@@ -218,7 +231,8 @@ class TestGetReposForUser:
                     created_at TEXT NOT NULL DEFAULT '',
                     updated_at TEXT NOT NULL DEFAULT ''
                 )
-            """)
+            """
+            )
             now = datetime.now(timezone.utc).isoformat()
             await db.execute(
                 "INSERT INTO repositories (github_repo_id, installation_id, full_name, name, "
@@ -232,7 +246,10 @@ class TestGetReposForUser:
                 yield db
 
             with (
-                patch("auth.store.get_installations_for_user", AsyncMock(return_value=[fake_inst])),
+                patch(
+                    "auth.store.get_installations_for_user",
+                    AsyncMock(return_value=[fake_inst]),
+                ),
                 patch("auth.store.get_db", _fake_get_db),
             ):
                 repos = await get_repos_for_user(user_id=42)
@@ -254,15 +271,16 @@ class TestGetReposForUser:
 # 5-6: HTTP endpoint auth guards
 # ---------------------------------------------------------------------------
 
+
 class TestRepoEndpointsAuthGuard:
     """Verify that the repo endpoints require authentication."""
 
     def test_get_repositories_requires_auth(self):
-        import httpx
-        res = httpx.get("http://127.0.0.1:8080/api/repositories")
-        assert res.status_code == 401
+        client = TestClient(app)
+        response = client.get("/api/repositories")
+        assert response.status_code == 401
 
     def test_post_sync_requires_auth(self):
-        import httpx
-        res = httpx.post("http://127.0.0.1:8080/api/repositories/sync")
-        assert res.status_code == 401
+        client = TestClient(app)
+        response = client.post("/api/repositories/sync")
+        assert response.status_code == 401

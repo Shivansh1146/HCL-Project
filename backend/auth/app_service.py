@@ -13,20 +13,20 @@ import logging
 import os
 import re
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import httpx
 import jwt  # PyJWT
-from auth.models import AccountType, Installation, InstallationStatus, SelectedRepo
-from auth.token_cache import InstallationTokenCache, TokenStatus
+from auth.models import Installation, InstallationTokenResponse
 from auth.store import (
     get_installation_by_id,
     get_installations_for_user,
-    get_selected_repos_for_installation,
     save_selected_repos,
     sync_repos_in_db,
     upsert_installation,
 )
+from auth.token_cache import InstallationTokenCache, TokenStatus
 
 logger = logging.getLogger("backend")
 
@@ -107,14 +107,16 @@ class GitHubAppService:
 
         synced: List[Installation] = []
         for record in records:
-            account = record.get("account") or {}
+            account = cast(Dict[str, Any], record.get("account") or {})
             synced.append(
                 await upsert_installation(
                     installation_id=record["id"],
-                    account_login=account.get("login", "unknown"),
-                    account_type=account.get("type", "User"),
-                    target_id=record.get("target_id", account.get("id", 0)),
-                    target_type=record.get("target_type", account.get("type", "User")),
+                    account_login=str(account.get("login", "unknown")),
+                    account_type=str(account.get("type", "User")),
+                    target_id=int(record.get("target_id", account.get("id", 0)) or 0),
+                    target_type=str(
+                        record.get("target_type", account.get("type", "User"))
+                    ),
                     user_id=user_id,
                     status="active" if not record.get("suspended_at") else "suspended",
                 )
@@ -151,11 +153,16 @@ class GitHubAppService:
             return ""
 
         now = int(time.time())
-        payload = {"iat": now - 60, "exp": now + (10 * 60), "iss": self.app_id}
+        payload: dict[str, Any] = {
+            "iat": now - 60,
+            "exp": now + (10 * 60),
+            "iss": self.app_id,
+        }
         try:
-            return jwt.encode(payload, pk, algorithm="RS256")
-        except Exception as e:
-            logger.warning(f"Failed to generate GitHub App JWT: {str(e)}")
+            encoded = jwt.encode(payload, str(pk), algorithm="RS256")
+            return str(encoded)
+        except (jwt.PyJWTError, ValueError, TypeError) as exc:
+            logger.warning("Failed to generate GitHub App JWT: %s", str(exc))
             return ""
 
     async def get_installation_access_token(self, installation_id: int) -> str:
@@ -188,9 +195,46 @@ class GitHubAppService:
             )
             return ""
 
-    async def _fetch_token_from_github(
+    async def create_installation_access_token_response(
         self, installation_id: int
-    ) -> tuple[str, str]:
+    ) -> InstallationTokenResponse:
+        """Create or return a cached installation token plus cache metadata."""
+        before = self._token_cache.token_status(installation_id)
+        token = await self.get_installation_access_token(installation_id)
+        after = self._token_cache.token_status(installation_id)
+
+        if not token:
+            raise RuntimeError(
+                f"Failed to obtain installation token for installation {installation_id}."
+            )
+
+        cached = (
+            after.cached and before.cached and before.expires_at == after.expires_at
+        )
+        refreshed = not cached
+        expires_at = (
+            datetime.fromisoformat(after.expires_at)
+            if after.expires_at
+            else datetime.now(timezone.utc)
+        )
+        github_response: dict[str, str] = {
+            "token_type": "installation",
+            "expires_at": after.expires_at or "",
+        }
+        return InstallationTokenResponse(
+            installation_id=installation_id,
+            token=token,
+            expires_at=expires_at,
+            expires_at_iso=after.expires_at or expires_at.isoformat(),
+            cached=after.cached,
+            cache_status="hit" if cached else "miss",
+            seconds_until_expiry=after.seconds_until_expiry or 0.0,
+            refresh_buffer_seconds=after.refresh_buffer_seconds,
+            github_response=github_response,
+            refreshed=refreshed,
+        )
+
+    async def _fetch_token_from_github(self, installation_id: int) -> tuple[str, str]:
         """
         Low-level fetcher called exclusively by InstallationTokenCache.
 
@@ -213,7 +257,7 @@ class GitHubAppService:
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(url, headers=headers)
-            resp.raise_for_status()   # raises HTTPStatusError on 4xx/5xx
+            resp.raise_for_status()  # raises HTTPStatusError on 4xx/5xx
 
         data = resp.json()
         token_str = data.get("token", "")
@@ -261,7 +305,8 @@ class GitHubAppService:
             if resp.status_code != 200:
                 logger.warning(
                     "sync_installation_from_github: GET %s returned %s",
-                    url, resp.status_code,
+                    url,
+                    resp.status_code,
                 )
                 return None
             data = resp.json()
@@ -302,7 +347,8 @@ class GitHubAppService:
             if resp.status_code != 200:
                 logger.error(
                     "Failed to fetch repos for installation %d: %s",
-                    installation_id, resp.text,
+                    installation_id,
+                    resp.text,
                 )
                 return []
             data = resp.json()
@@ -331,16 +377,18 @@ class GitHubAppService:
                 return await get_installations_for_user(user_id)
             records = response.json().get("installations", [])
 
-        synced = []
+        synced: List[Installation] = []
         for record in records:
-            account = record.get("account") or {}
+            account = cast(Dict[str, Any], record.get("account") or {})
             synced.append(
                 await upsert_installation(
                     installation_id=record["id"],
-                    account_login=account.get("login", "unknown"),
-                    account_type=account.get("type", "User"),
-                    target_id=record.get("target_id", account.get("id", 0)),
-                    target_type=record.get("target_type", account.get("type", "User")),
+                    account_login=str(account.get("login", "unknown")),
+                    account_type=str(account.get("type", "User")),
+                    target_id=int(record.get("target_id", account.get("id", 0)) or 0),
+                    target_type=str(
+                        record.get("target_type", account.get("type", "User"))
+                    ),
                     user_id=user_id,
                     status="active" if not record.get("suspended_at") else "suspended",
                 )
@@ -461,13 +509,12 @@ class GitHubAppService:
         return all_repos
 
 
-
-
 _app_service_instance: Optional[GitHubAppService] = None
 
 
 def get_app_service() -> GitHubAppService:
-    global _app_service_instance
-    if _app_service_instance is None:
-        _app_service_instance = GitHubAppService()
-    return _app_service_instance
+    instance = getattr(get_app_service, "_instance", None)
+    if instance is None:
+        instance = GitHubAppService()
+        setattr(get_app_service, "_instance", instance)
+    return instance

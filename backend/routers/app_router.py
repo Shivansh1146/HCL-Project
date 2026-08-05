@@ -20,6 +20,7 @@ from auth.models import (
     AccountType,
     InstallationResponse,
     InstallationStatus,
+    InstallationTokenResponse,
     RepoResponse,
     SelectReposRequest,
     SelectReposResponse,
@@ -209,6 +210,34 @@ async def get_token_status(
     return ts.as_dict()
 
 
+@router.post(
+    "/installations/{installation_id}/access_tokens",
+    response_model=InstallationTokenResponse,
+)
+async def create_installation_access_token(
+    installation_id: int,
+    user: User = Depends(require_auth),
+    app_service: GitHubAppService = Depends(get_app_service),
+):
+    """Create or return a cached GitHub installation access token."""
+    inst = await get_installation_by_id(installation_id)
+    if not inst or inst.user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Installation {installation_id} not found.",
+        )
+
+    try:
+        return await app_service.create_installation_access_token_response(
+            installation_id
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+
 @router.post("/installations/{installation_id}/token-invalidate")
 async def invalidate_token_cache(
     installation_id: int,
@@ -239,6 +268,25 @@ async def invalidate_token_cache(
         "installation_id": installation_id,
         "message": "Token cache cleared. Next request will fetch a fresh token from GitHub.",
     }
+
+
+app_router = APIRouter(prefix="/app", tags=["GitHub App Alias"])
+
+
+@app_router.post(
+    "/installations/{installation_id}/access_tokens",
+    response_model=InstallationTokenResponse,
+)
+async def create_installation_access_token_public(
+    installation_id: int,
+    user: User = Depends(require_auth),
+    app_service: GitHubAppService = Depends(get_app_service),
+):
+    return await create_installation_access_token(
+        installation_id=installation_id,
+        user=user,
+        app_service=app_service,
+    )
 
 
 @router.post(

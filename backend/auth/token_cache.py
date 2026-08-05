@@ -19,7 +19,9 @@ import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Callable, Coroutine, Dict, Optional, Tuple
+from typing import Any, Callable, Coroutine, Dict, Optional, Tuple
+
+import httpx
 
 logger = logging.getLogger("backend.token_cache")
 
@@ -35,10 +37,11 @@ BASE_RETRY_DELAY = 1.0  # seconds, doubled each attempt
 # Internal data model
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class _CachedToken:
     token: str
-    expires_at: float          # Unix timestamp (UTC)
+    expires_at: float  # Unix timestamp (UTC)
     installation_id: int
     fetched_at: float = field(default_factory=time.time)
 
@@ -59,25 +62,28 @@ class _CachedToken:
 # Public status dict (returned by token_status / diagnostic endpoint)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TokenStatus:
     installation_id: int
     cached: bool
     valid: bool
-    expires_at: Optional[str]        # ISO-8601 or None
+    expires_at: Optional[str]  # ISO-8601 or None
     seconds_until_expiry: Optional[float]
-    fetched_at: Optional[str]        # ISO-8601 or None
+    fetched_at: Optional[str]  # ISO-8601 or None
     refresh_buffer_seconds: int = REFRESH_BUFFER_SECONDS
 
-    def as_dict(self) -> dict:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "installation_id": self.installation_id,
             "cached": self.cached,
             "valid": self.valid,
             "expires_at": self.expires_at,
-            "seconds_until_expiry": round(self.seconds_until_expiry, 1)
-            if self.seconds_until_expiry is not None
-            else None,
+            "seconds_until_expiry": (
+                round(self.seconds_until_expiry, 1)
+                if self.seconds_until_expiry is not None
+                else None
+            ),
             "fetched_at": self.fetched_at,
             "refresh_buffer_seconds": self.refresh_buffer_seconds,
         }
@@ -95,6 +101,7 @@ TokenFetcherFn = Callable[[int], Coroutine[None, None, Tuple[str, str]]]
 # ---------------------------------------------------------------------------
 # InstallationTokenCache
 # ---------------------------------------------------------------------------
+
 
 class InstallationTokenCache:
     """
@@ -159,9 +166,7 @@ class InstallationTokenCache:
         """Remove a cached token, forcing the next call to fetch a fresh one."""
         removed = self._cache.pop(installation_id, None)
         if removed:
-            logger.info(
-                "[TokenCache] INVALIDATED  installation=%d", installation_id
-            )
+            logger.info("[TokenCache] INVALIDATED  installation=%d", installation_id)
 
     def token_status(self, installation_id: int) -> TokenStatus:
         """Return diagnostic information about the cached token (never fetches)."""
@@ -241,7 +246,7 @@ class InstallationTokenCache:
                 )
                 return token_str
 
-            except Exception as exc:
+            except (ValueError, TypeError, RuntimeError, httpx.HTTPError) as exc:
                 last_error = exc
                 logger.warning(
                     "[TokenCache] FAIL  installation=%d  attempt=%d  error=%s",
@@ -251,9 +256,7 @@ class InstallationTokenCache:
                 )
                 if attempt < MAX_RETRIES:
                     delay = BASE_RETRY_DELAY * (2 ** (attempt - 1))
-                    logger.debug(
-                        "[TokenCache] Retrying in %.1fs …", delay
-                    )
+                    logger.debug("[TokenCache] Retrying in %.1fs …", delay)
                     await asyncio.sleep(delay)
 
         raise RuntimeError(
@@ -266,14 +269,17 @@ class InstallationTokenCache:
 # Utility
 # ---------------------------------------------------------------------------
 
+
 def _parse_iso_to_timestamp(iso_str: str) -> float:
     """
     Parse a GitHub-style ISO-8601 expiry string to a UTC Unix timestamp.
 
     GitHub returns:  "2024-01-01T01:00:00Z"
     """
-    # Replace trailing Z with +00:00 for Python 3.10 compatibility
-    normalized = iso_str.rstrip("Z") + "+00:00"
+    normalized = iso_str.strip()
+    if normalized.endswith("Z"):
+        # GitHub often returns UTC timestamps with a Z suffix.
+        normalized = normalized[:-1] + "+00:00"
     try:
         dt = datetime.fromisoformat(normalized)
     except ValueError:

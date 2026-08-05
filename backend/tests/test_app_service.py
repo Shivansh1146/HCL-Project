@@ -8,6 +8,12 @@ from pytest import MonkeyPatch
 
 
 def test_app_jwt_fallback_when_unconfigured():
+    import os
+
+    os.environ.pop("GITHUB_APP_ID", None)
+    os.environ.pop("GITHUB_APP_PRIVATE_KEY", None)
+    os.environ.pop("GITHUB_PRIVATE_KEY", None)
+    os.environ.pop("GITHUB_APP_PRIVATE_KEY_PATH", None)
     service = GitHubAppService()
     jwt_token = service.generate_app_jwt()
     # Unconfigured app_id/key returns empty string safely without crashing
