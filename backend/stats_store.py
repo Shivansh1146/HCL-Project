@@ -1,26 +1,11 @@
-import aiosqlite
 import asyncio
 import logging
 import os
 from datetime import datetime, timedelta, timezone
-from contextlib import asynccontextmanager
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.environ.get("TEST_DB_PATH") or os.path.join(BASE_DIR, "reviews.db")
 logger = logging.getLogger("backend")
 
-# Global connection removed to prevent transaction bleeding
-@asynccontextmanager
-async def get_db():
-    """Returns a new, dedicated database connection per task."""
-    db = await aiosqlite.connect(DB_PATH, timeout=30.0)
-    db.row_factory = aiosqlite.Row
-    await db.execute("PRAGMA journal_mode=WAL")
-    await db.execute("PRAGMA synchronous=NORMAL")
-    try:
-        yield db
-    finally:
-        await db.close()
+from db_engine import get_db, init_db_engine, close_db_engine
 
 async def db_retry(func, *args, retries=3, delay=1, **kwargs):
     """Wrapper to retry database operations on failure."""
@@ -419,3 +404,82 @@ async def get_issues_for_pr(pr_number: int) -> list:
         """, (pr_number,)) as cursor:
             rows = await cursor.fetchall()
             return [dict(row) for row in rows]
+
+
+async def get_pr_details(repo: str, pr_number: int) -> dict:
+    """Fetches detailed PR telemetry, decision status, and issues list."""
+    async with get_db() as db:
+        async with db.execute(
+            "SELECT * FROM prs WHERE repo = ? AND pr_number = ?",
+            (repo, pr_number)
+        ) as cursor:
+            pr_row = await cursor.fetchone()
+            if not pr_row:
+                return None
+
+            pr = dict(pr_row)
+            async with db.execute("SELECT * FROM issues WHERE pr_id = ?", (pr['id'],)) as c:
+                issues = [dict(row) for row in await c.fetchall()]
+
+            return {
+                "id": pr['id'],
+                "repo": pr['repo'],
+                "pr_number": pr['pr_number'],
+                "status": pr.get('status', 'error'),
+                "decision": pr.get('decision_status', 'BLOCK'),
+                "reviewed_at": pr['reviewed_at'],
+                "high_count": pr.get('high_count', 0),
+                "medium_count": pr.get('medium_count', 0),
+                "low_count": pr.get('low_count', 0),
+                "rule_based_count": pr.get('rule_based_count', 0),
+                "decision_explanation": pr.get('decision_explanation'),
+                "coverage": {
+                    "processed": pr.get('processed_chunks', 0),
+                    "total": pr.get('total_chunks', 0)
+                },
+                "issues": issues
+            }
+
+
+async def list_prs(repo: str = None, status_filter: str = None, limit: int = 50, offset: int = 0) -> dict:
+    """Returns paginated list of PR reviews with filters."""
+    async with get_db() as db:
+        query = "SELECT * FROM prs WHERE 1=1"
+        params = []
+
+        if repo:
+            query += " AND repo = ?"
+            params.append(repo)
+        if status_filter:
+            query += " AND status = ?"
+            params.append(status_filter)
+
+        query += " ORDER BY reviewed_at DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        async with db.execute(query, params) as cursor:
+            rows = await cursor.fetchall()
+            prs = []
+            for r in rows:
+                pr = dict(r)
+                async with db.execute("SELECT COUNT(*) FROM issues WHERE pr_id = ?", (pr['id'],)) as c:
+                    issue_count = (await c.fetchone())[0]
+
+                prs.append({
+                    "id": pr['id'],
+                    "repo": pr['repo'],
+                    "pr_number": pr['pr_number'],
+                    "status": pr.get('status', 'error'),
+                    "decision": pr.get('decision_status', 'BLOCK'),
+                    "reviewed_at": pr['reviewed_at'],
+                    "issue_count": issue_count,
+                    "severities": {
+                        "high": pr.get('high_count', 0),
+                        "medium": pr.get('medium_count', 0),
+                        "low": pr.get('low_count', 0)
+                    },
+                    "decision_explanation": pr.get('decision_explanation')
+                })
+
+        return {"total": len(prs), "prs": prs}
+

@@ -18,7 +18,7 @@ The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Review
 - **💎 PERFECT Status Mapping**: Flawless code is recognized as **"ZERO RISK • VERIFIED,"** triggering an automatic success status (Green Checkmark) on GitHub.
 - **🧪 Stability Stop (Fingerprinting)**: Prevents redundant reports by tracking issue fingerprints across commits, ensuring the dashboard remains clean and focused.
 - **📊 Real-Time Glassmorphism Dashboard**: A premium, state-aware Command Center with live telemetry, spectral severity metrics, and instant decision intelligence.
-- **⚡ One-Click Fixes**: Automatically posts native `` ```suggestion `` syntax to GitHub, allowing developers to apply fixes directly from the PR interface.
+- **⚡ One-Click Fixes**: Automatically posts native ` ```suggestion ` syntax to GitHub, allowing developers to apply fixes directly from the PR interface.
 - **🔒 Fail-Safe BLOCK**: If the AI engine is unreachable or returns malformed data, the system immediately defaults to `BLOCK` — the strictest possible decision — to prevent any unsafe approvals.
 - **🧠 Decision Explainability Panel**: Every PR decision (BLOCK / SAFE / REVIEW_REQUIRED / PERFECT) is accompanied by a human-readable rationale derived from real pipeline metrics.
 
@@ -26,15 +26,15 @@ The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Review
 
 ## 🏗️ Technical Architecture
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| **Cloud Hosting** | Render (Blueprint) | Automated CI/CD deployment with dynamic port binding and persistent state. |
-| **Backend** | FastAPI (Python 3.11) | High-performance, asynchronous orchestration engine. |
-| **AI Engine** | Groq (LLaMA 3.3 70B) | Security-focused analysis with deterministic temperature (0.1). |
-| **Hardening** | `filter_service.py` | Literal blacklist and structural guards for iron-clad reliability. |
-| **Persistence** | SQLite (`reviews.db`) | Atomic state tracking with WAL mode for concurrency control. |
-| **Dashboard** | Vanilla CSS/JS | Minimalist, high-performance UI with real-time state synchronization. |
-| **Utilities** | `utils/formatter.py` | Output formatting and response normalization helpers. |
+| Layer             | Technology            | Purpose                                                                    |
+| ----------------- | --------------------- | -------------------------------------------------------------------------- |
+| **Cloud Hosting** | Render (Blueprint)    | Automated CI/CD deployment with dynamic port binding and persistent state. |
+| **Backend**       | FastAPI (Python 3.11) | High-performance, asynchronous orchestration engine.                       |
+| **AI Engine**     | Groq (LLaMA 3.3 70B)  | Security-focused analysis with deterministic temperature (0.1).            |
+| **Hardening**     | `filter_service.py`   | Literal blacklist and structural guards for iron-clad reliability.         |
+| **Persistence**   | SQLite (`reviews.db`) | Atomic state tracking with WAL mode for concurrency control.               |
+| **Dashboard**     | Vanilla CSS/JS        | Minimalist, high-performance UI with real-time state synchronization.      |
+| **Utilities**     | `utils/formatter.py`  | Output formatting and response normalization helpers.                      |
 
 ---
 
@@ -46,6 +46,10 @@ The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Review
    - `GITHUB_TOKEN`: Your GitHub Personal Access Token.
    - `GROQ_API_KEY`: Your Groq API Key.
    - `WEBHOOK_SECRET`: Your custom webhook secret.
+   - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`: GitHub OAuth App credentials.
+   - `GITHUB_APP_ID`: GitHub App ID used for installation tokens.
+   - `GITHUB_PRIVATE_KEY` or `GITHUB_APP_PRIVATE_KEY`: PEM private key for GitHub App JWTs.
+   - `GITHUB_APP_NAME`, `GITHUB_APP_SLUG`, or `GITHUB_APP_INSTALL_URL`: Used to generate the GitHub App installation link.
 4. The system will deploy automatically and provide a public URL.
 
 ---
@@ -53,6 +57,7 @@ The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Review
 ## 🛠️ Local Setup & Development
 
 ### 1. Installation
+
 ```bash
 git clone https://github.com/Shivansh1146/hcl-project
 cd "HCL Project"
@@ -69,7 +74,9 @@ pip install -r requirements.txt
 ```
 
 ### 2. Configure Environment
+
 Create `backend/.env`:
+
 ```env
 GROQ_API_KEY=gsk_...
 GITHUB_TOKEN=ghp_...
@@ -78,6 +85,7 @@ PORT=8000
 ```
 
 ### 3. Launching the System
+
 ```bash
 cd backend
 python -m uvicorn main:app --reload --port 8000
@@ -88,12 +96,14 @@ python -m uvicorn main:app --reload --port 8000
 ## 🐳 Docker Orchestration
 
 ### 1. Build and Run
+
 ```bash
 # Start with persistence and auto-restart
 docker-compose up --build -d
 ```
 
 ### 2. Monitoring & Persistence
+
 - **Logs**: View real-time output with `docker-compose logs -f`.
 - **Database**: The `reviews.db` is mounted as a volume, ensuring data survives restarts.
 - **Dashboard**: Accessible at `http://localhost:8000`.
@@ -140,6 +150,7 @@ HCL Project/
 ## 🎛️ Administrative Controls
 
 To maintain the health of the production dashboard and clear telemetry noise from automated testing, the backend provides administrative endpoints:
+
 - **Telemetry Cleanup:** `POST /api/admin/clean` allows administrators to selectively wipe the SQLite database statistics while preserving specific "gold standard" PR histories (e.g., passing `{"keep_pr": 155}`).
 
 ---
@@ -149,12 +160,12 @@ To maintain the health of the production dashboard and clear telemetry noise fro
 **Shivansh Jaiswal**
 
 This project was fully designed, developed, and implemented by Shivansh Jaiswal.
+
 - GitHub: [Shivansh1146](https://github.com/Shivansh1146)
 - Project: [HCL AI Code Reviewer](https://github.com/Shivansh1146/hcl-project)
-  
-Note: Some minor commits from collaborators were temporary/testing contributions and do not reflect project ownership or core development.
 
+Note: Some minor commits from collaborators were temporary/testing contributions and do not reflect project ownership or core development.
 
 ---
 
-*Built with Python · FastAPI · Groq · GitHub REST API · Optimized for Production*
+_Built with Python · FastAPI · Groq · GitHub REST API · Optimized for Production_
