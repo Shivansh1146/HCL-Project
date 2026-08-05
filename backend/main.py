@@ -1,12 +1,15 @@
 import asyncio
 import logging
 import json
+import os
 from typing import List, Dict, Any
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, BackgroundTasks
+load_dotenv()  # Must be first — sets env vars before any other import reads them
 
-load_dotenv()
+from fastapi import FastAPI, Request, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from services.github_service import fetch_diff, post_comment, post_inline_comment, post_status
@@ -18,11 +21,53 @@ from services.validator import AntiHallucinationValidator
 from stats_store import initialize_db, get_stats, finalize_review, claim_sha_for_processing, is_sha_processed, mark_sha_status, upsert_review
 import stats_store
 
+from auth.store import initialize_auth_db, is_repo_whitelisted
+from routers.auth_router import router as auth_router
+from routers.app_router import router as app_router, repo_alias_router
+from routers.pr_router import router as pr_router
+from routers.analytics_router import router as analytics_router
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("backend")
 
-app = FastAPI(title="AI PR Reviewer")
+app = FastAPI(title="AI PR Reviewer", version="1.0.0")
+
+# ---------------------------------------------------------------------------
+# Security Middleware
+# ---------------------------------------------------------------------------
+_allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+_is_prod = os.getenv("ENVIRONMENT", "development").lower() == "production"
+
+if _is_prod and _allowed_origins_env:
+    _cors_origins = [o.strip() for o in _allowed_origins_env.split(",") if o.strip()]
+else:
+    # Development: allow localhost on common ports
+    _cors_origins = [
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:3000",
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+)
+
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["localhost", "127.0.0.1", "*.hcl.com", "*"] if not _is_prod else ["*.hcl.com"],
+)
+
+# Include Routers
+app.include_router(auth_router)
+app.include_router(app_router)
+app.include_router(repo_alias_router)
+app.include_router(pr_router)
+app.include_router(analytics_router)
 
 # Mount static files for the dashboard
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -38,9 +83,17 @@ async def health_check():
 # AI Analysis Semaphore to prevent Groq API overload (Max 5 concurrent)
 analysis_semaphore = asyncio.BoundedSemaphore(5)
 
+from db_engine import init_db_engine, close_db_engine  # noqa: E402 (imported after load_dotenv intentionally)
+
 @app.on_event("startup")
 async def startup():
+    await init_db_engine()
     await initialize_db()
+    await initialize_auth_db()
+
+@app.on_event("shutdown")
+async def shutdown():
+    await close_db_engine()
 
 def compute_decision(high, medium, low, total_chunks, processed_chunks, error=False):
     """Business Logic for PR Decision Engine."""
@@ -394,6 +447,13 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
     action = payload.get("action")
     if action not in ("opened", "synchronize", "reopened"):
         return {"status": "ignored", "reason": "UNSUPPORTED_ACTION"}
+    
+    # Requirement #7: Automatically verify webhook events belong to installed/selected repositories
+    repo_full_name = payload.get("repository", {}).get("full_name", "")
+    if repo_full_name and not await is_repo_whitelisted(repo_full_name):
+        logger.info(f"🚫 Webhook ignored: Repository '{repo_full_name}' is not in selected repositories list.")
+        return {"status": "ignored", "reason": "REPOSITORY_NOT_SELECTED"}
+
     head_sha = payload.get("pull_request", {}).get("head", {}).get("sha")
     if not head_sha: return {"status": "error", "reason": "MISSING_SHA"}
     if await stats_store.is_sha_processed(head_sha):
@@ -430,3 +490,4 @@ async def admin_clean_db(request: Request):
 @app.get("/api/stats")
 async def api_stats():
     return await get_stats()
+

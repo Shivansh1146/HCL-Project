@@ -1,0 +1,188 @@
+/* ==========================================================================
+   ENTERPRISE LAYOUT & GRID SYSTEM
+   ========================================================================== */
+
+.app-shell {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* Sidebar Styling */
+.sidebar-container {
+    width: 260px;
+    background: var(--bg-surface);
+    backdrop-filter: var(--glass-blur);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-lg);
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-x: hidden;
+}
+
+/* Collapsed Sidebar State */
+.sidebar-container.collapsed {
+    width: 72px;
+    padding: var(--space-md);
+}
+
+.sidebar-container.collapsed .sidebar-text,
+.sidebar-container.collapsed .sidebar-user-details,
+.sidebar-container.collapsed .sidebar-badge {
+    display: none !important;
+}
+
+.sidebar-container.collapsed .sidebar-logo-text {
+    display: none !important;
+}
+
+.sidebar-container.collapsed .sidebar-nav-link {
+    justify-content: center;
+    padding: 0.65rem 0;
+}
+
+.sidebar-container.collapsed .sidebar-footer-btn {
+    justify-content: center;
+}
+
+/* Main Wrapper adjustment */
+.main-wrapper {
+    flex: 1;
+    margin-left: 260px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.main-wrapper.sidebar-collapsed {
+    margin-left: 72px;
+}
+
+.top-header {
+    height: 70px;
+    padding: 0 var(--space-xl);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(3, 4, 11, 0.7);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 90;
+}
+
+.page-content {
+    flex: 1;
+    padding: var(--space-xl);
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* Header Controls */
+.header-actions-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.icon-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    border-color: var(--border-color-hover);
+}
+
+.icon-btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Grid System */
+.grid-12 {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: var(--space-lg);
+}
+
+.col-span-12 { grid-column: span 12; }
+.col-span-8  { grid-column: span 8; }
+.col-span-6  { grid-column: span 6; }
+.col-span-4  { grid-column: span 4; }
+.col-span-3  { grid-column: span 3; }
+
+/* Mobile Menu Backdrop */
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 95;
+    animation: fadeIn 0.2s ease;
+}
+
+.sidebar-backdrop.active {
+    display: block;
+}
+
+/* Responsive Media Queries */
+@media (max-width: 1024px) {
+    .col-span-8, .col-span-6 { grid-column: span 12; }
+    .col-span-4, .col-span-3 { grid-column: span 6; }
+}
+
+@media (max-width: 768px) {
+    .sidebar-container {
+        transform: translateX(-100%);
+        width: 260px !important;
+    }
+    .sidebar-container.mobile-open {
+        transform: translateX(0);
+    }
+    .main-wrapper {
+        margin-left: 0 !important;
+    }
+    .col-span-4, .col-span-3 { grid-column: span 12; }
+    .top-header {
+        padding: 0 var(--space-md);
+    }
+}
+
+/* Full-screen auth pages (login, callback) — hide app chrome */
+body.auth-page .sidebar-container,
+body.auth-page .sidebar-backdrop,
+body.auth-page .top-header {
+    display: none !important;
+}
+
+body.auth-page .main-wrapper {
+    margin-left: 0 !important;
+    width: 100%;
+}
+
+body.auth-page .page-content {
+    padding: 0;
+    max-width: 100%;
+}
