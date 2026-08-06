@@ -5,7 +5,7 @@
 ![Groq](https://img.shields.io/badge/Groq_AI-F4AF38?style=for-the-badge)
 ![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)
 
-The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Reviewer designed for high-fidelity security analysis and deterministic code verification. Built with a "Zero-Noise" philosophy, it empowers teams with automated, committable suggestions while maintaining a rigorous security posture.
+The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Reviewer designed for high-fidelity security analysis, deterministic code verification, and deep explainability. Built with a "Zero-Noise" philosophy, it empowers teams with automated, committable suggestions while maintaining a rigorous security posture.
 
 🌐 **Live Demo**: [https://hcl-project-3tgd.onrender.com](https://hcl-project-3tgd.onrender.com)
 
@@ -13,14 +13,15 @@ The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Review
 
 ## ✨ Production-Grade Features
 
-- **🛡️ Iron-Clad Deterministic Engine**: Multi-layered filtering that rejects LLM hallucinations (e.g., binary search logic errors) and ensures multi-layer validated suggestions.
-- **🛡️ Content Guard & Syntax Guard**: Permanent protection that prevents the AI from suggesting changes to comments, docstrings, or structural keywords. Any malformed code suggestion is automatically discarded.
-- **💎 PERFECT Status Mapping**: Flawless code is recognized as **"ZERO RISK • VERIFIED,"** triggering an automatic success status (Green Checkmark) on GitHub.
-- **🧪 Stability Stop (Fingerprinting)**: Prevents redundant reports by tracking issue fingerprints across commits, ensuring the dashboard remains clean and focused.
+- **🛡️ Iron-Clad Deterministic Engine**: Multi-layered filtering that rejects LLM hallucinations and ensures multi-layer validated suggestions.
+- **🛡️ Content Guard & Syntax Guard**: Permanent protection that prevents the AI from suggesting changes to comments, docstrings, or structural keywords.
+- **💎 PERFECT Status Mapping**: Flawless code is recognized as **"ZERO RISK • VERIFIED,"** triggering an automatic success status on GitHub.
 - **📊 Real-Time Glassmorphism Dashboard**: A premium, state-aware Command Center with live telemetry, spectral severity metrics, and instant decision intelligence.
+- **📈 Advanced Review History & Analytics**: Full historical context of every AI review, displaying severity breakdowns, confidence levels, and overall code quality scores.
+- **🧠 Decision Explainability**: Deep insights into every flagged issue. The AI provides the rationale ("Why flagged"), potential impact, suggested fixes, and a code quality summary across Security, Performance, Maintainability, and Reliability.
 - **⚡ One-Click Fixes**: Automatically posts native ` ```suggestion ` syntax to GitHub, allowing developers to apply fixes directly from the PR interface.
-- **🔒 Fail-Safe BLOCK**: If the AI engine is unreachable or returns malformed data, the system immediately defaults to `BLOCK` — the strictest possible decision — to prevent any unsafe approvals.
-- **🧠 Decision Explainability Panel**: Every PR decision (BLOCK / SAFE / REVIEW_REQUIRED / PERFECT) is accompanied by a human-readable rationale derived from real pipeline metrics.
+- **🔒 Fail-Safe BLOCK**: If the AI engine is unreachable or returns malformed data, the system immediately defaults to `BLOCK` to prevent any unsafe approvals.
+- **🔄 GitHub App Integration**: Full GitHub OAuth login, App Installation flow, and seamless Repository Synchronization.
 
 ---
 
@@ -30,11 +31,10 @@ The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Review
 | ----------------- | --------------------- | -------------------------------------------------------------------------- |
 | **Cloud Hosting** | Render (Blueprint)    | Automated CI/CD deployment with dynamic port binding and persistent state. |
 | **Backend**       | FastAPI (Python 3.11) | High-performance, asynchronous orchestration engine.                       |
-| **AI Engine**     | Groq (LLaMA 3.3 70B)  | Security-focused analysis with deterministic temperature (0.1).            |
-| **Hardening**     | `filter_service.py`   | Literal blacklist and structural guards for iron-clad reliability.         |
+| **AI Engine**     | Groq (LLaMA 3)        | Security-focused analysis with deterministic temperature (0.1).            |
+| **Hardening**     | Python Services       | Literal blacklist, syntactic validation, and content guards.               |
 | **Persistence**   | SQLite (`reviews.db`) | Atomic state tracking with WAL mode for concurrency control.               |
-| **Dashboard**     | Vanilla CSS/JS        | Minimalist, high-performance UI with real-time state synchronization.      |
-| **Utilities**     | `utils/formatter.py`  | Output formatting and response normalization helpers.                      |
+| **Dashboard**     | Vanilla JS / CSS      | Minimalist, high-performance UI with real-time state synchronization.      |
 
 ---
 
@@ -48,8 +48,8 @@ The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Review
    - `WEBHOOK_SECRET`: Your custom webhook secret.
    - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`: GitHub OAuth App credentials.
    - `GITHUB_APP_ID`: GitHub App ID used for installation tokens.
-   - `GITHUB_PRIVATE_KEY` or `GITHUB_APP_PRIVATE_KEY`: PEM private key for GitHub App JWTs.
-   - `GITHUB_APP_NAME`, `GITHUB_APP_SLUG`, or `GITHUB_APP_INSTALL_URL`: Used to generate the GitHub App installation link.
+   - `GITHUB_PRIVATE_KEY`: PEM private key for GitHub App JWTs.
+   - `GITHUB_APP_INSTALL_URL`: Used to generate the GitHub App installation link.
 4. The system will deploy automatically and provide a public URL.
 
 ---
@@ -82,13 +82,16 @@ GROQ_API_KEY=gsk_...
 GITHUB_TOKEN=ghp_...
 WEBHOOK_SECRET=your_secret
 PORT=8000
+GITHUB_CLIENT_ID=your_id
+GITHUB_CLIENT_SECRET=your_secret
+GITHUB_APP_ID=123456
 ```
 
 ### 3. Launching the System
 
 ```bash
 cd backend
-python -m uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --port 8000
 ```
 
 ---
@@ -115,43 +118,27 @@ docker-compose up --build -d
 ```
 HCL Project/
 ├── render.yaml                  # Automated Cloud Deployment Blueprint
-├── Dockerfile                   # Hardened Production Image Config
 ├── docker-compose.yml           # Local Orchestration & Persistence
-├── frontend/
-│   ├── index.html               # Frontend entry point
-│   ├── script.js                # Frontend logic
-│   └── style.css                # Frontend styles
 └── backend/
-    ├── main.py                  # Webhook Pipeline & Decision Intelligence
-    ├── stats_store.py           # Atomic Telemetry Engine
-    ├── requirements.txt         # Python dependencies
-    ├── static/index.html        # Glassmorphism Command Center UI
-    ├── services/
+    ├── main.py                  # Webhook Pipeline & App Initialization
+    ├── auth/                    # OAuth & Session Management
+    ├── routers/                 # API Routes (PRs, Webhooks, Auth)
+    ├── services/                # Business Logic
     │   ├── ai_service.py        # Groq LLaMA Engine + Hardening Guards
-    │   ├── diff_validator.py    # Diff Parsing & Line Mapping
-    │   ├── filter_service.py    # Iron-Clad Logic & Content Guards
     │   ├── github_service.py    # GitHub API Integration & Rate Limiting
-    │   ├── syntax_validator.py  # Local Code-Correctness Verification
-    │   └── validator.py         # Anti-Hallucination Cross-Checker
-    └── utils/
-        └── formatter.py         # Output Formatting & Response Normalization
+    │   ├── pr_service.py        # Pull Request State Management
+    │   └── review_publisher.py  # GitHub Review Comment Publisher
+    └── static/                  # Vanilla JS Frontend (Glassmorphism UI)
+        └── js/pages/            # Dashboard, Review History, Analytics
 ```
 
 ---
 
 ## 🔐 Security & Safety Notes
 
-- **Secrets**: All API keys are stored in `.env` and are strictly excluded from version control.
+- **Secrets**: All API keys and PEM certificates are strictly excluded from version control.
 - **Non-Destructive**: The AI is programmed to never delete code blocks; it only suggests surgical line-level fixes.
-- **Fail-Safe BLOCK**: If the AI engine is unreachable, times out, or returns malformed data, the system immediately defaults to `BLOCK` — the strictest decision — ensuring no unsafe code is ever silently approved.
-
----
-
-## 🎛️ Administrative Controls
-
-To maintain the health of the production dashboard and clear telemetry noise from automated testing, the backend provides administrative endpoints:
-
-- **Telemetry Cleanup:** `POST /api/admin/clean` allows administrators to selectively wipe the SQLite database statistics while preserving specific "gold standard" PR histories (e.g., passing `{"keep_pr": 155}`).
+- **Fail-Safe BLOCK**: If the AI engine is unreachable or times out, the system immediately defaults to `BLOCK`.
 
 ---
 
@@ -163,9 +150,5 @@ This project was fully designed, developed, and implemented by Shivansh Jaiswal.
 
 - GitHub: [Shivansh1146](https://github.com/Shivansh1146)
 - Project: [HCL AI Code Reviewer](https://github.com/Shivansh1146/hcl-project)
-
-Note: Some minor commits from collaborators were temporary/testing contributions and do not reflect project ownership or core development.
-
----
 
 _Built with Python · FastAPI · Groq · GitHub REST API · Optimized for Production_
