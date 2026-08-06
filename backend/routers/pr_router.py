@@ -21,20 +21,79 @@ router = APIRouter(prefix="/api/prs", tags=["Pull Requests"])
 
 @router.get("")
 async def get_pull_requests(
-    repo: Optional[str] = Query(None, description="Filter by repository full name"),
-    status_filter: Optional[str] = Query(None, alias="status", description="Filter by review status"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page"),
+    state: Optional[str] = Query(None, description="Filter by state (open, closed, merged, draft, all)"),
     user: User = Depends(require_auth)
 ):
-    """Lists PR reviews with optional repository and status filtering."""
+    """
+    GET /api/prs
+
+    Returns a paginated list of ingested GitHub pull requests for the authenticated user.
+    """
     try:
-        return await list_prs(repo=repo, status_filter=status_filter, limit=limit, offset=offset)
+        from services.pr_service import PRService
+        return await PRService.list_pull_requests(page=page, per_page=per_page, state_filter=state)
     except Exception as e:
         logger.error(f"Error fetching PRs list: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve pull request list."
+        )
+
+
+@router.get("/stats")
+async def get_pull_request_stats(
+    user: User = Depends(require_auth)
+):
+    """
+    GET /api/prs/stats
+
+    Returns aggregated metrics:
+    - total: total PRs ingested
+    - open: open non-draft PRs
+    - closed: closed non-merged PRs
+    - merged: merged PRs
+    - draft: draft PRs
+    """
+    try:
+        from services.pr_service import PRService
+        return await PRService.get_pr_stats()
+    except Exception as e:
+        logger.error(f"Error fetching PR stats: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve PR statistics."
+        )
+
+
+@router.get("/{number}")
+async def get_pull_request_by_number(
+    number: int,
+    repo: Optional[str] = Query(None, description="Repository name filter"),
+    user: User = Depends(require_auth)
+):
+    """
+    GET /api/prs/{number}
+
+    Returns full details for a single pull request by number.
+    """
+    try:
+        from services.pr_service import PRService
+        pr = await PRService.get_pull_request(number, repository_name=repo)
+        if not pr:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Pull request #{number} not found."
+            )
+        return pr
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching PR #{number}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve PR #{number}."
         )
 
 

@@ -265,6 +265,7 @@ class WebhookService:
             }
 
         elif event_type == "pull_request":
+            from services.pr_service import PRService
             pr_data = payload.get("pull_request", {})
             pr_number = pr_data.get("number")
             repo_name = payload.get("repository", {}).get("full_name", "")
@@ -286,13 +287,10 @@ class WebhookService:
                 },
                 request=request,
             )
-            return {
-                "status": "ok",
-                "event": "pull_request",
-                "action": action,
-                "pr_number": pr_number,
-                "repository": repo_name,
-                "delivery_id": delivery_id,
-            }
+
+            # Delegate to PR processing service (upserts into DB)
+            res = await PRService.process_pull_request_event(payload, delivery_id)
+            res["delivery_id"] = delivery_id
+            return res
 
         return {"status": "ok", "event": event_type, "delivery_id": delivery_id}

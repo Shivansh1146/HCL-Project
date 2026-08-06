@@ -314,15 +314,24 @@ class ApiService {
 
   getPullRequests(params = {}) {
     const query = new URLSearchParams();
+    if (params.page) query.append("page", params.page);
+    if (params.per_page) query.append("per_page", params.per_page);
+    if (params.state) query.append("state", params.state);
     if (params.repo) query.append("repo", params.repo);
-    if (params.status) query.append("status", params.status);
-    if (params.limit) query.append("limit", params.limit);
-    if (params.offset) query.append("offset", params.offset);
 
     const url = query.toString()
       ? `${CONFIG.PR_ENDPOINTS.LIST}?${query}`
       : CONFIG.PR_ENDPOINTS.LIST;
     return this.request(url);
+  }
+
+  getPullRequestStats() {
+    return this.request("/api/prs/stats");
+  }
+
+  getPullRequestByNumber(number, repo = null) {
+    const query = repo ? `?repo=${encodeURIComponent(repo)}` : "";
+    return this.request(`/api/prs/${number}${query}`);
   }
 
   getPullRequestDetail(owner, repo, prNumber) {

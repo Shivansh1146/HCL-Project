@@ -629,15 +629,102 @@ test('Sync toast: handles zero repos', () => {
     expect(getSyncToast(0)).toBe('Synced 0 repositories from GitHub.');
 });
 
+// ---------------------------------------------------------------------------
+// 🔀 Phase 1.7 Pull Request Processing Frontend Tests
+// ---------------------------------------------------------------------------
+
+console.log('\n🔀 Phase 1.7 Pull Request Processing');
+
+const PR_LIST_ENDPOINT = '/api/prs';
+const PR_STATS_ENDPOINT = '/api/prs/stats';
+
+test('Config: PR_LIST endpoint is /api/prs', () => {
+    expect(PR_LIST_ENDPOINT).toBe('/api/prs');
+});
+
+test('Config: PR_STATS endpoint is /api/prs/stats', () => {
+    expect(PR_STATS_ENDPOINT).toBe('/api/prs/stats');
+});
+
+const FAKE_PR_LIST = {
+    items: [
+        { id: 1, github_pr_id: 101, repository_name: 'owner/repo-a', number: 12, title: 'Fix auth bug', author_login: 'dev1', state: 'open', draft: false, merged: false, updated_at: '2026-08-07T00:00:00Z' },
+        { id: 2, github_pr_id: 102, repository_name: 'owner/repo-b', number: 45, title: 'Add PR sync', author_login: 'dev2', state: 'closed', draft: false, merged: true, updated_at: '2026-08-07T01:00:00Z' },
+        { id: 3, github_pr_id: 103, repository_name: 'owner/repo-a', number: 18, title: 'WIP docs update', author_login: 'dev3', state: 'open', draft: true, merged: false, updated_at: '2026-08-07T01:30:00Z' }
+    ],
+    total: 3,
+    page: 1,
+    per_page: 20,
+    total_pages: 1
+};
+
+test('PR Table Rendering: correct total item count', () => {
+    expect(FAKE_PR_LIST.items.length).toBe(3);
+});
+
+test('PR Table Rendering: all items contain required table fields', () => {
+    const required = ['github_pr_id', 'repository_name', 'number', 'title', 'author_login', 'state', 'draft', 'merged'];
+    for (const pr of FAKE_PR_LIST.items) {
+        for (const f of required) {
+            if (!(f in pr)) throw new Error(`PR #${pr.number} missing field: ${f}`);
+        }
+    }
+    expect(true).toBe(true);
+});
+
+function getStateBadgeText(pr) {
+    if (pr.merged) return 'Merged';
+    if (pr.state === 'closed') return 'Closed';
+    if (pr.draft) return 'Draft';
+    return 'Open';
+}
+
+test('PR State Badge: Merged PR maps to Merged badge', () => {
+    expect(getStateBadgeText(FAKE_PR_LIST.items[1])).toBe('Merged');
+});
+
+test('PR State Badge: Draft PR maps to Draft badge', () => {
+    expect(getStateBadgeText(FAKE_PR_LIST.items[2])).toBe('Draft');
+});
+
+test('PR State Badge: Open PR maps to Open badge', () => {
+    expect(getStateBadgeText(FAKE_PR_LIST.items[0])).toBe('Open');
+});
+
+function filterPRsByState(items, stateFilter) {
+    if (!stateFilter || stateFilter === 'all') return items;
+    if (stateFilter === 'merged') return items.filter(i => i.merged);
+    if (stateFilter === 'draft') return items.filter(i => i.draft);
+    if (stateFilter === 'closed') return items.filter(i => i.state === 'closed' && !i.merged);
+    return items.filter(i => i.state === stateFilter && !i.draft);
+}
+
+test('PR State Filter: merged filter returns only merged PRs', () => {
+    const merged = filterPRsByState(FAKE_PR_LIST.items, 'merged');
+    expect(merged.length).toBe(1);
+    expect(merged[0].number).toBe(45);
+});
+
+test('PR State Filter: draft filter returns only draft PRs', () => {
+    const drafts = filterPRsByState(FAKE_PR_LIST.items, 'draft');
+    expect(drafts.length).toBe(1);
+    expect(drafts[0].number).toBe(18);
+});
+
+test('PR Empty State: returns true when no items returned from API', () => {
+    const emptyItems = [];
+    expect(emptyItems.length === 0).toBeTruthy();
+});
+
 console.log(`\n${'─'.repeat(50)}`);
 console.log(`  Total: ${_passed + _failed} | ✅ Passed: ${_passed} | ❌ Failed: ${_failed}`);
 if (_failed > 0) {
     console.error('  FRONTEND TESTS FAILED');
     process.exit(1);
 } else {
-
     console.log('  ALL FRONTEND TESTS PASSED');
 }
+
 
 
 

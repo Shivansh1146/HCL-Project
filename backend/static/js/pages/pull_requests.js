@@ -1,16 +1,19 @@
 /**
- * pages/pull_requests.js — Enterprise AI Pull Request Review Dashboard.
+ * pages/pull_requests.js — Pull Request Event Processing & Monitoring Dashboard.
  *
- * Requirements:
- *  - Pull Request Dashboard List (Open, Merged, Closed, Processing)
- *  - Filters: Decision status (BLOCK, SAFE, PERFECT, REVIEW_REQUIRED), Repository filter
- *  - Search: Debounced search by title or PR number
- *  - PR Detail Drawer/Modal: Files changed, severity breakdown, inline line numbers, suggested fix
- *  - Review Actions: Trigger / Re-run AI review, Cancel review, View History
- *  - Skeleton loaders & WCAG keyboard accessibility
+ * Displays ingested GitHub pull request webhook events in an enterprise dashboard:
+ *  - Repository
+ *  - PR #
+ *  - Title
+ *  - Author
+ *  - State (open, closed, merged)
+ *  - Draft (yes/no)
+ *  - Updated Timestamp
+ *
+ * Includes state filters (All, Open, Merged, Closed, Draft), stats cards, debounced search,
+ * and paginated table rendering.
  */
 
-import { store }           from "../utils/state.js";
 import { api }             from "../services/api.js";
 import { dom }             from "../utils/dom.js";
 import { renderSkeleton }  from "../components/skeleton.js";
@@ -18,22 +21,27 @@ import { renderEmptyState } from "../components/empty_state.js";
 import { Toast }           from "../components/toast.js";
 
 let _prsState = {
-    prs: [],
+    items: [],
     total: 0,
-    activeStatusFilter: "all", // all, success, pending, error
-    activeDecisionFilter: "all", // all, BLOCK, SAFE, PERFECT, REVIEW_REQUIRED
+    page: 1,
+    perPage: 20,
+    totalPages: 1,
+    activeStateFilter: "all",
     searchQuery: "",
-    selectedRepo: "",
     isLoading: false,
-    selectedPrDetail: null,
-    isDetailLoading: false,
-    isReviewing: false,
+    stats: {
+        total: 0,
+        open: 0,
+        closed: 0,
+        merged: 0,
+        draft: 0
+    }
 };
 
 let _debounceTimer = null;
 
 /**
- * Renders the Pull Requests Dashboard page into outlet.
+ * Main render entry point for Pull Requests page.
  * @param {HTMLElement} outlet
  */
 export async function renderPullRequestsPage(outlet) {
@@ -49,10 +57,10 @@ export async function renderPullRequestsPage(outlet) {
     header.innerHTML = `
         <div>
             <h1 style="font-size:1.75rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:0.25rem;">
-                AI Pull Request Review Center
+                Pull Request Dashboard
             </h1>
             <p style="color:var(--text-secondary);font-size:0.95rem;">
-                Automated Security, Bug, & Performance Analysis for GitHub Pull Requests
+                Monitored GitHub Pull Request Webhook Events & Lifecycle Tracking
             </p>
         </div>
         <div style="display:flex;align-items:center;gap:0.75rem;">
@@ -64,17 +72,23 @@ export async function renderPullRequestsPage(outlet) {
     `;
 
     // Root containers
+    const statsEl = document.createElement("div");
+    statsEl.id = "prs-stats-container";
+
     const toolbarEl = document.createElement("div");
     toolbarEl.id = "prs-toolbar-container";
 
-    const listEl = document.createElement("div");
-    listEl.id = "prs-list-container";
+    const tableEl = document.createElement("div");
+    tableEl.id = "prs-table-container";
 
-    const detailModalEl = document.createElement("div");
-    detailModalEl.id = "prs-detail-modal-container";
-
-    wrapper.append(header, toolbarEl, listEl, detailModalEl);
+    wrapper.append(header, statsEl, toolbarEl, tableEl);
     outlet.appendChild(wrapper);
+
+    // Refresh Listener
+    header.querySelector("#prs-refresh-btn")?.addEventListener("click", async () => {
+        await _loadPullRequests();
+        Toast.success("Pull request data refreshed.");
+    });
 
     // Initial Data Fetch
     await _loadPullRequests();
@@ -85,32 +99,78 @@ async function _loadPullRequests() {
     _renderSkeletonState();
 
     try {
-        const stats = await api.getStats();
-        const recent = stats?.recent_reviews || [];
+        const [prRes, statsRes] = await Promise.allSettled([
+            api.getPullRequests({
+                page: _prsState.page,
+                per_page: _prsState.perPage,
+                state: _prsState.activeStateFilter
+            }),
+            api.getPullRequestStats()
+        ]);
 
-        _prsState.prs = recent;
-        _prsState.total = recent.length;
+        if (prRes.status === "fulfilled" && prRes.value) {
+            _prsState.items = prRes.value.items || [];
+            _prsState.total = prRes.value.total || 0;
+            _prsState.totalPages = prRes.value.total_pages || 1;
+        } else {
+            _prsState.items = [];
+            _prsState.total = 0;
+        }
+
+        if (statsRes.status === "fulfilled" && statsRes.value) {
+            _prsState.stats = statsRes.value;
+        }
     } catch (err) {
-        console.error("[PRs] Failed to load PR reviews:", err);
-        Toast.error("Failed to load pull request reviews.");
+        console.error("[PRs] Failed to load PRs:", err);
+        Toast.error("Failed to load pull requests.");
     } finally {
         _prsState.isLoading = false;
+        _renderStatsCards();
         _renderToolbar();
-        _renderPrList();
+        _renderPrTable();
     }
 }
 
 function _renderSkeletonState() {
-    const listEl = document.getElementById("prs-list-container");
-    if (listEl) {
-        listEl.innerHTML = `
+    const tableEl = document.getElementById("prs-table-container");
+    if (tableEl) {
+        tableEl.innerHTML = `
             <div style="display:flex;flex-direction:column;gap:1rem;">
-                ${renderSkeleton("card")}
-                ${renderSkeleton("card")}
-                ${renderSkeleton("card")}
+                ${renderSkeleton("table")}
             </div>
         `;
     }
+}
+
+function _renderStatsCards() {
+    const container = document.getElementById("prs-stats-container");
+    if (!container) return;
+
+    const s = _prsState.stats;
+    container.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:1rem;margin-bottom:1.5rem;">
+            <div class="glass-card" style="padding:1rem 1.25rem;">
+                <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Total Ingested PRs</span>
+                <strong style="font-size:1.5rem;font-weight:800;color:var(--text-primary);">${s.total}</strong>
+            </div>
+            <div class="glass-card" style="padding:1rem 1.25rem;">
+                <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Open PRs</span>
+                <strong style="font-size:1.5rem;font-weight:800;color:var(--primary);">${s.open}</strong>
+            </div>
+            <div class="glass-card" style="padding:1rem 1.25rem;">
+                <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Merged PRs</span>
+                <strong style="font-size:1.5rem;font-weight:800;color:var(--color-success);">${s.merged}</strong>
+            </div>
+            <div class="glass-card" style="padding:1rem 1.25rem;">
+                <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Closed PRs</span>
+                <strong style="font-size:1.5rem;font-weight:800;color:var(--text-muted);">${s.closed}</strong>
+            </div>
+            <div class="glass-card" style="padding:1rem 1.25rem;">
+                <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Draft PRs</span>
+                <strong style="font-size:1.5rem;font-weight:800;color:var(--color-warning);">${s.draft}</strong>
+            </div>
+        </div>
+    `;
 }
 
 function _renderToolbar() {
@@ -126,7 +186,7 @@ function _renderToolbar() {
     const searchWrap = document.createElement("div");
     searchWrap.style.cssText = "flex:1;min-width:240px;position:relative;";
     searchWrap.innerHTML = `
-        <input type="text" id="prs-search-input" class="form-input" placeholder="Search PR by repo or number…"
+        <input type="text" id="prs-search-input" class="form-input" placeholder="Search by title, repo, or author…"
                value="${dom.escape(_prsState.searchQuery)}" aria-label="Search pull requests" style="padding-left:2.5rem;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:0.9rem;top:50%;transform:translateY(-50%);color:var(--text-muted);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     `;
@@ -136,243 +196,132 @@ function _renderToolbar() {
         clearTimeout(_debounceTimer);
         _debounceTimer = setTimeout(() => {
             _prsState.searchQuery = e.target.value;
-            _renderPrList();
+            _renderPrTable();
         }, 200);
     });
 
-    // Decision Filter
-    const decisionSelect = document.createElement("select");
-    decisionSelect.className = "form-select";
-    decisionSelect.setAttribute("aria-label", "Filter by decision status");
-    decisionSelect.innerHTML = `
-        <option value="all" ${_prsState.activeDecisionFilter === "all" ? "selected" : ""}>All Decisions</option>
-        <option value="BLOCK" ${_prsState.activeDecisionFilter === "BLOCK" ? "selected" : ""}>🚨 Blocked</option>
-        <option value="SAFE" ${_prsState.activeDecisionFilter === "SAFE" ? "selected" : ""}>✅ Safe</option>
-        <option value="PERFECT" ${_prsState.activeDecisionFilter === "PERFECT" ? "selected" : ""}>🌟 Perfect</option>
-        <option value="REVIEW_REQUIRED" ${_prsState.activeDecisionFilter === "REVIEW_REQUIRED" ? "selected" : ""}>⚠️ Review Required</option>
+    // State Filter Dropdown
+    const stateSelect = document.createElement("select");
+    stateSelect.className = "form-select";
+    stateSelect.setAttribute("aria-label", "Filter by PR state");
+    stateSelect.innerHTML = `
+        <option value="all" ${_prsState.activeStateFilter === "all" ? "selected" : ""}>All States</option>
+        <option value="open" ${_prsState.activeStateFilter === "open" ? "selected" : ""}>🟢 Open</option>
+        <option value="merged" ${_prsState.activeStateFilter === "merged" ? "selected" : ""}>🟣 Merged</option>
+        <option value="closed" ${_prsState.activeStateFilter === "closed" ? "selected" : ""}>🔴 Closed</option>
+        <option value="draft" ${_prsState.activeStateFilter === "draft" ? "selected" : ""}>📝 Draft</option>
     `;
-    decisionSelect.addEventListener("change", (e) => {
-        _prsState.activeDecisionFilter = e.target.value;
-        _renderPrList();
+
+    stateSelect.addEventListener("change", async (e) => {
+        _prsState.activeStateFilter = e.target.value;
+        _prsState.page = 1;
+        await _loadPullRequests();
     });
 
-    card.append(searchWrap, decisionSelect);
+    card.append(searchWrap, stateSelect);
     container.appendChild(card);
 }
 
-function _renderPrList() {
-    const container = document.getElementById("prs-list-container");
+function _renderPrTable() {
+    const container = document.getElementById("prs-table-container");
     if (!container) return;
 
     container.innerHTML = "";
-    const filtered = _getFilteredPrs();
+    const items = _getFilteredItems();
 
-    if (filtered.length === 0) {
+    if (items.length === 0) {
         renderEmptyState(container, {
             title: "No Pull Requests Found",
             description: _prsState.searchQuery
-                ? `No pull request reviews matching "${dom.escape(_prsState.searchQuery)}".`
-                : "No PR reviews recorded yet. Webhooks will automatically analyze incoming PRs.",
-            icon: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>`
+                ? `No pull requests matching "${dom.escape(_prsState.searchQuery)}".`
+                : "No PR webhook events received yet. Once your GitHub App receives pull request events, they will automatically appear here.",
+            icon: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 012 2v7M6 9v12"/></svg>`
         });
         return;
     }
 
-    const listWrapper = document.createElement("div");
-    listWrapper.style.cssText = "display:flex;flex-direction:column;gap:1rem;";
+    const tableCard = document.createElement("div");
+    tableCard.className = "glass-card";
+    tableCard.style.cssText = "overflow-x:auto;";
 
-    filtered.forEach(pr => {
-        const card = document.createElement("div");
-        card.className = "glass-card animate-fade-up";
-        card.style.cssText = "padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;";
+    const table = document.createElement("table");
+    table.style.cssText = "width:100%;border-collapse:collapse;text-align:left;font-size:0.9rem;";
 
-        const decisionBadge = _getDecisionBadge(pr.decision);
-        const safeRepo = dom.escape(pr.repo);
-        const safeDate = dom.escape(new Date(pr.reviewed_at || Date.now()).toLocaleString());
+    table.innerHTML = `
+        <thead>
+            <tr style="border-bottom:1px solid var(--border-color);color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.05em;">
+                <th style="padding:1rem;">Repository</th>
+                <th style="padding:1rem;">PR #</th>
+                <th style="padding:1rem;">Title</th>
+                <th style="padding:1rem;">Author</th>
+                <th style="padding:1rem;">State</th>
+                <th style="padding:1rem;">Draft</th>
+                <th style="padding:1rem;">Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${items.map(pr => {
+                const repoName = dom.escape(pr.repository_name || `${pr.owner}/${pr.repository_name}`);
+                const title = dom.escape(pr.title || "Untitled Pull Request");
+                const author = dom.escape(pr.author_login || "unknown");
+                const stateBadge = _getStateBadge(pr);
+                const draftBadge = pr.draft
+                    ? `<span class="badge badge-warning">Draft</span>`
+                    : `<span class="badge badge-secondary" style="opacity:0.6;">No</span>`;
+                const updatedTime = dom.escape(new Date(pr.updated_at || pr.created_at || Date.now()).toLocaleString());
+                const prUrl = pr.html_url ? dom.escape(pr.html_url) : "#";
 
-        const left = document.createElement("div");
-        left.style.cssText = "display:flex;align-items:center;gap:1.25rem;flex:1;min-width:280px;";
-
-        left.innerHTML = `
-            <div style="width:42px;height:42px;border-radius:10px;background:rgba(59,130,246,0.12);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">
-                #${pr.pr_number}
-            </div>
-            <div>
-                <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.25rem;flex-wrap:wrap;">
-                    <strong style="font-size:1.05rem;color:var(--text-primary);">${safeRepo} #${pr.pr_number}</strong>
-                    ${decisionBadge}
-                </div>
-                <div style="font-size:0.8rem;color:var(--text-muted);display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-                    <span>Reviewed: ${safeDate}</span>
-                    <span>·</span>
-                    <span>Issues: <strong style="color:var(--text-primary);">${pr.issue_count || 0}</strong></span>
-                    <span>·</span>
-                    <span style="color:var(--color-error);">H: ${pr.severities?.high || 0}</span>
-                    <span style="color:var(--color-warning);">M: ${pr.severities?.medium || 0}</span>
-                    <span style="color:var(--color-info);">L: ${pr.severities?.low || 0}</span>
-                </div>
-            </div>
-        `;
-
-        const right = document.createElement("div");
-        right.style.cssText = "display:flex;align-items:center;gap:0.75rem;";
-
-        const viewBtn = document.createElement("button");
-        viewBtn.type = "button";
-        viewBtn.className = "btn btn-secondary";
-        viewBtn.style.cssText = "gap:0.5rem;padding:0.45rem 1rem;font-size:0.85rem;";
-        viewBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> View Analysis`;
-
-        viewBtn.addEventListener("click", () => _openPrDetailModal(pr));
-
-        right.appendChild(viewBtn);
-        card.append(left, right);
-        listWrapper.appendChild(card);
-    });
-
-    container.appendChild(listWrapper);
-}
-
-function _getFilteredPrs() {
-    return _prsState.prs.filter(pr => {
-        if (_prsState.searchQuery) {
-            const q = _prsState.searchQuery.toLowerCase();
-            const matchRepo = pr.repo.toLowerCase().includes(q);
-            const matchPrNum = String(pr.pr_number).includes(q);
-            if (!matchRepo && !matchPrNum) return false;
-        }
-
-        if (_prsState.activeDecisionFilter !== "all") {
-            if (pr.decision !== _prsState.activeDecisionFilter) return false;
-        }
-
-        return true;
-    });
-}
-
-function _getDecisionBadge(decision) {
-    switch (decision) {
-        case "PERFECT":
-            return `<span class="badge badge-success">🌟 PERFECT</span>`;
-        case "SAFE":
-            return `<span class="badge badge-success">✅ SAFE</span>`;
-        case "REVIEW_REQUIRED":
-            return `<span class="badge badge-warning">⚠️ REVIEW REQUIRED</span>`;
-        case "BLOCK":
-        default:
-            return `<span class="badge badge-error">🚨 BLOCKED</span>`;
-    }
-}
-
-/**
- * Detailed PR Review Modal
- */
-function _openPrDetailModal(pr) {
-    const modalContainer = document.getElementById("prs-detail-modal-container");
-    if (!modalContainer) return;
-
-    modalContainer.innerHTML = "";
-
-    const backdrop = document.createElement("div");
-    backdrop.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);z-index:999;display:flex;align-items:center;justify-content:center;padding:1.5rem;";
-
-    const modal = document.createElement("div");
-    modal.className = "glass-card animate-fade-up";
-    modal.style.cssText = "width:100%;max-width:850px;max-height:85vh;overflow-y:auto;padding:2rem;display:flex;flex-direction:column;gap:1.5rem;";
-
-    const safeRepo = dom.escape(pr.repo);
-    const safeDate = dom.escape(new Date(pr.reviewed_at || Date.now()).toLocaleString());
-    const issues = pr.issues || [];
-
-    modal.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-color);padding-bottom:1rem;">
-            <div>
-                <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.25rem;">
-                    <h2 style="font-size:1.3rem;font-weight:800;">${safeRepo} #${pr.pr_number} Analysis</h2>
-                    ${_getDecisionBadge(pr.decision)}
-                </div>
-                <p style="font-size:0.85rem;color:var(--text-secondary);">Reviewed at: ${safeDate} · AI Model: Groq Llama-3 70B</p>
-            </div>
-            <button type="button" id="close-modal-btn" class="btn btn-ghost" style="font-size:1.2rem;padding:0.25rem 0.5rem;" aria-label="Close modal">✕</button>
-        </div>
-
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:1rem;padding:1rem;background:rgba(255,255,255,0.02);border:1px solid var(--border-color);border-radius:10px;">
-            <div>
-                <span style="font-size:0.75rem;color:var(--text-muted);display:block;">Decision</span>
-                <strong style="font-size:1rem;">${dom.escape(pr.decision)}</strong>
-            </div>
-            <div>
-                <span style="font-size:0.75rem;color:var(--text-muted);display:block;">High Severity</span>
-                <strong style="font-size:1rem;color:var(--color-error);">${pr.severities?.high || 0}</strong>
-            </div>
-            <div>
-                <span style="font-size:0.75rem;color:var(--text-muted);display:block;">Medium Severity</span>
-                <strong style="font-size:1rem;color:var(--color-warning);">${pr.severities?.medium || 0}</strong>
-            </div>
-            <div>
-                <span style="font-size:0.75rem;color:var(--text-muted);display:block;">Low Severity</span>
-                <strong style="font-size:1rem;color:var(--color-info);">${pr.severities?.low || 0}</strong>
-            </div>
-        </div>
-
-        <div>
-            <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:1rem;">Detected Code Issues (${issues.length})</h3>
-            <div style="display:flex;flex-direction:column;gap:1rem;">
-                ${issues.length > 0 ? issues.map(iss => `
-                    <div style="padding:1rem;background:rgba(255,255,255,0.02);border:1px solid var(--border-color);border-radius:10px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
-                            <strong style="font-size:0.95rem;color:var(--text-primary);">${dom.escape(iss.title || 'Security/Code Finding')}</strong>
-                            <span class="badge ${iss.severity === 'high' ? 'badge-error' : (iss.severity === 'medium' ? 'badge-warning' : 'badge-info')}">
-                                ${dom.escape(iss.severity?.toUpperCase() || 'LOW')}
-                            </span>
-                        </div>
-                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem;">${dom.escape(iss.description || '')}</p>
-                        <div style="font-size:0.75rem;color:var(--text-muted);font-family:monospace;background:rgba(0,0,0,0.3);padding:0.4rem 0.6rem;border-radius:6px;">
-                            📄 File: ${dom.escape(iss.file || 'unknown')} : Line ${iss.line || 0}
-                        </div>
-                    </div>
-                `).join("") : `
-                    <div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:0.9rem;">
-                        ✨ Zero issues detected! Code is clean and meets all security policies.
-                    </div>
-                `}
-            </div>
-        </div>
-
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:0.75rem;border-top:1px solid var(--border-color);padding-top:1rem;">
-            <button type="button" id="rerun-review-btn" class="btn btn-primary" style="gap:0.5rem;">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 11-.57-8.38l5.67-5.67"/></svg>
-                Re-run AI Analysis
-            </button>
-            <button type="button" id="close-modal-footer-btn" class="btn btn-secondary">Close</button>
-        </div>
+                return `
+                    <tr style="border-bottom:1px solid var(--border-color);transition:background 0.2s;" class="table-row-hover">
+                        <td style="padding:1rem;font-weight:600;color:var(--text-primary);">${repoName}</td>
+                        <td style="padding:1rem;">
+                            <a href="${prUrl}" target="_blank" rel="noopener noreferrer" style="color:var(--primary);font-weight:700;text-decoration:none;">
+                                #${pr.number}
+                            </a>
+                        </td>
+                        <td style="padding:1rem;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${title}">
+                            ${title}
+                        </td>
+                        <td style="padding:1rem;color:var(--text-secondary);">
+                            <div style="display:flex;align-items:center;gap:0.5rem;">
+                                ${pr.author_avatar ? `<img src="${dom.escape(pr.author_avatar)}" alt="${author}" style="width:22px;height:22px;border-radius:50%;">` : ""}
+                                <span>${author}</span>
+                            </div>
+                        </td>
+                        <td style="padding:1rem;">${stateBadge}</td>
+                        <td style="padding:1rem;">${draftBadge}</td>
+                        <td style="padding:1rem;color:var(--text-muted);font-size:0.8rem;">${updatedTime}</td>
+                    </tr>
+                `;
+            }).join("")}
+        </tbody>
     `;
 
-    const closeModal = () => { modalContainer.innerHTML = ""; };
+    tableCard.appendChild(table);
+    container.appendChild(tableCard);
+}
 
-    modal.querySelector("#close-modal-btn")?.addEventListener("click", closeModal);
-    modal.querySelector("#close-modal-footer-btn")?.addEventListener("click", closeModal);
-    backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeModal(); });
-
-    const rerunBtn = modal.querySelector("#rerun-review-btn");
-    rerunBtn?.addEventListener("click", async () => {
-        rerunBtn.disabled = true;
-        rerunBtn.innerHTML = `<div class="spinner" style="width:14px;height:14px;"></div> Queuing…`;
-        try {
-            const parts = pr.repo.split("/");
-            if (parts.length === 2) {
-                await api.triggerPullRequestReview(parts[0], parts[1], pr.pr_number);
-                Toast.success(`AI Code Review queued for PR #${pr.pr_number}`);
-                closeModal();
-                await _loadPullRequests();
-            }
-        } catch (err) {
-            Toast.error(err?.message || "Failed to trigger review re-run.");
-        } finally {
-            rerunBtn.disabled = false;
-        }
+function _getFilteredItems() {
+    if (!_prsState.searchQuery) return _prsState.items;
+    const q = _prsState.searchQuery.toLowerCase();
+    return _prsState.items.filter(item => {
+        const titleMatch = (item.title || "").toLowerCase().includes(q);
+        const repoMatch = (item.repository_name || "").toLowerCase().includes(q);
+        const authorMatch = (item.author_login || "").toLowerCase().includes(q);
+        const numberMatch = String(item.number).includes(q);
+        return titleMatch || repoMatch || authorMatch || numberMatch;
     });
+}
 
-    backdrop.appendChild(modal);
-    modalContainer.appendChild(backdrop);
+function _getStateBadge(pr) {
+    if (pr.merged) {
+        return `<span class="badge badge-purple" style="background:rgba(168,85,247,0.15);color:#c084fc;border:1px solid rgba(168,85,247,0.3);">🟣 Merged</span>`;
+    }
+    if (pr.state === "closed") {
+        return `<span class="badge badge-error">🔴 Closed</span>`;
+    }
+    if (pr.draft) {
+        return `<span class="badge badge-warning">📝 Draft</span>`;
+    }
+    return `<span class="badge badge-success">🟢 Open</span>`;
 }

@@ -248,6 +248,44 @@ async def initialize_auth_db() -> None:
             )
         """)
 
+        # 10. Enterprise Pull Requests Metadata Table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS pull_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                github_pr_id INTEGER UNIQUE NOT NULL,
+                repository_id INTEGER,
+                repository_name TEXT NOT NULL,
+                owner TEXT NOT NULL,
+                number INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                body TEXT,
+                state TEXT NOT NULL DEFAULT 'open',
+                draft INTEGER DEFAULT 0,
+                merged INTEGER DEFAULT 0,
+                mergeable INTEGER DEFAULT 1,
+                author_login TEXT NOT NULL,
+                author_avatar TEXT,
+                base_branch TEXT NOT NULL DEFAULT 'main',
+                head_branch TEXT NOT NULL,
+                head_sha TEXT NOT NULL,
+                base_sha TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                closed_at TEXT,
+                merged_at TEXT,
+                html_url TEXT,
+                api_url TEXT,
+                additions INTEGER DEFAULT 0,
+                deletions INTEGER DEFAULT 0,
+                changed_files INTEGER DEFAULT 0,
+                commits INTEGER DEFAULT 0,
+                labels TEXT DEFAULT '[]',
+                requested_reviewers TEXT DEFAULT '[]',
+                raw_payload TEXT,
+                last_synced_at TEXT NOT NULL
+            )
+        """)
+
         # Indexes for query performance & scale
         await db.execute("CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);")
@@ -257,6 +295,9 @@ async def initialize_auth_db() -> None:
         await db.execute("CREATE INDEX IF NOT EXISTS idx_repos_full_name ON selected_repos(repo_full_name);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_orgs_user ON organizations(user_id);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_webhook_del ON webhook_deliveries(delivery_id);")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_prs_github_id ON pull_requests(github_pr_id);")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_prs_repo_num ON pull_requests(repository_name, number);")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_prs_state ON pull_requests(state);")
 
         # Migration helper for existing DBs: ensure deleted_at exists in users table
         try:
@@ -850,4 +891,206 @@ async def record_webhook_delivery(
     except Exception:
         # Unique constraint violation means duplicate delivery ID
         return False
+
+
+async def upsert_pull_request(pr_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Upserts pull request metadata into the pull_requests table.
+    Overwrites existing records based on github_pr_id.
+    """
+    now_str = datetime.now(timezone.utc).isoformat()
+
+    github_pr_id = pr_data["github_pr_id"]
+    repository_id = pr_data.get("repository_id")
+    repository_name = pr_data["repository_name"]
+    owner = pr_data["owner"]
+    number = pr_data["number"]
+    title = pr_data.get("title", "")
+    body = pr_data.get("body", "")
+    state = pr_data.get("state", "open").lower()
+    draft = 1 if pr_data.get("draft") else 0
+    merged = 1 if pr_data.get("merged") else 0
+    mergeable = 1 if pr_data.get("mergeable", True) else 0
+    author_login = pr_data.get("author_login", "unknown")
+    author_avatar = pr_data.get("author_avatar", "")
+    base_branch = pr_data.get("base_branch", "main")
+    head_branch = pr_data.get("head_branch", "")
+    head_sha = pr_data.get("head_sha", "")
+    base_sha = pr_data.get("base_sha", "")
+    created_at = pr_data.get("created_at") or now_str
+    updated_at = pr_data.get("updated_at") or now_str
+    closed_at = pr_data.get("closed_at")
+    merged_at = pr_data.get("merged_at")
+    html_url = pr_data.get("html_url", "")
+    api_url = pr_data.get("api_url", "")
+    additions = pr_data.get("additions", 0)
+    deletions = pr_data.get("deletions", 0)
+    changed_files = pr_data.get("changed_files", 0)
+    commits = pr_data.get("commits", 0)
+
+    labels_json = json.dumps(pr_data.get("labels", [])) if isinstance(pr_data.get("labels"), (list, dict)) else (pr_data.get("labels") or "[]")
+    reviewers_json = json.dumps(pr_data.get("requested_reviewers", [])) if isinstance(pr_data.get("requested_reviewers"), (list, dict)) else (pr_data.get("requested_reviewers") or "[]")
+    raw_payload_json = json.dumps(pr_data.get("raw_payload", {})) if isinstance(pr_data.get("raw_payload"), dict) else (pr_data.get("raw_payload") or "{}")
+
+    async with get_db() as db:
+        await db.execute(
+            """
+            INSERT INTO pull_requests (
+                github_pr_id, repository_id, repository_name, owner, number,
+                title, body, state, draft, merged, mergeable,
+                author_login, author_avatar, base_branch, head_branch,
+                head_sha, base_sha, created_at, updated_at, closed_at,
+                merged_at, html_url, api_url, additions, deletions,
+                changed_files, commits, labels, requested_reviewers,
+                raw_payload, last_synced_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(github_pr_id) DO UPDATE SET
+                repository_id=excluded.repository_id,
+                repository_name=excluded.repository_name,
+                owner=excluded.owner,
+                number=excluded.number,
+                title=excluded.title,
+                body=excluded.body,
+                state=excluded.state,
+                draft=excluded.draft,
+                merged=excluded.merged,
+                mergeable=excluded.mergeable,
+                author_login=excluded.author_login,
+                author_avatar=excluded.author_avatar,
+                base_branch=excluded.base_branch,
+                head_branch=excluded.head_branch,
+                head_sha=excluded.head_sha,
+                base_sha=excluded.base_sha,
+                created_at=excluded.created_at,
+                updated_at=excluded.updated_at,
+                closed_at=excluded.closed_at,
+                merged_at=excluded.merged_at,
+                html_url=excluded.html_url,
+                api_url=excluded.api_url,
+                additions=excluded.additions,
+                deletions=excluded.deletions,
+                changed_files=excluded.changed_files,
+                commits=excluded.commits,
+                labels=excluded.labels,
+                requested_reviewers=excluded.requested_reviewers,
+                raw_payload=excluded.raw_payload,
+                last_synced_at=excluded.last_synced_at
+            """,
+            (
+                github_pr_id, repository_id, repository_name, owner, number,
+                title, body, state, draft, merged, mergeable,
+                author_login, author_avatar, base_branch, head_branch,
+                head_sha, base_sha, created_at, updated_at, closed_at,
+                merged_at, html_url, api_url, additions, deletions,
+                changed_files, commits, labels_json, reviewers_json,
+                raw_payload_json, now_str,
+            ),
+        )
+        await db.commit()
+
+        async with db.execute("SELECT * FROM pull_requests WHERE github_pr_id = ?", (github_pr_id,)) as cur:
+            row = await cur.fetchone()
+            res = dict(row)
+            res["draft"] = bool(res["draft"])
+            res["merged"] = bool(res["merged"])
+            res["labels"] = json.loads(res["labels"]) if res.get("labels") else []
+            res["requested_reviewers"] = json.loads(res["requested_reviewers"]) if res.get("requested_reviewers") else []
+            return res
+
+
+async def get_pull_request(number: int, repository_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Fetch a single pull request by number and optional repository_name."""
+    async with get_db() as db:
+        if repository_name:
+            query = "SELECT * FROM pull_requests WHERE number = ? AND (repository_name = ? OR owner || '/' || repository_name = ?)"
+            params = (number, repository_name, repository_name)
+        else:
+            query = "SELECT * FROM pull_requests WHERE number = ? ORDER BY id DESC LIMIT 1"
+            params = (number,)
+
+        async with db.execute(query, params) as cur:
+            row = await cur.fetchone()
+            if not row:
+                return None
+            res = dict(row)
+            res["draft"] = bool(res["draft"])
+            res["merged"] = bool(res["merged"])
+            res["labels"] = json.loads(res["labels"]) if res.get("labels") else []
+            res["requested_reviewers"] = json.loads(res["requested_reviewers"]) if res.get("requested_reviewers") else []
+            return res
+
+
+async def list_pull_requests(
+    page: int = 1, per_page: int = 20, state_filter: Optional[str] = None
+) -> Dict[str, Any]:
+    """Lists paginated pull requests with optional state filtering."""
+    offset = (page - 1) * per_page
+    where_clause = ""
+    params: List[Any] = []
+
+    if state_filter and state_filter.lower() != "all":
+        st = state_filter.lower()
+        if st == "merged":
+            where_clause = "WHERE merged = 1"
+        elif st == "draft":
+            where_clause = "WHERE draft = 1 AND state = 'open'"
+        elif st == "closed":
+            where_clause = "WHERE state = 'closed' AND merged = 0"
+        else:
+            where_clause = "WHERE state = ?"
+            params.append(st)
+
+    async with get_db() as db:
+        async with db.execute(f"SELECT COUNT(*) as count FROM pull_requests {where_clause}", params) as cur:
+            total_row = await cur.fetchone()
+            total = total_row["count"] if total_row else 0
+
+        query = f"SELECT * FROM pull_requests {where_clause} ORDER BY updated_at DESC LIMIT ? OFFSET ?"
+        async with db.execute(query, params + [per_page, offset]) as cur:
+            rows = await cur.fetchall()
+            items = []
+            for row in rows:
+                r = dict(row)
+                r["draft"] = bool(r["draft"])
+                r["merged"] = bool(r["merged"])
+                r["labels"] = json.loads(r["labels"]) if r.get("labels") else []
+                r["requested_reviewers"] = json.loads(r["requested_reviewers"]) if r.get("requested_reviewers") else []
+                items.append(r)
+
+    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": total_pages,
+    }
+
+
+async def get_pr_stats() -> Dict[str, int]:
+    """Returns total, open, closed, merged, and draft PR metrics."""
+    async with get_db() as db:
+        async with db.execute(
+            """
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN state = 'open' AND draft = 0 THEN 1 ELSE 0 END) as open_count,
+                SUM(CASE WHEN state = 'closed' AND merged = 0 THEN 1 ELSE 0 END) as closed_count,
+                SUM(CASE WHEN merged = 1 THEN 1 ELSE 0 END) as merged_count,
+                SUM(CASE WHEN draft = 1 AND state = 'open' THEN 1 ELSE 0 END) as draft_count
+            FROM pull_requests
+            """
+        ) as cur:
+            row = await cur.fetchone()
+            if not row:
+                return {"total": 0, "open": 0, "closed": 0, "merged": 0, "draft": 0}
+            return {
+                "total": row["total"] or 0,
+                "open": row["open_count"] or 0,
+                "closed": row["closed_count"] or 0,
+                "merged": row["merged_count"] or 0,
+                "draft": row["draft_count"] or 0,
+            }
+
 
