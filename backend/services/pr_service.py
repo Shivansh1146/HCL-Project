@@ -1,24 +1,36 @@
 """
-services/pr_service.py — Enterprise Pull Request Processing Service.
+services/pr_service.py — Enterprise Pull Request Processing & AI Review Service.
 
 Responsibilities:
 1. Extract pull request metadata from GitHub webhook payloads.
 2. Filter & process supported PR actions: opened, edited, reopened, ready_for_review, closed, synchronize.
 3. Perform database persistence (upsert) to store PR state, author details, branches, SHAs, and change metrics.
-4. Provide accessors for listing paginated PRs, retrieving PR details, and compiling PR metrics/stats.
-
-NO AI review generation or Groq/OpenAI calls in Phase 1.7.
+4. Launch background AI review tasks (using BackgroundTasks) for PR actions: opened, reopened, ready_for_review, synchronize.
+5. Invoke AIService.analyze_code() and multi-layer validators (DiffValidator, FilterService, SyntaxValidator).
+6. Persist review results, decision, and findings to the database.
+7. (Phase 2.2) Automatically publish GitHub PR reviews after successful AI analysis.
 """
 
+import json
 import logging
 from typing import Any, Dict, List, Optional
+from fastapi import BackgroundTasks
 
 from auth.store import (
     get_pr_stats as store_get_pr_stats,
     get_pull_request as store_get_pull_request,
     list_pull_requests as store_list_pull_requests,
     upsert_pull_request as store_upsert_pull_request,
+    update_pull_request_review_results,
+    update_pull_request_review_published,
+    get_installation_id_for_repo,
 )
+from services.ai_service import get_ai_service
+from services.diff_validator import DiffValidator
+from services.filter_service import parse_and_filter_issues
+from services.github_service import fetch_diff
+from services.syntax_validator import SyntaxValidator
+from services.review_publisher import publish_review
 
 logger = logging.getLogger("backend")
 
@@ -31,18 +43,206 @@ SUPPORTED_PR_ACTIONS = {
     "synchronize",
 }
 
+AI_TRIGGER_ACTIONS = {
+    "opened",
+    "reopened",
+    "ready_for_review",
+    "synchronize",
+}
+
+
+async def run_ai_review_task(
+    github_pr_id: int,
+    owner: str,
+    repo: str,
+    pr_number: int,
+    head_sha: Optional[str] = None,
+    installation_id: Optional[int] = None,
+):
+    """
+    Background task worker executing AI code review + GitHub review publish.
+
+    Pipeline:
+    1. Mark PR review status as 'processing'.
+    2. Fetch PR diff via GitHub API.
+    3. Analyze diff using AIService.analyze_code().
+    4. Filter & validate issues using FilterService, DiffValidator, SyntaxValidator.
+    5. Compute final risk decision (SAFE / REVIEW_REQUIRED / BLOCK).
+    6. Persist review status, decision, metrics, and findings into SQLite.
+    7. (Phase 2.2) Publish GitHub PR review via ReviewPublisher.
+    """
+    logger.info(f"🤖 [AI_REVIEW_TASK] Starting review for {owner}/{repo} PR #{pr_number} (github_pr_id={github_pr_id})")
+
+    await update_pull_request_review_results(
+        github_pr_id=github_pr_id,
+        review_status="processing",
+        decision="PROCESSING",
+    )
+
+    try:
+        diff = await fetch_diff(owner, repo, pr_number)
+        if diff is None:
+            logger.warning(f"⚠️ [AI_REVIEW_TASK] Could not fetch diff for {owner}/{repo} PR #{pr_number}")
+            await update_pull_request_review_results(
+                github_pr_id=github_pr_id,
+                review_status="failed",
+                decision="ERROR",
+                review_summary="Failed to fetch git diff from GitHub API.",
+            )
+            return
+
+        if not diff.strip():
+            logger.info(f"⏭️ [AI_REVIEW_TASK] Empty diff for {owner}/{repo} PR #{pr_number} — marked SAFE.")
+            await update_pull_request_review_results(
+                github_pr_id=github_pr_id,
+                review_status="success",
+                decision="SAFE",
+                issues_count=0,
+                high_count=0,
+                medium_count=0,
+                low_count=0,
+                coverage_percentage=100.0,
+                review_summary="No code changes found in diff.",
+                issues_json="[]",
+            )
+            return
+
+        ai_service = get_ai_service()
+        analysis = await ai_service.analyze_code(diff)
+
+        status_flag = analysis.get("status", "success")
+        if status_flag == "failed":
+            reason = analysis.get("reason", "Unknown AI error")
+            logger.warning(f"❌ [AI_REVIEW_TASK] AI analysis failed for PR #{pr_number}: {reason}")
+            await update_pull_request_review_results(
+                github_pr_id=github_pr_id,
+                review_status="failed",
+                decision="ANALYSIS_INCOMPLETE" if reason == "RATE_LIMIT" else "ERROR",
+                review_summary=f"AI analysis failed: {reason}",
+                issues_json="[]",
+            )
+            return
+
+        # Normalize issue dictionary keys for filter_service requirements
+        raw_issues = analysis.get("issues", [])
+        for issue in raw_issues:
+            if "fix" not in issue and "suggested_fix" in issue:
+                issue["fix"] = issue["suggested_fix"]
+            if "type" not in issue:
+                issue["type"] = issue.get("category", issue.get("severity", "security"))
+
+        filtered_issues = parse_and_filter_issues({"issues": raw_issues}, diff)
+
+        diff_mapping = DiffValidator.parse_diff_mapping(diff)
+        valid_issues = []
+        high_c = 0
+        medium_c = 0
+        low_c = 0
+
+        for issue in filtered_issues:
+            file_path = issue.get("file", "")
+            fix_code = issue.get("suggested_fix") or issue.get("fix", "")
+
+            # DiffValidator.validate_issue checks line presence & updates issue['line'] in-place if nearby
+            if not DiffValidator.validate_issue(issue, diff_mapping):
+                continue
+
+            if fix_code and file_path.endswith(".py"):
+                if not SyntaxValidator.is_valid_python(fix_code):
+                    continue
+
+            valid_issues.append(issue)
+            sev = str(issue.get("severity", "medium")).lower()
+            if sev == "high" or sev == "critical":
+                high_c += 1
+            elif sev == "low":
+                low_c += 1
+            else:
+                medium_c += 1
+
+        if high_c > 0:
+            decision = "BLOCK"
+        elif medium_c > 0:
+            decision = "REVIEW_REQUIRED"
+        else:
+            decision = "SAFE"
+
+        coverage = float(analysis.get("coverage", 100.0))
+        total_chunks = analysis.get("total_chunks", 1)
+        processed_chunks = analysis.get("processed_chunks", 1)
+        if total_chunks > 0 and coverage == 100.0:
+            coverage = round((processed_chunks / total_chunks) * 100.0, 1)
+
+        summary = f"Analyzed {len(valid_issues)} issues across diff. Decision: {decision}."
+
+        issues_json_str = json.dumps(valid_issues)
+        await update_pull_request_review_results(
+            github_pr_id=github_pr_id,
+            review_status="success",
+            decision=decision,
+            issues_count=len(valid_issues),
+            high_count=high_c,
+            medium_count=medium_c,
+            low_count=low_c,
+            coverage_percentage=coverage,
+            review_summary=summary,
+            issues_json=issues_json_str,
+        )
+        logger.info(f"✅ [AI_REVIEW_TASK] Completed AI review for PR #{pr_number}: decision={decision}, issues={len(valid_issues)}")
+
+        # Phase 2.2 — Publish review to GitHub
+        try:
+            install_id = installation_id
+            if not install_id:
+                install_id = await get_installation_id_for_repo(owner, repo)
+
+            pub_result = await publish_review(
+                github_pr_id=github_pr_id,
+                owner=owner,
+                repo=repo,
+                pr_number=pr_number,
+                head_sha=head_sha or "",
+                decision=decision,
+                issues_json=issues_json_str,
+                review_summary=summary,
+                installation_id=install_id,
+            )
+            if pub_result.get("status") == "success":
+                logger.info(
+                    f"📝 [AI_REVIEW_TASK] GitHub review published: "
+                    f"review_id={pub_result.get('review_id')}, "
+                    f"comments={pub_result.get('comments_posted')}"
+                )
+            else:
+                logger.warning(f"⚠️ [AI_REVIEW_TASK] GitHub review publish failed: {pub_result.get('error')}")
+        except Exception as pub_exc:
+            logger.error(f"💥 [AI_REVIEW_TASK] ReviewPublisher raised: {pub_exc}", exc_info=True)
+
+    except Exception as e:
+        logger.error(f"💥 [AI_REVIEW_TASK] Exception during review for PR #{pr_number}: {str(e)}", exc_info=True)
+        await update_pull_request_review_results(
+            github_pr_id=github_pr_id,
+            review_status="failed",
+            decision="ERROR",
+            review_summary=f"Internal error during review: {str(e)}",
+        )
+
 
 class PRService:
     """Service layer handling pull request webhook ingestion and queries."""
 
     @classmethod
     async def process_pull_request_event(
-        cls, payload: Dict[str, Any], delivery_id: Optional[str] = None
+        cls,
+        payload: Dict[str, Any],
+        delivery_id: Optional[str] = None,
+        background_tasks: Optional[BackgroundTasks] = None,
     ) -> Dict[str, Any]:
         """
         Parses GitHub `pull_request` webhook payload and updates local database.
 
         Supported actions: opened, edited, reopened, ready_for_review, closed, synchronize.
+        Launches background AI review task for: opened, reopened, ready_for_review, synchronize.
         """
         action = payload.get("action", "").lower()
         if action not in SUPPORTED_PR_ACTIONS:
@@ -144,6 +344,20 @@ class PRService:
             f"for '{normalized_data['repository_name']}'"
         )
 
+        # Dispatch background AI review task for supported trigger actions
+        ai_task_dispatched = False
+        if background_tasks is not None and action in AI_TRIGGER_ACTIONS:
+            background_tasks.add_task(
+                run_ai_review_task,
+                github_pr_id=github_pr_id,
+                owner=owner_name,
+                repo=repo_name,
+                pr_number=number,
+                head_sha=head_sha,
+            )
+            ai_task_dispatched = True
+            logger.info(f"🚀 [PR_SERVICE] Scheduled background AI review task for PR #{number} (action='{action}')")
+
         return {
             "status": "processed",
             "event": "pull_request",
@@ -153,6 +367,7 @@ class PRService:
             "state": state,
             "merged": is_merged,
             "draft": is_draft,
+            "ai_review_dispatched": ai_task_dispatched,
             "delivery_id": delivery_id,
         }
 
@@ -165,12 +380,94 @@ class PRService:
 
     @classmethod
     async def list_pull_requests(
-        cls, page: int = 1, per_page: int = 20, state_filter: Optional[str] = None
+        cls,
+        page: int = 1,
+        per_page: int = 20,
+        state_filter: Optional[str] = None,
+        repository_name: Optional[str] = None,
+        author: Optional[str] = None,
+        decision: Optional[str] = None,
+        review_status: Optional[str] = None,
+        sort: Optional[str] = "newest",
+        date_range: Optional[str] = None,
+        search_query: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Retrieves paginated PRs with optional state filter."""
-        return await store_list_pull_requests(page=page, per_page=per_page, state_filter=state_filter)
+        """Retrieves paginated PRs with optional multi-field filters, search, and sorting."""
+        return await store_list_pull_requests(
+            page=page,
+            per_page=per_page,
+            state_filter=state_filter,
+            repository_name=repository_name,
+            author=author,
+            decision=decision,
+            review_status=review_status,
+            sort=sort,
+            date_range=date_range,
+            search_query=search_query,
+        )
 
     @classmethod
-    async def get_pr_stats(cls) -> Dict[str, int]:
-        """Retrieves PR metrics summary."""
+    async def get_pr_stats(cls) -> Dict[str, Any]:
+        """Retrieves PR metrics summary & AI dashboard telemetry."""
         return await store_get_pr_stats()
+
+
+    @classmethod
+    async def publish_pr_review(
+        cls,
+        owner: str,
+        repo: str,
+        pr_number: int,
+    ) -> Dict[str, Any]:
+        """
+        On-demand review publisher for POST /api/prs/{owner}/{repo}/{number}/publish-review.
+
+        Fetches the latest AI analysis results from DB for the given PR and
+        publishes them to GitHub. Prevents duplicate submission.
+        """
+        # Resolve PR record from DB
+        pr = await store_get_pull_request(pr_number, repository_name=f"{owner}/{repo}")
+        if not pr:
+            raise ValueError(f"Pull request {owner}/{repo}#{pr_number} not found in database.")
+
+        github_pr_id = pr.get("github_pr_id")
+        if not github_pr_id:
+            raise ValueError(f"github_pr_id missing for {owner}/{repo}#{pr_number}.")
+
+        # Duplicate publish guard
+        if pr.get("review_posted"):
+            existing_review_id = pr.get("github_review_id")
+            existing_comments = len(json.loads(pr.get("issues_json") or "[]"))
+            logger.info(
+                f"[PRService] Review already posted for {owner}/{repo}#{pr_number} "
+                f"(review_id={existing_review_id}). Returning cached result."
+            )
+            return {
+                "status": "already_published",
+                "review_id": existing_review_id,
+                "comments_posted": existing_comments,
+                "review_posted_at": pr.get("review_posted_at"),
+            }
+
+        decision = pr.get("decision") or "PENDING"
+        if decision in ("PENDING", "PROCESSING", "ERROR", ""):
+            raise ValueError(
+                f"AI review is not yet complete for {owner}/{repo}#{pr_number} "
+                f"(current status: {pr.get('review_status')}, decision: {decision}). "
+                f"Wait for the background task to finish."
+            )
+
+        install_id = await get_installation_id_for_repo(owner, repo)
+
+        result = await publish_review(
+            github_pr_id=github_pr_id,
+            owner=owner,
+            repo=repo,
+            pr_number=pr_number,
+            head_sha=pr.get("head_sha") or "",
+            decision=decision,
+            issues_json=pr.get("issues_json") or "[]",
+            review_summary=pr.get("review_summary"),
+            installation_id=install_id,
+        )
+        return result

@@ -2,16 +2,10 @@
  * pages/pull_requests.js — Pull Request Event Processing & Monitoring Dashboard.
  *
  * Displays ingested GitHub pull request webhook events in an enterprise dashboard:
- *  - Repository
- *  - PR #
- *  - Title
- *  - Author
- *  - State (open, closed, merged)
- *  - Draft (yes/no)
- *  - Updated Timestamp
+ *  - Repository, PR #, Title, Author, State, Draft, AI Review Status, Updated Timestamp
  *
  * Includes state filters (All, Open, Merged, Closed, Draft), stats cards, debounced search,
- * and paginated table rendering.
+ * paginated table rendering, and Publish Review action buttons.
  */
 
 import { api }             from "../services/api.js";
@@ -255,8 +249,10 @@ function _renderPrTable() {
                 <th style="padding:1rem;">Title</th>
                 <th style="padding:1rem;">Author</th>
                 <th style="padding:1rem;">State</th>
-                <th style="padding:1rem;">Draft</th>
+                <th style="padding:1rem;">AI Review</th>
+                <th style="padding:1rem;">Published</th>
                 <th style="padding:1rem;">Updated</th>
+                <th style="padding:1rem;">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -265,11 +261,13 @@ function _renderPrTable() {
                 const title = dom.escape(pr.title || "Untitled Pull Request");
                 const author = dom.escape(pr.author_login || "unknown");
                 const stateBadge = _getStateBadge(pr);
-                const draftBadge = pr.draft
-                    ? `<span class="badge badge-warning">Draft</span>`
-                    : `<span class="badge badge-secondary" style="opacity:0.6;">No</span>`;
                 const updatedTime = dom.escape(new Date(pr.updated_at || pr.created_at || Date.now()).toLocaleString());
                 const prUrl = pr.html_url ? dom.escape(pr.html_url) : "#";
+                const aiReviewBadge = _getAIReviewBadge(pr);
+                const publishedBadge = _getPublishedBadge(pr);
+                const owner = dom.escape(pr.owner || "");
+                const repoOnly = dom.escape((pr.repository_name || "").split("/").pop() || pr.repository_name);
+                const canPublish = pr.review_status === "success" && !pr.review_posted;
 
                 return `
                     <tr style="border-bottom:1px solid var(--border-color);transition:background 0.2s;" class="table-row-hover">
@@ -279,7 +277,7 @@ function _renderPrTable() {
                                 #${pr.number}
                             </a>
                         </td>
-                        <td style="padding:1rem;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${title}">
+                        <td style="padding:1rem;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${title}">
                             ${title}
                         </td>
                         <td style="padding:1rem;color:var(--text-secondary);">
@@ -289,13 +287,38 @@ function _renderPrTable() {
                             </div>
                         </td>
                         <td style="padding:1rem;">${stateBadge}</td>
-                        <td style="padding:1rem;">${draftBadge}</td>
+                        <td style="padding:1rem;">${aiReviewBadge}</td>
+                        <td style="padding:1rem;">${publishedBadge}</td>
                         <td style="padding:1rem;color:var(--text-muted);font-size:0.8rem;">${updatedTime}</td>
+                        <td style="padding:1rem;">
+                            ${canPublish ? `
+                            <button
+                                type="button"
+                                class="btn btn-primary"
+                                style="font-size:0.78rem;padding:0.3rem 0.7rem;gap:0.35rem;"
+                                id="publish-btn-${pr.number}"
+                                data-owner="${owner}"
+                                data-repo="${repoOnly}"
+                                data-pr-number="${pr.number}"
+                                aria-label="Publish AI review to GitHub for PR #${pr.number}"
+                            >
+                                📤 Publish
+                            </button>
+                            ` : `<span style="color:var(--text-muted);font-size:0.78rem;">—</span>`}
+                        </td>
                     </tr>
                 `;
             }).join("")}
         </tbody>
     `;
+
+    // Attach Publish Review button handlers
+    table.querySelectorAll("[id^='publish-btn-']").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            const { owner, repo, prNumber } = btn.dataset;
+            await _publishReview(owner, repo, parseInt(prNumber, 10), btn);
+        });
+    });
 
     tableCard.appendChild(table);
     container.appendChild(tableCard);
@@ -324,4 +347,69 @@ function _getStateBadge(pr) {
         return `<span class="badge badge-warning">📝 Draft</span>`;
     }
     return `<span class="badge badge-success">🟢 Open</span>`;
+}
+
+function _getAIReviewBadge(pr) {
+    const status = pr.review_status || "pending";
+    const decision = pr.decision || "";
+
+    const decisionColors = {
+        "SAFE":             { bg: "rgba(16,185,129,0.15)", color: "#10b981", border: "rgba(16,185,129,0.3)", emoji: "✅" },
+        "REVIEW_REQUIRED":  { bg: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "rgba(245,158,11,0.3)",  emoji: "⚠️" },
+        "BLOCK":            { bg: "rgba(239,68,68,0.15)",  color: "#ef4444", border: "rgba(239,68,68,0.3)",   emoji: "🚫" },
+        "ANALYSIS_INCOMPLETE": { bg: "rgba(107,114,128,0.15)", color: "#9ca3af", border: "rgba(107,114,128,0.3)", emoji: "⏭️" },
+    };
+    const statusColors = {
+        "pending":    { bg: "rgba(107,114,128,0.15)", color: "#9ca3af", border: "rgba(107,114,128,0.3)", label: "⏳ Pending" },
+        "processing": { bg: "rgba(59,130,246,0.15)",  color: "#3b82f6", border: "rgba(59,130,246,0.3)",  label: "🔄 Processing" },
+        "failed":     { bg: "rgba(239,68,68,0.15)",   color: "#ef4444", border: "rgba(239,68,68,0.3)",   label: "💥 Failed" },
+    };
+
+    if (status === "success" && decision && decisionColors[decision]) {
+        const c = decisionColors[decision];
+        const issues = pr.issues_count || 0;
+        return `<span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.2rem 0.6rem;border-radius:9999px;font-size:0.75rem;font-weight:600;background:${c.bg};color:${c.color};border:1px solid ${c.border};">${c.emoji} ${decision}${issues > 0 ? ` (${issues})` : ""}</span>`;
+    }
+    if (statusColors[status]) {
+        const c = statusColors[status];
+        return `<span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.2rem 0.6rem;border-radius:9999px;font-size:0.75rem;font-weight:600;background:${c.bg};color:${c.color};border:1px solid ${c.border};">${c.label}</span>`;
+    }
+    return `<span style="color:var(--text-muted);font-size:0.78rem;">—</span>`;
+}
+
+function _getPublishedBadge(pr) {
+    if (pr.review_posted) {
+        const reviewId = pr.github_review_id ? `#${pr.github_review_id}` : "";
+        const postedAt = pr.review_posted_at ? new Date(pr.review_posted_at).toLocaleString() : "";
+        return `<span title="Published to GitHub ${postedAt}" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.2rem 0.6rem;border-radius:9999px;font-size:0.75rem;font-weight:600;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);">✅ Published ${reviewId}</span>`;
+    }
+    if (pr.review_status === "success") {
+        return `<span style="display:inline-flex;align-items:center;padding:0.2rem 0.6rem;border-radius:9999px;font-size:0.75rem;font-weight:600;background:rgba(107,114,128,0.12);color:#9ca3af;border:1px solid rgba(107,114,128,0.25);">Not Published</span>`;
+    }
+    return `<span style="color:var(--text-muted);font-size:0.78rem;">—</span>`;
+}
+
+async function _publishReview(owner, repo, prNumber, btn) {
+    if (!btn) return;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span style="opacity:0.7;">⏳ Publishing…</span>`;
+    try {
+        const result = await api.publishPullRequestReview(owner, repo, prNumber);
+        if (result.status === "success" || result.status === "already_published") {
+            const reviewId = result.review_id ? ` (Review #${result.review_id})` : "";
+            const comments = result.comments_posted != null ? `, ${result.comments_posted} comment(s)` : "";
+            Toast.success(`✅ Review published to GitHub${reviewId}${comments}`);
+            await _loadPullRequests();
+        } else {
+            Toast.error(result.error || "Review publish returned an unexpected status.");
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    } catch (err) {
+        console.error("[PRs] publish review error:", err);
+        Toast.error(err?.message || "Failed to publish review to GitHub.");
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
 }

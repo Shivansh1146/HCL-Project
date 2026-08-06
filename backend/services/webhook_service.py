@@ -16,7 +16,7 @@ import logging
 import os
 from typing import Any, Dict, Optional, Tuple
 
-from fastapi import Request, HTTPException, status
+from fastapi import Request, HTTPException, status, BackgroundTasks
 from services.audit_service import AuditService
 from auth.models import AuditSeverity
 from auth.store import is_delivery_processed, record_webhook_delivery
@@ -54,7 +54,7 @@ class WebhookService:
         return hmac.compare_digest(computed_sig, expected_sig)
 
     @classmethod
-    async def process_webhook(cls, request: Request) -> Dict[str, Any]:
+    async def process_webhook(cls, request: Request, background_tasks: Optional[BackgroundTasks] = None) -> Dict[str, Any]:
         """
         Main entry point for processing incoming GitHub webhook requests.
 
@@ -159,7 +159,9 @@ class WebhookService:
         action = payload.get("action")
         logger.info(f"⚓ [WEBHOOK] Event='{event_type}' Action='{action}' Delivery='{delivery_id}'")
 
-        result = await cls._handle_event(event_type, action, payload, delivery_id, request)
+        result = await cls._handle_event(
+            event_type, action, payload, delivery_id, request, background_tasks=background_tasks
+        )
 
         # 7. Record Delivery GUID
         if delivery_id:
@@ -175,6 +177,7 @@ class WebhookService:
         payload: Dict[str, Any],
         delivery_id: str,
         request: Request,
+        background_tasks: Optional[BackgroundTasks] = None,
     ) -> Dict[str, Any]:
         """Dispatches event types to appropriate loggers / handlers."""
 
@@ -288,8 +291,10 @@ class WebhookService:
                 request=request,
             )
 
-            # Delegate to PR processing service (upserts into DB)
-            res = await PRService.process_pull_request_event(payload, delivery_id)
+            # Delegate to PR processing service (upserts into DB and dispatches AI review)
+            res = await PRService.process_pull_request_event(
+                payload, delivery_id, background_tasks=background_tasks
+            )
             res["delivery_id"] = delivery_id
             return res
 

@@ -7,7 +7,7 @@ Exposes:
 
 import logging
 from typing import Any, Dict
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, BackgroundTasks, Request, status
 from services.webhook_service import WebhookService
 
 logger = logging.getLogger("backend")
@@ -16,7 +16,9 @@ router = APIRouter(prefix="/api/webhooks", tags=["Webhooks"])
 
 
 @router.post("/github", status_code=status.HTTP_200_OK)
-async def handle_github_webhook(request: Request) -> Dict[str, Any]:
+async def handle_github_webhook(
+    request: Request, background_tasks: BackgroundTasks
+) -> Dict[str, Any]:
     """
     POST /api/webhooks/github
 
@@ -33,4 +35,6 @@ async def handle_github_webhook(request: Request) -> Dict[str, Any]:
     - Deduplicates event processing using X-GitHub-Delivery
     - Records audit logs for compliance
     """
-    return await WebhookService.process_webhook(request)
+    return await WebhookService.process_webhook(
+        request, background_tasks=background_tasks
+    )

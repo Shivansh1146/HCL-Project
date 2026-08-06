@@ -166,6 +166,73 @@ class GitHubService:
             logger.error(f"GitHub API Error in post_inline_comment: {str(e)}")
             return False
 
+    async def post_pull_request_review(
+        self,
+        owner: str,
+        repo: str,
+        pr_number: int,
+        event: str,
+        body: str,
+        comments: Optional[list] = None,
+        commit_sha: Optional[str] = None,
+        token: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Publishes a pull request review using GitHub's Pull Request Review API.
+        Event: APPROVE, COMMENT, REQUEST_CHANGES.
+        Handles transient retries (429 rate limit, 5xx errors) and self-review fallback (422).
+        """
+        url = f"{GITHUB_API_BASE}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
+        headers = self.headers.copy()
+        tok = token or self.token
+        if tok:
+            headers["Authorization"] = f"Bearer {tok}"
+        headers["Accept"] = "application/vnd.github.v3+json"
+
+        payload: Dict[str, Any] = {
+            "body": body,
+            "event": event,
+            "comments": comments or []
+        }
+        if commit_sha:
+            payload["commit_id"] = commit_sha
+
+        logger.info(f"Posting PR review to {owner}/{repo}#{pr_number} (event={event}, comments={len(comments or [])})")
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            for attempt in range(1, 4):
+                try:
+                    resp = await client.post(url, headers=headers, json=payload)
+
+                    if resp.status_code == 429 or resp.status_code >= 500:
+                        retry_after = resp.headers.get("Retry-After")
+                        wait = int(retry_after) if retry_after and retry_after.isdigit() else attempt * 2
+                        logger.warning(f"GitHub review API returned {resp.status_code}. Retrying in {wait}s...")
+                        await asyncio.sleep(wait)
+                        continue
+
+                    # GitHub returns 422 if user tries to APPROVE or REQUEST_CHANGES on their own PR
+                    if resp.status_code == 422 and payload.get("event") in ("APPROVE", "REQUEST_CHANGES"):
+                        logger.warning(f"GitHub returned 422 for event={payload['event']} (likely self-review). Retrying with event='COMMENT'.")
+                        payload["event"] = "COMMENT"
+                        resp = await client.post(url, headers=headers, json=payload)
+
+                    resp.raise_for_status()
+                    data = resp.json()
+                    review_id = data.get("id", 123456)
+                    logger.info(f"✅ GitHub Review published successfully: review_id={review_id}")
+                    return {
+                        "status": "success",
+                        "review_id": review_id,
+                        "data": data
+                    }
+                except httpx.HTTPError as exc:
+                    logger.error(f"Attempt {attempt} failed posting PR review to {owner}/{repo}#{pr_number}: {str(exc)}")
+                    if attempt == 3:
+                        raise RuntimeError(f"GitHub API Error posting review: {str(exc)}") from exc
+
+        raise RuntimeError(f"Failed to post PR review to {owner}/{repo}#{pr_number} after retries")
+
 def get_github_service() -> GitHubService:
     return GitHubService()
 
@@ -182,6 +249,9 @@ async def post_comment(owner: str, repo: str, pr_number: int, comment: str) -> b
 
 async def post_inline_comment(owner: str, repo: str, pr_number: int, issue: Dict[str, Any], commit_sha: str, suggestion: Optional[str] = None) -> bool:
     return await _github_service_instance.post_inline_comment(owner, repo, pr_number, issue, commit_sha, suggestion)
+
+async def post_pull_request_review(owner: str, repo: str, pr_number: int, event: str, body: str, comments: Optional[list] = None, commit_sha: Optional[str] = None, token: Optional[str] = None) -> Dict[str, Any]:
+    return await _github_service_instance.post_pull_request_review(owner, repo, pr_number, event, body, comments, commit_sha, token)
 async def post_status(owner: str, repo: str, sha: str, state: str, description: str, target_url: str = None):
     """
     Updates the GitHub Commit Status.

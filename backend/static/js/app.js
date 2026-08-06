@@ -84,6 +84,7 @@ async function bootstrapApp() {
         .register(CONFIG.ROUTES.DASHBOARD,     async (el) => { const { renderDashboardPage }     = await import("./pages/dashboard.js");    await renderDashboardPage(el);     }, { title: "Dashboard",      requiresAuth: true  })
         .register(CONFIG.ROUTES.REPOSITORIES,  async (el) => { const { renderReposPage }         = await import("./pages/repositories.js"); await renderReposPage(el);         }, { title: "Repositories",   requiresAuth: true  })
         .register(CONFIG.ROUTES.PULL_REQUESTS, async (el) => { const { renderPullRequestsPage } = await import("./pages/pull_requests.js");await renderPullRequestsPage(el); }, { title: "Pull Requests",  requiresAuth: true  })
+        .register(CONFIG.ROUTES.REVIEW_HISTORY, async (el) => { const { renderReviewHistoryPage } = await import("./pages/review_history.js");await renderReviewHistoryPage(el); }, { title: "Review History", requiresAuth: true  })
         .register(CONFIG.ROUTES.ANALYTICS,     async (el) => { const { renderAnalyticsPage }    = await import("./pages/analytics.js");    await renderAnalyticsPage(el);     }, { title: "Analytics",      requiresAuth: true  })
         .register("#/organizations",           async (el) => { const { renderOrganizationsPage } = await import("./pages/organizations.js");await renderOrganizationsPage(el); }, { title: "Organizations",  requiresAuth: true  })
         .register(CONFIG.ROUTES.PROFILE,       async (el) => { const { renderProfilePage }       = await import("./pages/profile.js");      await renderProfilePage(el);       }, { title: "Profile",        requiresAuth: true  })
@@ -100,11 +101,13 @@ async function bootstrapApp() {
             [CONFIG.ROUTES.DASHBOARD]: "Dashboard",
             [CONFIG.ROUTES.REPOSITORIES]: "Repositories",
             [CONFIG.ROUTES.PULL_REQUESTS]: "Pull Requests",
+            [CONFIG.ROUTES.REVIEW_HISTORY]: "Review History",
             [CONFIG.ROUTES.ANALYTICS]: "Analytics",
             "#/organizations": "Organizations",
             [CONFIG.ROUTES.PROFILE]: "Profile",
             [CONFIG.ROUTES.SETTINGS]: "Settings"
         };
+
         breadcrumb.textContent = labels[e.detail.hash] || "Command Center";
 
         // Hide sidebar/header chrome on public auth pages (login, callback)

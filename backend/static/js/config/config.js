@@ -27,9 +27,11 @@ export const CONFIG = {
     },
 
     PR_ENDPOINTS: {
-        LIST:   "/api/prs",
-        DETAIL: (owner, repo, prNum) => `/api/prs/${owner}/${repo}/${prNum}`,
-        REVIEW: (owner, repo, prNum) => `/api/prs/${owner}/${repo}/${prNum}/review`
+        LIST:           "/api/prs",
+        STATS:          "/api/prs/stats",
+        DETAIL:         (owner, repo, prNum) => `/api/prs/${owner}/${repo}/${prNum}`,
+        REVIEW:         (owner, repo, prNum) => `/api/prs/${owner}/${repo}/${prNum}/review`,
+        PUBLISH_REVIEW: (owner, repo, prNum) => `/api/prs/${owner}/${repo}/${prNum}/publish-review`,
     },
 
     ANALYTICS_ENDPOINTS: {
@@ -40,15 +42,16 @@ export const CONFIG = {
     STATS_ENDPOINT: "/api/stats",
 
     ROUTES: {
-        LOGIN:         "#/login",
-        DASHBOARD:     "#/dashboard",
-        REPOSITORIES:  "#/repositories",
-        PULL_REQUESTS: "#/pull-requests",
-        ANALYTICS:     "#/analytics",
-        SETTINGS:      "#/settings",
-        PROFILE:       "#/profile",
-        UNAUTHORIZED:  "#/unauthorized",
-        NOT_FOUND:     "#/404"
+        LOGIN:          "#/login",
+        DASHBOARD:      "#/dashboard",
+        REPOSITORIES:   "#/repositories",
+        PULL_REQUESTS:  "#/pull-requests",
+        REVIEW_HISTORY: "#/review-history",
+        ANALYTICS:      "#/analytics",
+        SETTINGS:       "#/settings",
+        PROFILE:        "#/profile",
+        UNAUTHORIZED:   "#/unauthorized",
+        NOT_FOUND:      "#/404"
     },
 
     // Public routes that do NOT require auth

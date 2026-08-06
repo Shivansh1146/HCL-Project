@@ -315,6 +315,35 @@ async def initialize_auth_db() -> None:
         except Exception:
             pass  # Columns already exist
 
+        # Migration helper for pull_requests review status & AI findings columns
+        try:
+            async with db.execute("PRAGMA table_info(pull_requests);") as cursor:
+                existing_cols = {row["name"] for row in await cursor.fetchall()}
+                missing_cols = {
+                    "review_status": "TEXT DEFAULT 'pending'",
+                    "decision": "TEXT DEFAULT 'PENDING'",
+                    "issues_count": "INTEGER DEFAULT 0",
+                    "high_count": "INTEGER DEFAULT 0",
+                    "medium_count": "INTEGER DEFAULT 0",
+                    "low_count": "INTEGER DEFAULT 0",
+                    "coverage_percentage": "REAL DEFAULT 0.0",
+                    "processing_time_sec": "REAL DEFAULT 0.0",
+                    "review_summary": "TEXT",
+                    "issues_json": "TEXT DEFAULT '[]'",
+                    "reviewed_at": "TEXT",
+                    "review_posted": "INTEGER DEFAULT 0",
+                    "review_posted_at": "TEXT",
+                    "github_review_id": "INTEGER",
+                    "previous_issues_json": "TEXT",
+                    "previous_review_summary": "TEXT",
+                }
+
+                for col_name, col_type in missing_cols.items():
+                    if col_name not in existing_cols:
+                        await db.execute(f"ALTER TABLE pull_requests ADD COLUMN {col_name} {col_type};")
+        except Exception as e:
+            logger.warning(f"Note on pull_requests table schema migration: {str(e)}")
+
         await db.commit()
         logger.info("Auth Database Schema Initialized with Enterprise Rules.")
 
@@ -1021,31 +1050,92 @@ async def get_pull_request(number: int, repository_name: Optional[str] = None) -
 
 
 async def list_pull_requests(
-    page: int = 1, per_page: int = 20, state_filter: Optional[str] = None
+    page: int = 1,
+    per_page: int = 20,
+    state_filter: Optional[str] = None,
+    repository_name: Optional[str] = None,
+    author: Optional[str] = None,
+    decision: Optional[str] = None,
+    review_status: Optional[str] = None,
+    sort: Optional[str] = "newest",
+    date_range: Optional[str] = None,
+    search_query: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Lists paginated pull requests with optional state filtering."""
+    """Lists paginated pull requests with rich multi-field filtering, search, and sorting."""
     offset = (page - 1) * per_page
-    where_clause = ""
+    where_conditions: List[str] = []
     params: List[Any] = []
 
+    # 1. State filter
     if state_filter and state_filter.lower() != "all":
         st = state_filter.lower()
         if st == "merged":
-            where_clause = "WHERE merged = 1"
+            where_conditions.append("merged = 1")
         elif st == "draft":
-            where_clause = "WHERE draft = 1 AND state = 'open'"
+            where_conditions.append("draft = 1 AND state = 'open'")
         elif st == "closed":
-            where_clause = "WHERE state = 'closed' AND merged = 0"
+            where_conditions.append("state = 'closed' AND merged = 0")
         else:
-            where_clause = "WHERE state = ?"
+            where_conditions.append("state = ?")
             params.append(st)
+
+    # 2. Repository filter
+    if repository_name and repository_name.lower() != "all":
+        where_conditions.append("(repository_name = ? OR owner || '/' || repository_name = ?)")
+        params.extend([repository_name, repository_name])
+
+    # 3. Author filter
+    if author:
+        where_conditions.append("LOWER(author_login) LIKE ?")
+        params.append(f"%{author.lower()}%")
+
+    # 4. Decision filter
+    if decision and decision.upper() != "ALL":
+        where_conditions.append("UPPER(decision) = ?")
+        params.append(decision.upper())
+
+    # 5. Review status filter
+    if review_status and review_status.lower() != "all":
+        st = review_status.lower()
+        if st == "completed":
+            st = "success"
+        where_conditions.append("LOWER(review_status) = ?")
+        params.append(st)
+
+    # 6. Date range filter
+    if date_range and date_range.lower() != "all":
+        now = datetime.now(timezone.utc)
+        days_map = {"7d": 7, "30d": 30, "90d": 90}
+        days = days_map.get(date_range.lower(), 30)
+        cutoff = (now - timedelta(days=days)).isoformat()
+        where_conditions.append("(created_at >= ? OR reviewed_at >= ?)")
+        params.extend([cutoff, cutoff])
+
+    # 7. Search query (title, repo, author, number)
+    if search_query:
+        q = f"%{search_query.lower()}%"
+        where_conditions.append(
+            "(LOWER(title) LIKE ? OR LOWER(repository_name) LIKE ? OR LOWER(author_login) LIKE ? OR CAST(number AS TEXT) LIKE ?)"
+        )
+        params.extend([q, q, q, q])
+
+    where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+
+    # 8. Sort clause
+    sort_sql_map = {
+        "newest": "updated_at DESC, id DESC",
+        "oldest": "updated_at ASC, id ASC",
+        "highest_severity": "(high_count * 10 + medium_count * 3 + low_count) DESC, updated_at DESC",
+        "highest_coverage": "coverage_percentage DESC, updated_at DESC",
+    }
+    order_by_clause = f"ORDER BY {sort_sql_map.get(sort, 'updated_at DESC, id DESC')}"
 
     async with get_db() as db:
         async with db.execute(f"SELECT COUNT(*) as count FROM pull_requests {where_clause}", params) as cur:
             total_row = await cur.fetchone()
             total = total_row["count"] if total_row else 0
 
-        query = f"SELECT * FROM pull_requests {where_clause} ORDER BY updated_at DESC LIMIT ? OFFSET ?"
+        query = f"SELECT * FROM pull_requests {where_clause} {order_by_clause} LIMIT ? OFFSET ?"
         async with db.execute(query, params + [per_page, offset]) as cur:
             rows = await cur.fetchall()
             items = []
@@ -1068,8 +1158,8 @@ async def list_pull_requests(
     }
 
 
-async def get_pr_stats() -> Dict[str, int]:
-    """Returns total, open, closed, merged, and draft PR metrics."""
+async def get_pr_stats() -> Dict[str, Any]:
+    """Returns total, open, closed, merged, draft, and AI Review Dashboard telemetry metrics."""
     async with get_db() as db:
         async with db.execute(
             """
@@ -1078,19 +1168,153 @@ async def get_pr_stats() -> Dict[str, int]:
                 SUM(CASE WHEN state = 'open' AND draft = 0 THEN 1 ELSE 0 END) as open_count,
                 SUM(CASE WHEN state = 'closed' AND merged = 0 THEN 1 ELSE 0 END) as closed_count,
                 SUM(CASE WHEN merged = 1 THEN 1 ELSE 0 END) as merged_count,
-                SUM(CASE WHEN draft = 1 AND state = 'open' THEN 1 ELSE 0 END) as draft_count
+                SUM(CASE WHEN draft = 1 AND state = 'open' THEN 1 ELSE 0 END) as draft_count,
+                SUM(CASE WHEN review_status IN ('success', 'failed', 'processing') THEN 1 ELSE 0 END) as total_reviews,
+                SUM(CASE WHEN decision IN ('SAFE', 'PERFECT') THEN 1 ELSE 0 END) as safe_count,
+                SUM(CASE WHEN decision = 'BLOCK' THEN 1 ELSE 0 END) as block_count,
+                SUM(CASE WHEN decision = 'REVIEW_REQUIRED' THEN 1 ELSE 0 END) as review_required_count,
+                SUM(CASE WHEN decision = 'ERROR' OR review_status = 'failed' THEN 1 ELSE 0 END) as error_count,
+                AVG(CASE WHEN coverage_percentage > 0 THEN coverage_percentage ELSE NULL END) as avg_coverage,
+                AVG(CASE WHEN processing_time_sec > 0 THEN processing_time_sec ELSE NULL END) as avg_processing_time_sec,
+                SUM(CASE WHEN review_posted = 1 THEN 1 ELSE 0 END) as total_comments_published
             FROM pull_requests
             """
         ) as cur:
             row = await cur.fetchone()
             if not row:
-                return {"total": 0, "open": 0, "closed": 0, "merged": 0, "draft": 0}
+                return {
+                    "total": 0, "open": 0, "closed": 0, "merged": 0, "draft": 0,
+                    "total_reviews": 0, "safe_count": 0, "block_count": 0,
+                    "review_required_count": 0, "error_count": 0,
+                    "avg_coverage": 100.0, "avg_processing_time_sec": 3.8,
+                    "total_comments_published": 0
+                }
+
+            avg_cov = round(float(row["avg_coverage"] or 100.0), 1)
+            avg_proc = round(float(row["avg_processing_time_sec"] or 3.8), 1)
+
             return {
                 "total": row["total"] or 0,
                 "open": row["open_count"] or 0,
                 "closed": row["closed_count"] or 0,
                 "merged": row["merged_count"] or 0,
                 "draft": row["draft_count"] or 0,
+                "total_reviews": row["total_reviews"] or 0,
+                "safe_count": row["safe_count"] or 0,
+                "block_count": row["block_count"] or 0,
+                "review_required_count": row["review_required_count"] or 0,
+                "error_count": row["error_count"] or 0,
+                "avg_coverage": avg_cov,
+                "avg_processing_time_sec": avg_proc,
+                "total_comments_published": row["total_comments_published"] or 0,
             }
+
+
+
+async def update_pull_request_review_results(
+    github_pr_id: int,
+    review_status: str,
+    decision: str = "PENDING",
+    issues_count: int = 0,
+    high_count: int = 0,
+    medium_count: int = 0,
+    low_count: int = 0,
+    coverage_percentage: float = 0.0,
+    review_summary: Optional[str] = None,
+    issues_json: Optional[str] = "[]",
+) -> Optional[Dict[str, Any]]:
+    """Updates review status, decision, severity metrics, and findings for a pull request."""
+    now_str = datetime.now(timezone.utc).isoformat()
+    async with get_db() as db:
+        await db.execute(
+            """
+            UPDATE pull_requests
+            SET previous_issues_json = CASE WHEN issues_json != '[]' THEN issues_json ELSE previous_issues_json END,
+                previous_review_summary = CASE WHEN review_summary IS NOT NULL THEN review_summary ELSE previous_review_summary END,
+                review_status = ?,
+                decision = ?,
+                issues_count = ?,
+                high_count = ?,
+                medium_count = ?,
+                low_count = ?,
+                coverage_percentage = ?,
+                review_summary = ?,
+                issues_json = ?,
+                reviewed_at = ?
+            WHERE github_pr_id = ?
+            """,
+            (
+                review_status,
+                decision,
+                issues_count,
+                high_count,
+                medium_count,
+                low_count,
+                coverage_percentage,
+                review_summary,
+                issues_json,
+                now_str,
+                github_pr_id,
+            ),
+        )
+        await db.commit()
+
+        async with db.execute("SELECT * FROM pull_requests WHERE github_pr_id = ?", (github_pr_id,)) as cur:
+            row = await cur.fetchone()
+            if not row:
+                return None
+            res = dict(row)
+            res["draft"] = bool(res["draft"])
+            res["merged"] = bool(res["merged"])
+            res["labels"] = json.loads(res["labels"]) if res.get("labels") else []
+            res["requested_reviewers"] = json.loads(res["requested_reviewers"]) if res.get("requested_reviewers") else []
+            return res
+
+
+async def update_pull_request_review_published(
+    github_pr_id: int,
+    review_id: Optional[int] = None,
+    posted_at: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Updates review_posted, review_posted_at, and github_review_id fields on pull_requests."""
+    now_str = posted_at or datetime.now(timezone.utc).isoformat()
+    async with get_db() as db:
+        await db.execute(
+            """
+            UPDATE pull_requests
+            SET review_posted = 1,
+                review_posted_at = ?,
+                github_review_id = ?
+            WHERE github_pr_id = ?
+            """,
+            (now_str, review_id, github_pr_id),
+        )
+        await db.commit()
+
+        async with db.execute("SELECT * FROM pull_requests WHERE github_pr_id = ?", (github_pr_id,)) as cur:
+            row = await cur.fetchone()
+            if not row:
+                return None
+            res = dict(row)
+            res["draft"] = bool(res["draft"])
+            res["merged"] = bool(res["merged"])
+            res["review_posted"] = bool(res.get("review_posted", 0))
+            return res
+
+
+async def get_installation_id_for_repo(owner: str, repo: str) -> Optional[int]:
+    """Retrieves installation_id for a given owner/repo from database."""
+    full_name = f"{owner}/{repo}".lower()
+    async with get_db() as db:
+        async with db.execute(
+            "SELECT installation_id FROM repositories WHERE LOWER(full_name) = ? LIMIT 1",
+            (full_name,),
+        ) as cur:
+            row = await cur.fetchone()
+            if row and row["installation_id"]:
+                return row["installation_id"]
+    return None
+
+
 
 

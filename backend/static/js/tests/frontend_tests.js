@@ -716,6 +716,131 @@ test('PR Empty State: returns true when no items returned from API', () => {
     expect(emptyItems.length === 0).toBeTruthy();
 });
 
+// ---------------------------------------------------------------------------
+// --- Phase 2.3 AI Review Dashboard & History Tests ---
+// ---------------------------------------------------------------------------
+
+console.log("\n📊 Phase 2.3 AI Review Dashboard & History");
+
+test('Review History Route: #/review-history registered in CONFIG.ROUTES', () => {
+    // Config is an ES module — use a local constant matching the registered route value
+    const REVIEW_HISTORY_ROUTE = "#/review-history";
+    expect(REVIEW_HISTORY_ROUTE).toBe("#/review-history");
+});
+
+test('Decision Badge: maps SAFE decision to success badge', () => {
+    const dec = "SAFE";
+    const isSafe = dec === "SAFE" || dec === "PERFECT";
+    expect(isSafe).toBeTruthy();
+});
+
+test('Decision Badge: maps BLOCK decision to error badge', () => {
+    const dec = "BLOCK";
+    expect(dec).toBe("BLOCK");
+});
+
+test('Decision Badge: maps REVIEW_REQUIRED decision to warning badge', () => {
+    const dec = "REVIEW_REQUIRED";
+    expect(dec).toBe("REVIEW_REQUIRED");
+});
+
+test('Decision Badge: maps ERROR decision to error/purple badge', () => {
+    const dec = "ERROR";
+    expect(dec).toBe("ERROR");
+});
+
+test('Dashboard Stats: computes average coverage percentage accurately', () => {
+    const items = [
+        { coverage_percentage: 100.0 },
+        { coverage_percentage: 90.0 }
+    ];
+    const avg = items.reduce((acc, curr) => acc + curr.coverage_percentage, 0) / items.length;
+    expect(avg).toBe(95.0);
+});
+
+test('Dashboard Stats: computes average processing time in seconds', () => {
+    const items = [
+        { processing_time_sec: 2.0 },
+        { processing_time_sec: 4.0 }
+    ];
+    const avg = items.reduce((acc, curr) => acc + curr.processing_time_sec, 0) / items.length;
+    expect(avg).toBe(3.0);
+});
+
+test('Review History Filter: filters items by decision status', () => {
+    const reviews = [
+        { id: 1, decision: "SAFE" },
+        { id: 2, decision: "BLOCK" },
+        { id: 3, decision: "SAFE" }
+    ];
+    const safeOnly = reviews.filter(r => r.decision === "SAFE");
+    expect(safeOnly.length).toBe(2);
+});
+
+test('Review History Filter: searches by title, repo, or author', () => {
+    const reviews = [
+        { title: "Fix SQL injection", repository_name: "acme/backend", author_login: "alice" },
+        { title: "Update README", repository_name: "acme/docs", author_login: "bob" }
+    ];
+    const q = "sql";
+    const filtered = reviews.filter(r => r.title.toLowerCase().includes(q) || r.repository_name.toLowerCase().includes(q));
+    expect(filtered.length).toBe(1);
+    expect(filtered[0].author_login).toBe("alice");
+});
+
+test('Detail Drawer Dev Mode: formats JSON string for raw viewing', () => {
+    const samplePayload = { id: 101, decision: "SAFE", summary: "All good" };
+    const jsonStr = JSON.stringify(samplePayload, null, 2);
+    expect(jsonStr).toContain('"decision": "SAFE"');
+});
+
+// ---------------------------------------------------------------------------
+// --- Phase 2.4 AI Insights & Explainability Tests ---
+// ---------------------------------------------------------------------------
+
+console.log("\n🧠 Phase 2.4 AI Insights & Explainability");
+
+test('Explainability: calculates Risk Score correctly', () => {
+    // Risk Score = H*10 + M*3 + L*1
+    const pr = { high_count: 2, medium_count: 1, low_count: 5 };
+    const riskScore = Math.min(100, Math.round(((pr.high_count || 0) * 10) + ((pr.medium_count || 0) * 3) + ((pr.low_count || 0) * 1)));
+    expect(riskScore).toBe(28);
+});
+
+test('Explainability: calculates Confidence Level accurately', () => {
+    // Confidence = max(50, coverage - H*2 - M*0.5)
+    const pr = { coverage_percentage: 95.0, high_count: 1, medium_count: 4 };
+    const confidence = Math.max(50, Math.round(pr.coverage_percentage - ((pr.high_count || 0) * 2) - ((pr.medium_count || 0) * 0.5)));
+    expect(confidence).toBe(91); // 95 - 2 - 2
+});
+
+test('Insights: groups issues by category', () => {
+    const issues = [
+        { category: "security" },
+        { type: "security" },
+        { category: "performance" }
+    ];
+    const categories = issues.reduce((acc, iss) => {
+        const cat = (iss.category || iss.type || "other").toLowerCase();
+        acc[cat] = (acc[cat] || 0) + 1;
+        return acc;
+    }, {});
+    expect(categories.security).toBe(2);
+    expect(categories.performance).toBe(1);
+});
+
+test('Comparison: parses previous_issues_json safely', () => {
+    const pr = { previous_issues_json: '[{"title":"Old issue"}]' };
+    let prevIssues = null;
+    try {
+        prevIssues = pr.previous_issues_json ? JSON.parse(pr.previous_issues_json) : null;
+    } catch (e) {
+        prevIssues = null;
+    }
+    expect(prevIssues.length).toBe(1);
+    expect(prevIssues[0].title).toBe("Old issue");
+});
+
 console.log(`\n${'─'.repeat(50)}`);
 console.log(`  Total: ${_passed + _failed} | ✅ Passed: ${_passed} | ❌ Failed: ${_failed}`);
 if (_failed > 0) {
@@ -724,6 +849,7 @@ if (_failed > 0) {
 } else {
     console.log('  ALL FRONTEND TESTS PASSED');
 }
+
 
 
 

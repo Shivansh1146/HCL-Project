@@ -344,6 +344,12 @@ class ApiService {
     });
   }
 
+  publishPullRequestReview(owner, repo, prNumber) {
+    return this.request(CONFIG.PR_ENDPOINTS.PUBLISH_REVIEW(owner, repo, prNumber), {
+      method: "POST",
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Analytics Endpoints
   // ---------------------------------------------------------------------------
