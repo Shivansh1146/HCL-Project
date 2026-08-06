@@ -98,6 +98,13 @@ class GitHubAppService:
             resp = await client.get(
                 f"{GITHUB_API_BASE}/app/installations", headers=headers
             )
+            logger.info(
+                "GitHub API request: method=GET url=%s authorization_type=Bearer JWT "
+                "response_status=%s response_body=%s",
+                f"{GITHUB_API_BASE}/app/installations",
+                resp.status_code,
+                resp.text,
+            )
             if resp.status_code != 200:
                 logger.warning(
                     "Unable to list GitHub App installations: %s", resp.status_code
@@ -357,43 +364,8 @@ class GitHubAppService:
     async def sync_user_installations(
         self, user_id: int, user_access_token: str
     ) -> List[Installation]:
-        """Sync all GitHub App installations visible to the authenticated user."""
-        if not user_access_token:
-            return await get_installations_for_user(user_id)
-
-        headers = {
-            "Authorization": f"Bearer {user_access_token}",
-            "Accept": "application/vnd.github+json",
-        }
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(
-                f"{GITHUB_API_BASE}/user/installations", headers=headers
-            )
-            if response.status_code != 200:
-                logger.warning(
-                    "Unable to synchronize GitHub App installations: %s",
-                    response.status_code,
-                )
-                return await get_installations_for_user(user_id)
-            records = response.json().get("installations", [])
-
-        synced: List[Installation] = []
-        for record in records:
-            account = cast(Dict[str, Any], record.get("account") or {})
-            synced.append(
-                await upsert_installation(
-                    installation_id=record["id"],
-                    account_login=str(account.get("login", "unknown")),
-                    account_type=str(account.get("type", "User")),
-                    target_id=int(record.get("target_id", account.get("id", 0)) or 0),
-                    target_type=str(
-                        record.get("target_type", account.get("type", "User"))
-                    ),
-                    user_id=user_id,
-                    status="active" if not record.get("suspended_at") else "suspended",
-                )
-            )
-        return synced
+        """Compatibility wrapper; GitHub App discovery requires the App JWT."""
+        return await self.sync_installations_from_github_app(user_id)
 
     async def update_selected_repositories(
         self, installation_id: int, repo_full_names: List[str]

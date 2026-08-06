@@ -10,7 +10,7 @@ Routes:
 import os
 import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from fastapi import APIRouter, Depends, Response, Request
 from fastapi.responses import RedirectResponse
 
 from auth.models import LoginURLResponse, UserProfile, User
@@ -52,39 +52,36 @@ async def callback(
     Exchanges code for access token, fetches profile, stores user, and sets session cookie.
     """
     try:
+        logger.info("OAuth callback: validating state and completing GitHub OAuth exchange.")
         user, _ = await oauth_service.handle_callback(code, state)
-    except ValueError as e:
-        logger.warning(f"OAuth Callback validation error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error during OAuth callback: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="OAuth authentication failed due to an internal error."
+        logger.info("OAuth callback: creating session token.")
+        session_token = create_session_token(
+            user_id=user.id,
+            github_id=user.github_id,
+            login=user.login
         )
 
-    session_token = create_session_token(
-        user_id=user.id,
-        github_id=user.github_id,
-        login=user.login
-    )
+        logger.info("OAuth callback: creating redirect response and session cookie.")
+        is_prod = os.getenv("ENVIRONMENT", "").lower() == "production"
+        redirect_res = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+        redirect_res.set_cookie(
+            key=SESSION_COOKIE_NAME,
+            value=session_token,
+            max_age=MAX_AGE_SECONDS,
+            httponly=True,
+            secure=is_prod,
+            samesite="lax"
+        )
 
-    # Set secure HttpOnly session cookie
-    is_prod = os.getenv("ENVIRONMENT", "").lower() == "production"
-    redirect_res = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    redirect_res.set_cookie(
-        key=SESSION_COOKIE_NAME,
-        value=session_token,
-        max_age=MAX_AGE_SECONDS,
-        httponly=True,
-        secure=is_prod,
-        samesite="lax"
-    )
-
-    return redirect_res
+        logger.info("OAuth callback: completed successfully.")
+        return redirect_res
+    except Exception as exc:
+        logger.exception(
+            "OAuth callback failed: type=%s message=%s",
+            type(exc).__name__,
+            str(exc),
+        )
+        raise
 
 
 @router.get("/me", response_model=UserProfile)

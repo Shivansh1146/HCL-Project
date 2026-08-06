@@ -237,6 +237,17 @@ async def initialize_auth_db() -> None:
             )
         """)
 
+        # 9. Webhook Deliveries Table (for delivery deduplication)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS webhook_deliveries (
+                delivery_id TEXT PRIMARY KEY,
+                event_type TEXT NOT NULL,
+                action TEXT,
+                status TEXT DEFAULT 'processed',
+                processed_at TEXT NOT NULL
+            )
+        """)
+
         # Indexes for query performance & scale
         await db.execute("CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);")
@@ -245,6 +256,7 @@ async def initialize_auth_db() -> None:
         await db.execute("CREATE INDEX IF NOT EXISTS idx_repos_enabled ON selected_repos(enabled);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_repos_full_name ON selected_repos(repo_full_name);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_orgs_user ON organizations(user_id);")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_webhook_del ON webhook_deliveries(delivery_id);")
 
         # Migration helper for existing DBs: ensure deleted_at exists in users table
         try:
@@ -599,6 +611,38 @@ async def is_repo_whitelisted(repo_full_name: str) -> bool:
 # Redesigned Enterprise Audit Log CRUD
 # ---------------------------------------------------------------------------
 
+async def record_github_webhook_delivery(delivery_id: str, event: str, payload_sha256: str,
+                                         action: Optional[str], installation_id: Optional[str], request: Any) -> bool:
+    """Atomically claim a GitHub delivery and record exactly one audit event."""
+    now = datetime.now(timezone.utc).isoformat()
+    details = json.dumps({"event": event, "action": action, "delivery_id": delivery_id,
+                          "payload_sha256": payload_sha256})
+    async with get_db() as db:
+        await db.execute("""CREATE TABLE IF NOT EXISTS github_webhook_deliveries (
+            delivery_id TEXT PRIMARY KEY, event TEXT NOT NULL, payload_sha256 TEXT NOT NULL,
+            action TEXT, installation_id TEXT, received_at TEXT NOT NULL)""")
+        await db.execute("BEGIN")
+        try:
+            await db.execute("INSERT INTO github_webhook_deliveries (delivery_id, event, payload_sha256, action, installation_id, received_at) VALUES (?, ?, ?, ?, ?, ?)",
+                             (delivery_id, event, payload_sha256, action, installation_id, now))
+        except Exception as exc:
+            await db.execute("ROLLBACK")
+            if "unique" in str(exc).lower() or "constraint" in str(exc).lower():
+                return False
+            raise
+        try:
+            client = getattr(request, "client", None)
+            await db.execute("""INSERT INTO audit_logs (request_id, trace_id, user_id, action, entity_type, entity_id,
+                   severity, details_json, ip_address, user_agent, created_at)
+                   VALUES (?, ?, NULL, ?, ?, ?, 'INFO', ?, ?, ?, ?)""",
+                (delivery_id, delivery_id, "GITHUB_WEBHOOK_RECEIVED", "GitHubWebhook", installation_id,
+                 details, client.host if client else None, request.headers.get("User-Agent"), now))
+            await db.commit()
+        except Exception:
+            await db.execute("ROLLBACK")
+            raise
+    return True
+
 async def create_audit_log(
     action: str,
     user_id: Optional[int] = None,
@@ -770,3 +814,40 @@ async def get_repos_for_user(user_id: int) -> List[Dict[str, Any]]:
                 }
                 for row in rows
             ]
+
+
+async def is_delivery_processed(delivery_id: str) -> bool:
+    """Check if a webhook delivery GUID has already been processed."""
+    if not delivery_id:
+        return False
+    async with get_db() as db:
+        async with db.execute(
+            "SELECT 1 FROM webhook_deliveries WHERE delivery_id = ?", (delivery_id,)
+        ) as cur:
+            row = await cur.fetchone()
+            return row is not None
+
+
+async def record_webhook_delivery(
+    delivery_id: str, event_type: str, action: Optional[str] = None
+) -> bool:
+    """
+    Record a processed webhook delivery GUID.
+    Returns True if newly inserted, False if it was already present (duplicate).
+    """
+    if not delivery_id:
+        return True
+    now_str = datetime.now(timezone.utc).isoformat()
+    try:
+        async with get_db() as db:
+            await db.execute(
+                "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) "
+                "VALUES (?, ?, ?, 'processed', ?)",
+                (delivery_id, event_type, action, now_str),
+            )
+            await db.commit()
+            return True
+    except Exception:
+        # Unique constraint violation means duplicate delivery ID
+        return False
+
