@@ -10,7 +10,7 @@ Routes:
 import os
 import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, Response, Request
+from fastapi import APIRouter, Depends, Response, Request, status
 from fastapi.responses import RedirectResponse
 
 from auth.models import LoginURLResponse, UserProfile, User
