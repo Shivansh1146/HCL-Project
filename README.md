@@ -59,7 +59,7 @@ The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Review
 ### 1. Installation
 
 ```bash
-git clone https://github.com/Shivansh1146/hcl-project
+git clone https://github.com/Shivansh1146/HCL-Project
 cd "HCL Project"
 python -m venv .venv
 
@@ -149,6 +149,6 @@ HCL Project/
 This project was fully designed, developed, and implemented by Shivansh Jaiswal.
 
 - GitHub: [Shivansh1146](https://github.com/Shivansh1146)
-- Project: [HCL AI Code Reviewer](https://github.com/Shivansh1146/hcl-project)
+- Project: [HCL AI Code Reviewer](https://github.com/Shivansh1146/HCL-Project)
 
 _Built with Python · FastAPI · Groq · GitHub REST API · Optimized for Production_
