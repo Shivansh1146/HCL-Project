@@ -269,10 +269,40 @@ class WebhookService:
 
         elif event_type == "pull_request":
             from services.pr_service import PRService
+            from auth.store import is_repo_whitelisted
+            
             pr_data = payload.get("pull_request", {})
             pr_number = pr_data.get("number")
             repo_name = payload.get("repository", {}).get("full_name", "")
             sender = payload.get("sender", {}).get("login", "")
+            
+            # Check if repository is whitelisted/selected for AI review
+            if repo_name and not await is_repo_whitelisted(repo_name):
+                logger.info(
+                    f"🚫 [WEBHOOK:PULL_REQUEST] Repository '{repo_name}' is not in selected repositories list. Ignoring PR #{pr_number}."
+                )
+                await AuditService.log_event(
+                    action="WEBHOOK_PR_REPOSITORY_NOT_SELECTED",
+                    entity_type="pull_request",
+                    entity_id=f"{repo_name}#{pr_number}",
+                    severity=AuditSeverity.WARNING,
+                    details={
+                        "action": action,
+                        "pr_number": pr_number,
+                        "repository": repo_name,
+                        "reason": "REPOSITORY_NOT_SELECTED",
+                        "delivery_id": delivery_id,
+                    },
+                    request=request,
+                )
+                return {
+                    "status": "ignored",
+                    "reason": "REPOSITORY_NOT_SELECTED",
+                    "repository": repo_name,
+                    "pr_number": pr_number,
+                    "delivery_id": delivery_id,
+                }
+            
             logger.info(
                 f"🔀 [WEBHOOK:PULL_REQUEST] Action='{action}' PR #{pr_number} in '{repo_name}' by '{sender}'"
             )
