@@ -248,6 +248,40 @@ async def debug_review(owner: str, repo: str, pr_number: int):
         }
 
 
+@app.get("/api/debug/webhooks")
+async def debug_webhooks():
+    """Debug endpoint to check webhook delivery records."""
+    from db_engine import get_db
+    
+    try:
+        async with get_db() as db:
+            async with db.execute(
+                "SELECT * FROM webhook_deliveries ORDER BY processed_at DESC LIMIT 20"
+            ) as cursor:
+                rows = await cursor.fetchall()
+                webhooks = [
+                    {
+                        "delivery_id": row["delivery_id"],
+                        "event_type": row["event_type"],
+                        "action": row["action"],
+                        "status": row["status"],
+                        "processed_at": row["processed_at"]
+                    }
+                    for row in rows
+                ]
+        
+        return {
+            "webhooks_count": len(webhooks),
+            "webhooks": webhooks
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+
 @app.get("/api/debug/logs")
 async def debug_logs():
     """Debug endpoint to check recent log-level information."""
