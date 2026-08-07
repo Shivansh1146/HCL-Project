@@ -394,6 +394,8 @@ async def initialize_auth_db() -> None:
                     "high_count": "INTEGER DEFAULT 0",
                     "medium_count": "INTEGER DEFAULT 0",
                     "low_count": "INTEGER DEFAULT 0",
+                    "total_chunks": "INTEGER DEFAULT 0",
+                    "processed_chunks": "INTEGER DEFAULT 0",
                     "coverage_percentage": "REAL DEFAULT 0.0",
                     "processing_time_sec": "REAL DEFAULT 0.0",
                     "review_summary": "TEXT",
