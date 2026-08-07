@@ -124,11 +124,26 @@ async def run_ai_review_task(
         # Store execution trace
         try:
             async with get_db() as db:
+                status = "diff_success" if diff else "diff_failed"
                 await db.execute(
                     "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
-                    (f"diff_result_{github_pr_id}", "ai_review_task", "diff_result", f"diff_{'success' if diff else 'failed'}", datetime.now().isoformat())
+                    (f"diff_result_{github_pr_id}", "ai_review_task", "diff_result", status, datetime.now().isoformat())
                 )
                 await db.commit()
+                
+                # Store diff length if successful
+                if diff:
+                    await db.execute(
+                        "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                        (f"diff_length_{github_pr_id}", "ai_review_task", "diff_length", str(len(diff)), datetime.now().isoformat())
+                    )
+                    await db.commit()
+                else:
+                    await db.execute(
+                        "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                        (f"diff_error_{github_pr_id}", "ai_review_task", "diff_error", "no_diff_returned", datetime.now().isoformat())
+                    )
+                    await db.commit()
         except Exception as trace_error:
             logger.error(f"Failed to store diff result trace: {trace_error}")
         if diff is None:

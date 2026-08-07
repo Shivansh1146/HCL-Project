@@ -15,6 +15,8 @@ class GitHubService:
         self.token = os.getenv("GITHUB_TOKEN")
         if not self.token:
             logger.error("GITHUB_TOKEN is not set in environment variables")
+        else:
+            logger.info(f"✅ [GITHUB_SERVICE] GITHUB_TOKEN is set (length: {len(self.token)} chars)")
 
         # Use 'Bearer' prefix which is the modern standard for GitHub PATs and Apps
         self.headers = {
