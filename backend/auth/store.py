@@ -1438,7 +1438,7 @@ async def get_pr_stats() -> Dict[str, Any]:
                 AVG(CASE WHEN coverage_percentage > 0 THEN coverage_percentage ELSE NULL END) as avg_coverage,
                 AVG(CASE WHEN processing_time_sec > 0 THEN processing_time_sec ELSE NULL END) as avg_processing_time_sec,
                 SUM(CASE WHEN review_posted = 1 THEN 1 ELSE 0 END) as total_comments_published
-            FROM prs
+            FROM pull_requests
             """
         ) as cur:
             row = await cur.fetchone()
