@@ -35,17 +35,38 @@ class GitHubService:
 
     async def fetch_diff(self, owner: str, repo: str, pr_number: int) -> Optional[str]:
         """Fetches the code diff of a specific pull request securely using the Pulls API."""
-        logger.info(f"Fetching diff for {owner}/{repo} PR #{pr_number}")
+        logger.info(f"📥 [GITHUB_SERVICE] Fetching diff for {owner}/{repo} PR #{pr_number}")
         url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}"
-
+        
+        logger.info(f"🔍 [GITHUB_SERVICE] URL: {url}")
+        logger.info(f"🔍 [GITHUB_SERVICE] HTTP Method: GET")
+        
         headers = self.headers.copy()
         headers["Accept"] = "application/vnd.github.v3.diff"
+        
+        # Log token type
+        auth_header = headers.get("Authorization", "")
+        if "Bearer" in auth_header:
+            logger.info(f"🔍 [GITHUB_SERVICE] Authorization: Bearer token (token present)")
+        elif "token" in auth_header:
+            logger.info(f"🔍 [GITHUB_SERVICE] Authorization: Token-based")
+        else:
+            logger.warning(f"⚠️ [GITHUB_SERVICE] Authorization: {auth_header[:50] if auth_header else 'MISSING'}")
+        
+        logger.info(f"🔍 [GITHUB_SERVICE] Accept header: {headers.get('Accept')}")
 
         try:
             # Explicitly follow redirects for diff fetching as GitHub may redirect to patch-diff.githubusercontent.com
             async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
                 for attempt in range(3):
+                    logger.info(f"🔄 [GITHUB_SERVICE] Attempt {attempt + 1}/3 to fetch diff")
+                    
                     response = await client.get(url, headers=headers)
+                    
+                    logger.info(f"📊 [GITHUB_SERVICE] HTTP Status: {response.status_code}")
+                    logger.info(f"📊 [GITHUB_SERVICE] Response Headers: {dict(response.headers)}")
+                    logger.info(f"📊 [GITHUB_SERVICE] Response Body (first 500 chars): {response.text[:500] if response.text else 'EMPTY'}")
+                    
                     if response.status_code == 429:
                         # Adaptive Rate Limiting: Respect GitHub's Retry-After header
                         retry_after = response.headers.get("Retry-After")
@@ -57,10 +78,24 @@ class GitHubService:
                     if response.status_code == 401:
                         logger.error(f"Unauthorized access to {url}. Token status: {'Present' if self.token else 'Missing'}")
 
-                    response.raise_for_status()
+                    if response.status_code != 200:
+                        logger.error(f"❌ [GITHUB_SERVICE] HTTP Error {response.status_code}: {response.text}")
+                        return None
+                    
+                    logger.info(f"✅ [GITHUB_SERVICE] Diff fetched successfully, length: {len(response.text)}")
                     return response.text
+                    
         except httpx.HTTPError as e:
-            logger.error(f"GitHub API error while fetching diff: {str(e)}")
+            import traceback
+            logger.error(f"❌ [GITHUB_SERVICE] HTTP Error while fetching diff: {str(e)}")
+            logger.error(f"❌ [GITHUB_SERVICE] Exception type: {type(e).__name__}")
+            logger.error(f"❌ [GITHUB_SERVICE] Traceback: {traceback.format_exc()}")
+            return None
+        except Exception as e:
+            import traceback
+            logger.error(f"❌ [GITHUB_SERVICE] Unexpected error while fetching diff: {str(e)}")
+            logger.error(f"❌ [GITHUB_SERVICE] Exception type: {type(e).__name__}")
+            logger.error(f"❌ [GITHUB_SERVICE] Traceback: {traceback.format_exc()}")
             return None
 
     async def post_comment(self, owner: str, repo: str, pr_number: int, comment: str) -> bool:
