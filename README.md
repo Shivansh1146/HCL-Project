@@ -45,12 +45,27 @@ The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Review
 3. Configure the following **Environment Variables**:
    - `GITHUB_TOKEN`: Your GitHub Personal Access Token.
    - `GROQ_API_KEY`: Your Groq API Key.
-   - `WEBHOOK_SECRET`: Your custom webhook secret.
-   - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`: GitHub OAuth App credentials.
-   - `GITHUB_APP_ID`: GitHub App ID used for installation tokens.
-   - `GITHUB_PRIVATE_KEY`: PEM private key for GitHub App JWTs.
-   - `GITHUB_APP_INSTALL_URL`: Used to generate the GitHub App installation link.
+    - `GITHUB_WEBHOOK_SECRET`: Your custom webhook secret used to verify GitHub webhooks.
+    - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`: GitHub OAuth App credentials for the user login flow.
+    - `APP_URL`: Set this to `https://hcl-project-3tgd.onrender.com` in production.
+    - `GITHUB_OAUTH_REDIRECT_URI`: Set this to `https://hcl-project-3tgd.onrender.com/auth/callback` in production.
+    - `GITHUB_APP_ID`: GitHub App ID used for installation tokens.
+    - `GITHUB_APP_PRIVATE_KEY`: PEM private key for GitHub App JWTs.
+    - `GITHUB_APP_SLUG` or `GITHUB_APP_NAME`: Used to generate the GitHub App installation link.
+    - `GITHUB_APP_INSTALL_URL`: Optional explicit override for the GitHub App installation link.
 4. The system will deploy automatically and provide a public URL.
+
+### GitHub setup notes
+
+- Use a **GitHub OAuth App** for the `/auth/login` and `/auth/callback` sign-in flow.
+- Use a **GitHub App** for repository installation, webhooks, and installation access tokens.
+- The callback URL for the OAuth App must be exactly:
+
+```text
+https://hcl-project-3tgd.onrender.com/auth/callback
+```
+
+- For Render, set `GITHUB_APP_PRIVATE_KEY` directly from the PEM contents. A local file path such as `GITHUB_APP_PRIVATE_KEY_PATH` works only on a machine that has the file.
 
 ---
 
@@ -80,11 +95,14 @@ Create `backend/.env`:
 ```env
 GROQ_API_KEY=gsk_...
 GITHUB_TOKEN=ghp_...
-WEBHOOK_SECRET=your_secret
+GITHUB_WEBHOOK_SECRET=your_secret
 PORT=8000
+APP_URL=http://localhost:8000
+GITHUB_OAUTH_REDIRECT_URI=http://localhost:8000/auth/callback
 GITHUB_CLIENT_ID=your_id
 GITHUB_CLIENT_SECRET=your_secret
 GITHUB_APP_ID=123456
+GITHUB_APP_PRIVATE_KEY_PATH=/path/to/private-key.pem
 ```
 
 ### 3. Launching the System
