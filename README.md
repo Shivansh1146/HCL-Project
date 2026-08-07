@@ -45,14 +45,14 @@ The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Review
 3. Configure the following **Environment Variables**:
    - `GITHUB_TOKEN`: Your GitHub Personal Access Token.
    - `GROQ_API_KEY`: Your Groq API Key.
-    - `GITHUB_WEBHOOK_SECRET`: Your custom webhook secret used to verify GitHub webhooks.
-    - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`: GitHub OAuth App credentials for the user login flow.
-    - `APP_URL`: Set this to `https://hcl-project-3tgd.onrender.com` in production.
-    - `GITHUB_OAUTH_REDIRECT_URI`: Set this to `https://hcl-project-3tgd.onrender.com/auth/callback` in production.
-    - `GITHUB_APP_ID`: GitHub App ID used for installation tokens.
-    - `GITHUB_APP_PRIVATE_KEY`: PEM private key for GitHub App JWTs.
-    - `GITHUB_APP_SLUG` or `GITHUB_APP_NAME`: Used to generate the GitHub App installation link.
-    - `GITHUB_APP_INSTALL_URL`: Optional explicit override for the GitHub App installation link.
+   - `GITHUB_WEBHOOK_SECRET`: Your custom webhook secret used to verify GitHub webhooks.
+   - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`: GitHub OAuth App credentials for the user login flow.
+   - `APP_URL`: Set this to `https://hcl-project-3tgd.onrender.com` in production.
+   - `GITHUB_OAUTH_REDIRECT_URI`: Set this to `https://hcl-project-3tgd.onrender.com/auth/callback` in production.
+   - `GITHUB_APP_ID`: GitHub App ID used for installation tokens.
+   - `GITHUB_APP_PRIVATE_KEY`: PEM private key for GitHub App JWTs.
+   - `GITHUB_APP_SLUG` or `GITHUB_APP_NAME`: Used to generate the GitHub App installation link.
+   - `GITHUB_APP_INSTALL_URL`: Optional explicit override for the GitHub App installation link.
 4. The system will deploy automatically and provide a public URL.
 
 ### GitHub setup notes

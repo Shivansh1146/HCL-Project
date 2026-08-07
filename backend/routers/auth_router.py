@@ -46,14 +46,20 @@ async def login(
 @router.get("/callback")
 async def callback(
     request: Request,
-    code: str,
-    state: str,
+    code: Optional[str] = None,
+    state: Optional[str] = None,
     oauth_service: OAuthService = Depends(get_oauth_service),
 ):
     """
     Handles redirect callback from GitHub OAuth.
     Exchanges code for access token, fetches profile, stores user, and sets session cookie.
     """
+    if not code or not state:
+        logger.warning(
+            "OAuth callback opened without required query params; redirecting to login."
+        )
+        return RedirectResponse(url="/#/login", status_code=status.HTTP_302_FOUND)
+
     try:
         logger.info(
             "OAuth callback: validating state and completing GitHub OAuth exchange."
