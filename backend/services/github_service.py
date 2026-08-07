@@ -5,6 +5,7 @@ from typing import Tuple, Dict, Any, Optional
 import httpx
 from datetime import datetime
 from db_engine import get_db
+from auth.app_service import AppService
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,9 @@ class GitHubService:
             "Authorization": f"Bearer {self.token}" if self.token else "",
             "Accept": "application/vnd.github.v3+json",
         }
+        
+        # Initialize AppService for GitHub App authentication
+        self.app_service = AppService()
 
     def extract_pr_data(self, payload: Dict[str, Any]) -> Tuple[str, str, int]:
         """Extracts owner, repo, and PR number from a webhook payload."""
@@ -37,7 +41,7 @@ class GitHubService:
             logger.error(f"Failed to extract PR data from payload: {str(e)}")
             raise ValueError("Invalid GitHub webhook payload format") from e
 
-    async def fetch_diff(self, owner: str, repo: str, pr_number: int) -> Optional[str]:
+    async def fetch_diff(self, owner: str, repo: str, pr_number: int, installation_id: Optional[int] = None) -> Optional[str]:
         """Fetches the code diff of a specific pull request securely using the Pulls API."""
         logger.info(f"📥 [GITHUB_SERVICE] Fetching diff for {owner}/{repo} PR #{pr_number}")
         url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}"
@@ -45,17 +49,30 @@ class GitHubService:
         logger.info(f"🔍 [GITHUB_SERVICE] URL: {url}")
         logger.info(f"🔍 [GITHUB_SERVICE] HTTP Method: GET")
         
-        headers = self.headers.copy()
-        headers["Accept"] = "application/vnd.github.v3.diff"
-        
-        # Log token type
-        auth_header = headers.get("Authorization", "")
-        if "Bearer" in auth_header:
-            logger.info(f"🔍 [GITHUB_SERVICE] Authorization: Bearer token (token present)")
-        elif "token" in auth_header:
-            logger.info(f"🔍 [GITHUB_SERVICE] Authorization: Token-based")
+        # Use GitHub App installation token if installation_id is provided
+        if installation_id:
+            logger.info(f"🔍 [GITHUB_SERVICE] Using GitHub App installation token for installation_id={installation_id}")
+            token = await self.app_service.get_installation_access_token(installation_id)
+            if not token:
+                logger.error(f"❌ [GITHUB_SERVICE] Failed to get installation token for installation_id={installation_id}")
+                return None
+            auth_header = f"Bearer {token}"
+            logger.info(f"🔍 [GITHUB_SERVICE] Authorization: Bearer token (installation token)")
         else:
-            logger.warning(f"⚠️ [GITHUB_SERVICE] Authorization: {auth_header[:50] if auth_header else 'MISSING'}")
+            logger.info(f"🔍 [GITHUB_SERVICE] Using static GITHUB_TOKEN")
+            headers = self.headers.copy()
+            auth_header = headers.get("Authorization", "")
+            if "Bearer" in auth_header:
+                logger.info(f"🔍 [GITHUB_SERVICE] Authorization: Bearer token (static token)")
+            elif "token" in auth_header:
+                logger.info(f"🔍 [GITHUB_SERVICE] Authorization: Token-based")
+            else:
+                logger.warning(f"⚠️ [GITHUB_SERVICE] Authorization: {auth_header[:50] if auth_header else 'MISSING'}")
+        
+        headers = {
+            "Authorization": auth_header,
+            "Accept": "application/vnd.github.v3.diff",
+        }
         
         logger.info(f"🔍 [GITHUB_SERVICE] Accept header: {headers.get('Accept')}")
 
@@ -322,8 +339,8 @@ _github_service_instance = GitHubService()
 def extract_pr_data(payload: Dict[str, Any]) -> Tuple[str, str, int]:
     return _github_service_instance.extract_pr_data(payload)
 
-async def fetch_diff(owner: str, repo: str, pr_number: int) -> Optional[str]:
-    return await _github_service_instance.fetch_diff(owner, repo, pr_number)
+async def fetch_diff(owner: str, repo: str, pr_number: int, installation_id: Optional[int] = None) -> Optional[str]:
+    return await _github_service_instance.fetch_diff(owner, repo, pr_number, installation_id)
 
 async def post_comment(owner: str, repo: str, pr_number: int, comment: str) -> bool:
     return await _github_service_instance.post_comment(owner, repo, pr_number, comment)

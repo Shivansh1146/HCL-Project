@@ -475,7 +475,10 @@ async def process_webhook(payload: dict):
             # Step 1 — Fetch Diff
             diff = payload.get("diff")
             if diff is None:
-                diff = await fetch_diff(owner, repo, pr_number)
+                # Get installation_id for GitHub App authentication
+                from auth.store import get_installation_id_for_repo
+                installation_id = await get_installation_id_for_repo(owner, repo)
+                diff = await fetch_diff(owner, repo, pr_number, installation_id)
 
             if diff is None:
                 raise ValueError(

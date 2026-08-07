@@ -108,6 +108,11 @@ async def run_ai_review_task(
     try:
         logger.info("📥 Fetching PR files from GitHub")
         
+        # Get installation_id if not provided
+        if not installation_id:
+            installation_id = await get_installation_id_for_repo(owner, repo)
+            logger.info(f"🔍 [PR_SERVICE] Got installation_id: {installation_id}")
+        
         # Store execution trace
         try:
             async with get_db() as db:
@@ -119,7 +124,7 @@ async def run_ai_review_task(
         except Exception as trace_error:
             logger.error(f"Failed to store fetch diff trace: {trace_error}")
         
-        diff = await fetch_diff(owner, repo, pr_number)
+        diff = await fetch_diff(owner, repo, pr_number, installation_id)
         
         # Store execution trace
         try:
