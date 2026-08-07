@@ -3,6 +3,8 @@ import os
 import logging
 from typing import Tuple, Dict, Any, Optional
 import httpx
+from datetime import datetime
+from db_engine import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +71,24 @@ class GitHubService:
                     logger.info(f"📊 [GITHUB_SERVICE] Response Headers: {dict(response.headers)}")
                     logger.info(f"📊 [GITHUB_SERVICE] Response Body (first 500 chars): {response.text[:500] if response.text else 'EMPTY'}")
                     
+                    # Store API response in database for debugging
+                    try:
+                        async with get_db() as db:
+                            await db.execute(
+                                "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                                (f"github_api_{owner}_{repo}_{pr_number}", "github_api", "diff_fetch", f"status_{response.status_code}", datetime.now().isoformat())
+                            )
+                            await db.commit()
+                            
+                            # Store response body
+                            await db.execute(
+                                "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                                (f"github_response_{owner}_{repo}_{pr_number}", "github_api", "response_body", response.text[:500] if response.text else "EMPTY", datetime.now().isoformat())
+                            )
+                            await db.commit()
+                    except Exception as db_error:
+                        logger.error(f"Failed to store GitHub API response in database: {db_error}")
+                    
                     if response.status_code == 429:
                         # Adaptive Rate Limiting: Respect GitHub's Retry-After header
                         retry_after = response.headers.get("Retry-After")
@@ -92,12 +112,36 @@ class GitHubService:
             logger.error(f"❌ [GITHUB_SERVICE] HTTP Error while fetching diff: {str(e)}")
             logger.error(f"❌ [GITHUB_SERVICE] Exception type: {type(e).__name__}")
             logger.error(f"❌ [GITHUB_SERVICE] Traceback: {traceback.format_exc()}")
+            
+            # Store error in database
+            try:
+                async with get_db() as db:
+                    await db.execute(
+                        "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                        (f"github_error_{owner}_{repo}_{pr_number}", "github_api", "http_error", f"{type(e).__name__}: {str(e)}", datetime.now().isoformat())
+                    )
+                    await db.commit()
+            except Exception as db_error:
+                logger.error(f"Failed to store GitHub error in database: {db_error}")
+            
             return None
         except Exception as e:
             import traceback
             logger.error(f"❌ [GITHUB_SERVICE] Unexpected error while fetching diff: {str(e)}")
             logger.error(f"❌ [GITHUB_SERVICE] Exception type: {type(e).__name__}")
             logger.error(f"❌ [GITHUB_SERVICE] Traceback: {traceback.format_exc()}")
+            
+            # Store error in database
+            try:
+                async with get_db() as db:
+                    await db.execute(
+                        "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                        (f"github_error_{owner}_{repo}_{pr_number}", "github_api", "unexpected_error", f"{type(e).__name__}: {str(e)}", datetime.now().isoformat())
+                    )
+                    await db.commit()
+            except Exception as db_error:
+                logger.error(f"Failed to store GitHub error in database: {db_error}")
+            
             return None
 
     async def post_comment(self, owner: str, repo: str, pr_number: int, comment: str) -> bool:
