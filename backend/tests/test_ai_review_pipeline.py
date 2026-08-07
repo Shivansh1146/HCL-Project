@@ -136,6 +136,7 @@ class TestAIReviewPipelineIntegration:
 
             mock_ai_service = MagicMock()
             mock_ai_service.analyze_code = AsyncMock(return_value=mock_analysis)
+            mock_ai_service.is_configured = MagicMock(return_value=True)
 
             with patch("services.pr_service.fetch_diff", new_callable=AsyncMock) as mock_fetch:
                 mock_fetch.return_value = sample_diff
@@ -177,6 +178,7 @@ class TestAIReviewPipelineIntegration:
 
             mock_ai_service = MagicMock()
             mock_ai_service.analyze_code = AsyncMock(return_value=mock_analysis)
+            mock_ai_service.is_configured = MagicMock(return_value=True)
 
             with patch("services.pr_service.fetch_diff", new_callable=AsyncMock) as mock_fetch:
                 mock_fetch.return_value = sample_diff
@@ -216,6 +218,105 @@ class TestAIReviewPipelineIntegration:
             assert updated_pr["review_status"] == "failed"
             assert updated_pr["decision"] == "ERROR"
             assert "Failed to fetch git diff" in updated_pr["review_summary"]
+
+        asyncio.run(_run())
+
+    def test_run_ai_review_task_missing_api_key(self):
+        """Verify handling when GROQ_API_KEY is missing."""
+        async def _run():
+            await initialize_auth_db()
+            await _create_test_pr(number=905, pr_id=988005)
+
+            sample_diff = "diff --git a/main.py b/main.py\n+ print('hello')"
+
+            mock_ai_service = MagicMock()
+            mock_ai_service.is_configured = MagicMock(return_value=False)
+
+            with patch("services.pr_service.fetch_diff", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = sample_diff
+                with patch("services.pr_service.get_ai_service", return_value=mock_ai_service):
+                    await run_ai_review_task(
+                        github_pr_id=988005,
+                        owner="Shivansh1146",
+                        repo="HCL-Project",
+                        pr_number=905,
+                    )
+
+            updated_pr = await get_pull_request(905)
+            assert updated_pr is not None
+            assert updated_pr["review_status"] == "failed"
+            assert updated_pr["decision"] == "ERROR"
+            assert "AI service not configured" in updated_pr["review_summary"]
+
+        asyncio.run(_run())
+
+    def test_run_ai_review_task_expired_api_key(self):
+        """Verify handling when GROQ_API_KEY is expired/invalid."""
+        async def _run():
+            await initialize_auth_db()
+            await _create_test_pr(number=906, pr_id=988006)
+
+            sample_diff = "diff --git a/main.py b/main.py\n+ print('hello')"
+
+            mock_analysis = {
+                "status": "failed",
+                "reason": "AUTH_ERROR",
+            }
+
+            mock_ai_service = MagicMock()
+            mock_ai_service.analyze_code = AsyncMock(return_value=mock_analysis)
+            mock_ai_service.is_configured = MagicMock(return_value=True)
+
+            with patch("services.pr_service.fetch_diff", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = sample_diff
+                with patch("services.pr_service.get_ai_service", return_value=mock_ai_service):
+                    await run_ai_review_task(
+                        github_pr_id=988006,
+                        owner="Shivansh1146",
+                        repo="HCL-Project",
+                        pr_number=906,
+                    )
+
+            updated_pr = await get_pull_request(906)
+            assert updated_pr is not None
+            assert updated_pr["review_status"] == "failed"
+            assert updated_pr["decision"] == "ERROR"
+            assert "AUTH_ERROR" in updated_pr["review_summary"]
+
+        asyncio.run(_run())
+
+    def test_run_ai_review_task_quota_exceeded(self):
+        """Verify handling when Groq API quota is exceeded."""
+        async def _run():
+            await initialize_auth_db()
+            await _create_test_pr(number=907, pr_id=988007)
+
+            sample_diff = "diff --git a/main.py b/main.py\n+ print('hello')"
+
+            mock_analysis = {
+                "status": "failed",
+                "reason": "QUOTA_EXCEEDED",
+            }
+
+            mock_ai_service = MagicMock()
+            mock_ai_service.analyze_code = AsyncMock(return_value=mock_analysis)
+            mock_ai_service.is_configured = MagicMock(return_value=True)
+
+            with patch("services.pr_service.fetch_diff", new_callable=AsyncMock) as mock_fetch:
+                mock_fetch.return_value = sample_diff
+                with patch("services.pr_service.get_ai_service", return_value=mock_ai_service):
+                    await run_ai_review_task(
+                        github_pr_id=988007,
+                        owner="Shivansh1146",
+                        repo="HCL-Project",
+                        pr_number=907,
+                    )
+
+            updated_pr = await get_pull_request(907)
+            assert updated_pr is not None
+            assert updated_pr["review_status"] == "failed"
+            assert updated_pr["decision"] == "ERROR"
+            assert "QUOTA_EXCEEDED" in updated_pr["review_summary"]
 
         asyncio.run(_run())
 

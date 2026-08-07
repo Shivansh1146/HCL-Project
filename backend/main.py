@@ -103,6 +103,24 @@ async def health_check():
     return {"status": "healthy", "bot": "online", "database": "connected"}
 
 
+@app.get("/api/health/ai")
+async def ai_health_check():
+    """Health check endpoint for AI service configuration and connectivity."""
+    try:
+        ai_service = get_ai_service()
+        health_status = await ai_service.health_check()
+        return health_status
+    except Exception as e:
+        logger.error(f"AI health check failed: {str(e)}")
+        return {
+            "groq_configured": False,
+            "groq_reachable": False,
+            "model": "unknown",
+            "status": "error",
+            "reason": str(e)
+        }
+
+
 # AI Analysis Semaphore to prevent Groq API overload (Max 5 concurrent)
 analysis_semaphore = asyncio.BoundedSemaphore(5)
 
@@ -117,6 +135,13 @@ async def startup():
     await init_db_engine()
     await initialize_db()
     await initialize_auth_db()
+    
+    # Validate AI service configuration
+    ai_service = get_ai_service()
+    if ai_service.is_configured():
+        logger.info("✓ GROQ_API_KEY loaded")
+    else:
+        logger.warning("✗ GROQ_API_KEY missing - AI review functionality disabled")
 
 
 @app.on_event("shutdown")

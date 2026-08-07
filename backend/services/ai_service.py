@@ -14,11 +14,78 @@ logger = logging.getLogger("backend")
 class AIService:
     def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY")
+        self.model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+        self.client = None
+        self._initialize_client()
+
+    def _initialize_client(self):
+        """Initialize Groq client with validation."""
         if not self.api_key:
-            logger.error("GROQ_API_KEY not found in environment")
-            self.client = None
-        else:
+            logger.error("✗ GROQ_API_KEY missing - AI review service disabled")
+            return
+        
+        if not self.api_key.strip():
+            logger.error("✗ GROQ_API_KEY is empty - AI review service disabled")
+            return
+        
+        if len(self.api_key) < 10:
+            logger.error("✗ GROQ_API_KEY appears invalid (too short) - AI review service disabled")
+            return
+        
+        try:
             self.client = AsyncGroq(api_key=self.api_key)
+            logger.info(f"✓ GROQ_API_KEY loaded - Model: {self.model}")
+        except Exception as e:
+            logger.error(f"✗ Failed to initialize Groq client: {str(e)}")
+            self.client = None
+
+    def is_configured(self) -> bool:
+        """Check if AI service is properly configured."""
+        return self.client is not None and self.api_key is not None
+
+    async def health_check(self) -> Dict[str, Any]:
+        """Perform health check on Groq API connectivity."""
+        if not self.is_configured():
+            return {
+                "groq_configured": False,
+                "groq_reachable": False,
+                "model": self.model,
+                "status": "error",
+                "reason": "GROQ_API_KEY not configured or invalid"
+            }
+        
+        try:
+            # Simple test request to verify connectivity
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": "test"}],
+                max_tokens=1,
+                timeout=5.0
+            )
+            return {
+                "groq_configured": True,
+                "groq_reachable": True,
+                "model": self.model,
+                "status": "ok"
+            }
+        except GroqError as e:
+            logger.error(f"Groq health check failed: {str(e)}")
+            return {
+                "groq_configured": True,
+                "groq_reachable": False,
+                "model": self.model,
+                "status": "error",
+                "reason": str(e)
+            }
+        except Exception as e:
+            logger.error(f"Groq health check error: {str(e)}")
+            return {
+                "groq_configured": True,
+                "groq_reachable": False,
+                "model": self.model,
+                "status": "error",
+                "reason": f"Unexpected error: {str(e)}"
+            }
 
     def _is_similar(self, issue1: Dict[str, Any], issue2: Dict[str, Any]) -> bool:
         """
@@ -92,6 +159,12 @@ class AIService:
 
     async def _analyze_chunk_with_retry(self, diff_chunk: str) -> Optional[Dict[str, Any]]:
         """Sends a single diff chunk to Groq with retry logic and JSON validation."""
+        logger.info("📤 Sending prompt to Groq")
+        
+        if not self.is_configured():
+            logger.error("❌ GROQ_API_KEY is invalid, expired, or quota exceeded")
+            return {"status": "error", "reason": "API_KEY_INVALID", "issues": []}
+        
         system_prompt = """
 You are a strict, deterministic code reviewer.
 
@@ -141,43 +214,91 @@ SEVERITY GUIDELINES:
         user_prompt = f"Code Diff Chunk:\n{diff_chunk}"
 
         max_retries = 3
+        base_delay = 2  # Base delay for exponential backoff
+        
         for attempt in range(max_retries):
             try:
+                logger.debug(f"Groq API attempt {attempt + 1}/{max_retries}")
                 response = await self.client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
+                    model=self.model,
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
                     temperature=0.1,
                     response_format={"type": "json_object"},
-                    timeout=15.0
+                    timeout=30.0
                 )
 
                 content = response.choices[0].message.content.strip()
                 parsed_json = json.loads(content)
+                logger.info("✅ Groq response received")
                 return parsed_json
 
-            except Exception as e:
+            except GroqError as e:
                 error_str = str(e).lower()
-                logger.error(f"[analyze_code] error on attempt {attempt + 1}: {error_str}")
+                logger.error(f"❌ Groq API error on attempt {attempt + 1}: {error_str}")
                 
-                # Explicit Rate Limit Detection
+                # Explicit error handling for different Groq errors
                 if "rate_limit_exceeded" in error_str or "429" in error_str:
                     if attempt < max_retries - 1:
-                        wait_time = 30 * (attempt + 1)
+                        wait_time = base_delay * (2 ** attempt)  # Exponential backoff
                         logger.warning(f"⚠️ Rate limit hit. Backing off for {wait_time}s...")
                         await asyncio.sleep(wait_time)
                         continue
                     else:
+                        logger.error("❌ Rate limit exceeded after all retries")
                         return {"status": "error", "reason": "RATE_LIMIT", "issues": []}
+                
+                elif "authentication" in error_str or "unauthorized" in error_str or "401" in error_str:
+                    logger.error("❌ GROQ_API_KEY is invalid or expired")
+                    return {"status": "error", "reason": "AUTH_ERROR", "issues": []}
+                
+                elif "quota" in error_str or "credit" in error_str:
+                    logger.error("❌ Groq API quota exceeded")
+                    return {"status": "error", "reason": "QUOTA_EXCEEDED", "issues": []}
+                
+                elif "timeout" in error_str or "timed out" in error_str:
+                    if attempt < max_retries - 1:
+                        wait_time = base_delay * (2 ** attempt)
+                        logger.warning(f"⚠️ Request timeout. Retrying in {wait_time}s...")
+                        await asyncio.sleep(wait_time)
+                        continue
+                    else:
+                        logger.error("❌ Request timeout after all retries")
+                        return {"status": "error", "reason": "TIMEOUT", "issues": []}
 
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ Failed to parse Groq response as JSON: {str(e)}")
                 if attempt < max_retries - 1:
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(base_delay)
                 else:
-                    return {"status": "error", "reason": "UNKNOWN_ERROR", "issues": []}
+                    return {"status": "error", "reason": "JSON_PARSE_ERROR", "issues": []}
 
-        return None
+            except Exception as e:
+                error_str = str(e).lower()
+                logger.error(f"❌ Unexpected error on attempt {attempt + 1}: {error_str}")
+                
+                # Check for HTTP 5xx errors (transient failures)
+                if any(code in error_str for code in ["500", "502", "503", "504"]):
+                    if attempt < max_retries - 1:
+                        wait_time = base_delay * (2 ** attempt)
+                        logger.warning(f"⚠️ Server error detected. Retrying in {wait_time}s...")
+                        await asyncio.sleep(wait_time)
+                        continue
+                    else:
+                        logger.error("❌ Server error after all retries")
+                        return {"status": "error", "reason": "SERVER_ERROR", "issues": []}
+                
+                # Generic retry for other errors
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(base_delay)
+                else:
+                    logger.error(f"❌ Unknown error after all retries: {str(e)}")
+                    return {"status": "error", "reason": "UNKNOWN_ERROR", "details": str(e), "issues": []}
+
+        logger.error("❌ Failed to analyze chunk after all retries")
+        return {"status": "error", "reason": "MAX_RETRIES_EXCEEDED", "issues": []}
 
     def _get_hunk_aware_chunks(self, diff: str, max_size: int = 1000) -> list:
         """Splits diff into chunks by hunk, preserving file context."""
@@ -280,11 +401,15 @@ SEVERITY GUIDELINES:
         Analyzes a git diff using Groq AI.
         Splits diff into hunks, processes each hunk/chunk sequentially with a delay to respect rate limits.
         """
+        logger.info("🚀 Starting AI code analysis")
+        
         if not diff:
+            logger.warning("⚠️ Empty diff provided, skipping analysis")
             return {"status": "failed", "reason": "EMPTY_DIFF", "issues": [],
                     "total_chunks": 0, "processed_chunks": 0, "file_coverage": {}}
 
-        if not self.client:
+        if not self.is_configured():
+            logger.error("❌ AI service not configured - GROQ_API_KEY missing or invalid")
             return {"status": "failed", "reason": "CLIENT_NOT_INITIALIZED", "issues": [],
                     "total_chunks": 0, "processed_chunks": 0, "file_coverage": {}}
 
@@ -292,6 +417,8 @@ SEVERITY GUIDELINES:
         
         total_chunks = len(all_chunks)
         chunks_to_process = all_chunks
+        
+        logger.info(f"📊 Analysis plan: {total_chunks} chunks to process")
         
         all_files = set(re.findall(r"^\+\+\+ b/(.*)$", diff, re.MULTILINE))
         file_chunks = {f: {"total": 0, "processed": 0} for f in all_files}
@@ -302,21 +429,30 @@ SEVERITY GUIDELINES:
 
         total_chunks = len(all_chunks)
         processed_chunks = 0
+        
+        logger.info("🔍 Running rule-based security scan")
         rule_issues = self._rule_based_scan(diff)
+        logger.info(f"✅ Rule-based scan found {len(rule_issues)} security issues")
+        
         all_issues = list(rule_issues)
         seen_descriptions = list(rule_issues)
         reason = "SUCCESS"
 
-        for chunk in chunks_to_process:
+        for chunk_index, chunk in enumerate(chunks_to_process):
             chunk_files = set(re.findall(r"^\+\+\+ b/(.*)$", chunk, re.MULTILINE))
+            logger.info(f"🔄 Processing chunk {chunk_index + 1}/{total_chunks}")
+            
             result = await self._analyze_chunk_with_retry(chunk)
             await asyncio.sleep(2.0) # Sequential processing delay to avoid rate limits
             
             if result is None or (isinstance(result, dict) and result.get("status") == "error"):
                 reason = result.get("reason", "CHUNK_ERROR") if isinstance(result, dict) else "CHUNK_ERROR"
+                logger.error(f"❌ Chunk processing failed: {reason}")
                 break
 
             processed_chunks += 1
+            logger.info(f"✅ Processed {processed_chunks}/{total_chunks} chunks")
+            
             if progress_callback:
                 await progress_callback(processed_chunks, total_chunks)
 
@@ -354,6 +490,8 @@ SEVERITY GUIDELINES:
             decision_status = "REVIEW_REQUIRED"
             logger.warning(f"⚠️ Confidence Kill Switch Triggered: Large diff ({len(diff)} chars) with 0 issues. Forcing REVIEW_REQUIRED.")
 
+        logger.info(f"🏁 AI analysis complete: {len(all_issues)} issues found, decision={decision_status}")
+        
         return {
             "status": "success" if processed_chunks == total_chunks else "partial",
             "reason": reason,

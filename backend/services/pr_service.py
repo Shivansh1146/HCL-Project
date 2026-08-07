@@ -72,6 +72,7 @@ async def run_ai_review_task(
     7. (Phase 2.2) Publish GitHub PR review via ReviewPublisher.
     """
     logger.info(f"🤖 [AI_REVIEW_TASK] Starting review for {owner}/{repo} PR #{pr_number} (github_pr_id={github_pr_id})")
+    logger.info("📊 PR pipeline initiated")
 
     await update_pull_request_review_results(
         github_pr_id=github_pr_id,
@@ -80,6 +81,7 @@ async def run_ai_review_task(
     )
 
     try:
+        logger.info("📥 Fetching PR files from GitHub")
         diff = await fetch_diff(owner, repo, pr_number)
         if diff is None:
             logger.warning(f"⚠️ [AI_REVIEW_TASK] Could not fetch diff for {owner}/{repo} PR #{pr_number}")
@@ -107,7 +109,20 @@ async def run_ai_review_task(
             )
             return
 
+        logger.info("📥 PR files downloaded successfully")
+        
         ai_service = get_ai_service()
+        if not ai_service.is_configured():
+            logger.error("❌ AI service not configured - skipping analysis")
+            await update_pull_request_review_results(
+                github_pr_id=github_pr_id,
+                review_status="failed",
+                decision="ERROR",
+                review_summary="AI service not configured: GROQ_API_KEY missing or invalid",
+                issues_json="[]",
+            )
+            return
+        
         analysis = await ai_service.analyze_code(diff)
 
         status_flag = analysis.get("status", "success")
@@ -191,6 +206,7 @@ async def run_ai_review_task(
         logger.info(f"✅ [AI_REVIEW_TASK] Completed AI review for PR #{pr_number}: decision={decision}, issues={len(valid_issues)}")
 
         # Phase 2.2 — Publish review to GitHub
+        logger.info("📤 Posting review to GitHub")
         try:
             install_id = installation_id
             if not install_id:
@@ -213,6 +229,7 @@ async def run_ai_review_task(
                     f"review_id={pub_result.get('review_id')}, "
                     f"comments={pub_result.get('comments_posted')}"
                 )
+                logger.info("✅ Review successfully created")
             else:
                 logger.warning(f"⚠️ [AI_REVIEW_TASK] GitHub review publish failed: {pub_result.get('error')}")
         except Exception as pub_exc:

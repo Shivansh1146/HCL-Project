@@ -11,6 +11,9 @@ services:
         sync: false # Set this in Render Dashboard
       - key: GROQ_API_KEY
         sync: false # Set this in Render Dashboard
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+        sync: false # Set this in Render Dashboard (optional)
       - key: WEBHOOK_SECRET
         sync: false # Set this in Render Dashboard
       - key: PORT
