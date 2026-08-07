@@ -505,6 +505,11 @@ class PRService:
             logger.info(f"🚀 [PR_SERVICE] ===== ABOUT TO ADD BACKGROUND TASK FOR PR #{number} =====")
             logger.info(f"🚀 [PR_SERVICE] Task parameters: github_pr_id={github_pr_id}, owner={owner_name}, repo={repo_name}, pr_number={number}, head_sha={head_sha}")
             
+            # Get installation_id for the background task
+            from auth.store import get_installation_id_for_repo
+            task_installation_id = await get_installation_id_for_repo(owner_name, repo_name)
+            logger.info(f"🔍 [PR_SERVICE] Installation ID for background task: {task_installation_id}")
+            
             # Store execution trace before task scheduling
             try:
                 async with get_db() as db:
@@ -523,6 +528,7 @@ class PRService:
                 repo=repo_name,
                 pr_number=number,
                 head_sha=head_sha,
+                installation_id=task_installation_id,
             )
             ai_task_dispatched = True
             logger.info(f"✅ [PR_SERVICE] ===== BACKGROUND TASK ADDED FOR PR #{number} =====")
