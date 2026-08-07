@@ -31,6 +31,7 @@ class DummyResponse:
 class DummyClient:
     def __init__(self, response):
         self.response = response
+        self.requests = []
 
     async def __aenter__(self):
         return self
@@ -39,6 +40,10 @@ class DummyClient:
         return False
 
     async def post(self, *args, **kwargs):
+        return self.response
+
+    async def get(self, url, headers=None):
+        self.requests.append((url, headers or {}))
         return self.response
 
 
@@ -195,5 +200,47 @@ def test_installation_token_endpoint_serves_authenticated_user(monkeypatch):
         assert body["token"] == "ghs_endpoint"
         assert body["expires_at_iso"] == expires_at.isoformat()
         assert body["github_response"]["expires_at"] == expires_at.isoformat()
+
+    asyncio.run(_run())
+
+
+def test_list_installation_repos_uses_installation_endpoint(monkeypatch):
+    _setup_env(monkeypatch)
+
+    async def _run():
+        payload = {
+            "repositories": [
+                {
+                    "id": 101,
+                    "full_name": "org/repo-a",
+                    "name": "repo-a",
+                    "private": False,
+                    "default_branch": "main",
+                    "owner": {"login": "org"},
+                }
+            ]
+        }
+        dummy_client = DummyClient(DummyResponse(payload))
+
+        with (
+            patch("auth.app_service.httpx.AsyncClient", return_value=dummy_client),
+            patch(
+                "auth.app_service.GitHubAppService.get_installation_access_token",
+                return_value="installation-token",
+            ),
+        ):
+            service = GitHubAppService()
+            repos = await service.list_installation_repos(
+                123, user_access_token="user-token"
+            )
+
+        assert repos[0]["id"] == 101
+        assert repos[0]["repo_id"] == 101
+        assert any(
+            "/installation/repositories" in url for url, _ in dummy_client.requests
+        )
+        assert not any(
+            "/user/installations/" in url for url, _ in dummy_client.requests
+        )
 
     asyncio.run(_run())

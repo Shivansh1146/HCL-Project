@@ -1,29 +1,31 @@
 """
 tests/test_auth_store.py — Enterprise unit tests for database constraints, soft deletes, and transactions.
 """
-import pytest
+
 import asyncio
 import os
 import tempfile
 
+import pytest
+
 test_db_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False).name
 os.environ["TEST_DB_PATH"] = test_db_file
 
-from stats_store import get_db
 from auth.store import (
-    initialize_auth_db,
-    upsert_user,
-    get_user_by_id,
-    soft_delete_user,
-    save_oauth_token,
-    get_oauth_token,
-    save_oauth_state,
-    pop_oauth_state,
-    upsert_installation,
     get_installations_for_user,
-    save_selected_repos,
+    get_oauth_token,
+    get_user_by_id,
+    initialize_auth_db,
     is_repo_whitelisted,
+    pop_oauth_state,
+    save_oauth_state,
+    save_oauth_token,
+    save_selected_repos,
+    soft_delete_user,
+    upsert_installation,
+    upsert_user,
 )
+from stats_store import get_db, get_stats, initialize_db
 
 
 def test_auth_db_full_lifecycle_and_constraints():
@@ -35,7 +37,7 @@ def test_auth_db_full_lifecycle_and_constraints():
             github_id=12345,
             login="testuser",
             name="Test User",
-            email="test@example.com"
+            email="test@example.com",
         )
         assert user.id is not None
         assert user.github_id == 12345
@@ -58,20 +60,26 @@ def test_auth_db_full_lifecycle_and_constraints():
         async with get_db() as db:
             with pytest.raises(Exception):
                 # Duplicate github_id direct insert should raise IntegrityError
-                await db.execute("""
+                await db.execute(
+                    """
                     INSERT INTO users (github_id, login, created_at, updated_at)
                     VALUES (12345, 'duplicate_user', '2026-01-01', '2026-01-01')
-                """)
+                """
+                )
 
             # 4. Test Check Constraint Failure on Invalid Installation Status
             with pytest.raises(Exception):
-                await db.execute("""
+                await db.execute(
+                    """
                     INSERT INTO installations (installation_id, account_login, account_type, target_id, target_type, status, created_at, updated_at)
                     VALUES (9999, 'bad_account', 'User', 11, 'User', 'INVALID_STATUS', '2026-01-01', '2026-01-01')
-                """)
+                """
+                )
 
         # 5. Test OAuth Token Encryption
-        token = await save_oauth_token(user_id=user.id, access_token="gho_secret_token_123", scope="repo")
+        token = await save_oauth_token(
+            user_id=user.id, access_token="gho_secret_token_123", scope="repo"
+        )
         assert token.access_token == "gho_secret_token_123"
 
         fetched_token = await get_oauth_token(user.id)
@@ -85,14 +93,85 @@ def test_auth_db_full_lifecycle_and_constraints():
             account_type="Organization",
             target_id=888,
             target_type="Organization",
-            user_id=user.id
+            user_id=user.id,
         )
         assert inst.installation_id == 999
         assert inst.account_login == "testorg"
 
-        await save_selected_repos(inst.id, [("testorg/repo-a", 101), ("testorg/repo-b", 102)])
+        await save_selected_repos(
+            inst.id, [("testorg/repo-a", 101), ("testorg/repo-b", 102)]
+        )
         assert await is_repo_whitelisted("testorg/repo-a") is True
         assert await is_repo_whitelisted("testorg/repo-b") is True
         assert await is_repo_whitelisted("testorg/unselected-repo") is False
+
+    asyncio.run(_test())
+
+
+def test_stats_includes_selected_and_monitored_repo_counts():
+    async def _test():
+        await initialize_auth_db()
+        await initialize_db()
+
+        async with get_db() as db:
+            await db.execute("DELETE FROM selected_repos")
+            await db.execute("DELETE FROM repositories")
+            await db.commit()
+
+        user = await upsert_user(
+            github_id=54321,
+            login="stats-user",
+            name="Stats User",
+            email="stats@example.com",
+        )
+
+        inst = await upsert_installation(
+            installation_id=444,
+            account_login="stats-org",
+            account_type="Organization",
+            target_id=444,
+            target_type="Organization",
+            user_id=user.id,
+        )
+
+        await save_selected_repos(inst.id, [("stats-org/repo-a", 111)])
+
+        async with get_db() as db:
+            now = "2026-08-07T00:00:00+00:00"
+            await db.execute(
+                """
+                INSERT INTO repositories (
+                    github_repo_id, installation_id, full_name, name, owner_login,
+                    private, default_branch, language, stargazers_count,
+                    archived, disabled, fork, last_synced_at, sync_status,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    111,
+                    inst.id,
+                    "stats-org/repo-a",
+                    "repo-a",
+                    "stats-org",
+                    0,
+                    "main",
+                    None,
+                    0,
+                    0,
+                    0,
+                    0,
+                    now,
+                    "success",
+                    now,
+                    now,
+                ),
+            )
+            await db.commit()
+
+        stats = await get_stats()
+        assert stats["selected_repos_count"] == 1
+        assert stats["monitored_repositories_count"] == 1
+        assert stats["repositories_count"] == 1
+        assert stats["total_reviews"] == 0
 
     asyncio.run(_test())

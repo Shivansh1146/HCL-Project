@@ -111,28 +111,34 @@ export async function renderReposPage(outlet) {
   if (syncBtn) {
     syncBtn.addEventListener("click", async () => {
       const btnSpan = syncBtn.querySelector("span");
-      const btnSvg  = syncBtn.querySelector("svg");
+      const btnSvg = syncBtn.querySelector("svg");
       syncBtn.disabled = true;
       if (btnSpan) btnSpan.textContent = "Syncing…";
-      if (btnSvg)  btnSvg.style.animation = "spin 1s linear infinite";
+      if (btnSvg) btnSvg.style.animation = "spin 1s linear infinite";
 
       try {
         const result = await api.syncRepositories();
-        Toast.success(`Synced ${result.synced_count ?? 0} repositories from GitHub.`);
+        Toast.success(
+          `Synced ${result.synced_count ?? 0} repositories from GitHub.`
+        );
         // Reload the page data from DB after sync
-        _state.repos = (result.repositories || []).map(r => ({
+        _state.repos = (result.repositories || []).map((r) => ({
           ...r,
+          repo_id: r.repo_id ?? r.id ?? 0,
           enabled: r.enabled ?? true,
         }));
         _state.error = null;
         _renderAllSections();
       } catch (err) {
         console.error("[Repos] Sync failed:", err);
-        Toast.error(err?.message || "Repository sync failed. Check GitHub App installation.");
+        Toast.error(
+          err?.message ||
+            "Repository sync failed. Check GitHub App installation."
+        );
       } finally {
         syncBtn.disabled = false;
         if (btnSpan) btnSpan.textContent = "Sync Repos";
-        if (btnSvg)  btnSvg.style.animation = "";
+        if (btnSvg) btnSvg.style.animation = "";
       }
     });
   }
@@ -197,7 +203,10 @@ async function _loadReposForInstallation(instId) {
 
   try {
     const repos = await api.getReposForInstallation(instId);
-    _state.repos = repos || [];
+    _state.repos = (repos || []).map((r) => ({
+      ...r,
+      repo_id: r.repo_id ?? r.id ?? 0,
+    }));
     _state.error = null;
 
     // Track initial and pending selected names
@@ -644,7 +653,9 @@ function _renderRepoList() {
     const subRow = document.createElement("div");
     subRow.style.cssText =
       "font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem;display:flex;gap:0.75rem;";
-    subRow.textContent = `ID: ${repo.repo_id} · GitHub App Monitored`;
+    subRow.textContent = `ID: ${
+      repo.repo_id ?? repo.id ?? 0
+    } · GitHub App Monitored`;
 
     repoMeta.append(titleRow, subRow);
     left.append(checkbox, avatar, repoMeta);

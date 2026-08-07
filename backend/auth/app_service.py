@@ -206,6 +206,10 @@ class GitHubAppService:
         self, installation_id: int
     ) -> InstallationTokenResponse:
         """Create or return a cached installation token plus cache metadata."""
+        logger.info(
+            "Creating installation access token for installation_id=%s",
+            installation_id,
+        )
         before = self._token_cache.token_status(installation_id)
         token = await self.get_installation_access_token(installation_id)
         after = self._token_cache.token_status(installation_id)
@@ -228,6 +232,12 @@ class GitHubAppService:
             "token_type": "installation",
             "expires_at": after.expires_at or "",
         }
+        logger.info(
+            "Installation token ready for installation_id=%s cached=%s expires_at=%s",
+            installation_id,
+            after.cached,
+            after.expires_at or "",
+        )
         return InstallationTokenResponse(
             installation_id=installation_id,
             token=token,
@@ -335,14 +345,23 @@ class GitHubAppService:
     ) -> List[Dict[str, Any]]:
         """
         Lists all repositories accessible to an installation.
-        Uses user OAuth token or installation token as available.
+        Always uses a GitHub App installation access token.
         """
         if user_access_token:
-            token = user_access_token
-            url = f"{GITHUB_API_BASE}/user/installations/{installation_id}/repositories"
-        else:
-            token = await self.get_installation_access_token(installation_id)
-            url = f"{GITHUB_API_BASE}/installation/repositories"
+            logger.info(
+                "Ignoring user OAuth token for installation repo list; using installation token for installation_id=%s",
+                installation_id,
+            )
+
+        token = await self.get_installation_access_token(installation_id)
+        url = f"{GITHUB_API_BASE}/installation/repositories?per_page=100"
+
+        if not token:
+            logger.warning(
+                "No installation token available when listing repos for installation_id=%s",
+                installation_id,
+            )
+            return []
 
         headers = {
             "Authorization": f"Bearer {token}",
@@ -350,16 +369,48 @@ class GitHubAppService:
         }
 
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(url, headers=headers)
-            if resp.status_code != 200:
-                logger.error(
-                    "Failed to fetch repos for installation %d: %s",
-                    installation_id,
-                    resp.text,
-                )
-                return []
-            data = resp.json()
-            return data.get("repositories", [])
+            logger.info(
+                "Fetching installation repositories from %s for installation_id=%s",
+                url,
+                installation_id,
+            )
+            repos: List[Dict[str, Any]] = []
+            while url:
+                resp = await client.get(url, headers=headers)
+                if resp.status_code != 200:
+                    logger.error(
+                        "Failed to fetch repos for installation %d from %s: status=%s body=%s",
+                        installation_id,
+                        url,
+                        resp.status_code,
+                        resp.text[:300],
+                    )
+                    return []
+                data = resp.json()
+                repos.extend(data.get("repositories", []))
+
+                next_url = None
+                link_header = resp.headers.get("Link", "")
+                for part in link_header.split(","):
+                    if 'rel="next"' in part:
+                        match = re.search(r"<([^>]+)>", part)
+                        if match:
+                            next_url = match.group(1)
+                            break
+                url = next_url
+
+            logger.info(
+                "Fetched %d installation repositories for installation_id=%s",
+                len(repos),
+                installation_id,
+            )
+            return [
+                {
+                    **repo,
+                    "repo_id": repo.get("id", 0),
+                }
+                for repo in repos
+            ]
 
     async def sync_user_installations(
         self, user_id: int, user_access_token: str
@@ -399,6 +450,12 @@ class GitHubAppService:
                 enabled_list.append(name)
 
         await save_selected_repos(inst.id, selected_tuples)
+        logger.info(
+            "Saved selected repositories for installation_id=%s enabled=%d disabled_candidates=%d",
+            installation_id,
+            len(enabled_list),
+            len(selected_tuples) - len(enabled_list),
+        )
 
         all_known = [r["full_name"] for r in accessible_repos]
         disabled_list = [r for r in all_known if r not in enabled_list]
@@ -425,6 +482,11 @@ class GitHubAppService:
                     inst.installation_id,
                 )
                 continue
+
+            logger.info(
+                "Syncing repositories for installation_id=%s with installation token",
+                inst.installation_id,
+            )
 
             # --- 2. Paginate GET /installation/repositories ---
             headers = {
@@ -457,12 +519,24 @@ class GitHubAppService:
                                 next_url = match.group(1)
                     url = next_url
 
+            logger.info(
+                "GitHub returned %d repositories for installation_id=%s",
+                len(github_repos),
+                inst.installation_id,
+            )
+
             # --- 3. Sync to DB ---
             db_rows = await sync_repos_in_db(inst.id, github_repos)
+            logger.info(
+                "Saved %d repositories to the database for installation_id=%s",
+                len(db_rows),
+                inst.installation_id,
+            )
             all_repos.extend(
                 [
                     {
                         "id": row["github_repo_id"],
+                        "repo_id": row["github_repo_id"],
                         "name": row["name"],
                         "full_name": row["full_name"],
                         "private": bool(row["private"]),

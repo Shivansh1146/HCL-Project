@@ -1046,7 +1046,14 @@ async def sync_repos_in_db(
             (installation_internal_id,),
         ) as cur:
             rows = await cur.fetchall()
-            return [dict(row) for row in rows]
+            return [
+                {
+                    **dict(row),
+                    "id": row["github_repo_id"],
+                    "repo_id": row["github_repo_id"],
+                }
+                for row in rows
+            ]
 
 
 async def get_repos_for_user(user_id: int) -> List[Dict[str, Any]]:
@@ -1071,6 +1078,7 @@ async def get_repos_for_user(user_id: int) -> List[Dict[str, Any]]:
             return [
                 {
                     "id": row["github_repo_id"],
+                    "repo_id": row["github_repo_id"],
                     "name": row["name"],
                     "full_name": row["full_name"],
                     "private": bool(row["private"]),

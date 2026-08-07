@@ -32,6 +32,7 @@ from auth.store import (
     get_oauth_token,
     get_repos_for_user,
     get_selected_repos_for_installation,
+    sync_repos_in_db,
     upsert_installation,
 )
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -60,7 +61,7 @@ async def list_user_installations(
         # Fetch repos for this installation
 
         repos_raw = await app_service.list_installation_repos(
-            installation_id=inst.installation_id, user_access_token=user_access_token
+            installation_id=inst.installation_id
         )
 
         selected_repos = await get_selected_repos_for_installation(inst.id)
@@ -68,9 +69,12 @@ async def list_user_installations(
 
         repo_models = [
             RepoResponse(
-                repo_id=r.get("id", 0),
+                repo_id=r.get("repo_id") or r.get("id", 0),
                 full_name=r.get("full_name", ""),
+                name=r.get("name", ""),
+                owner_login=r.get("owner", {}).get("login", ""),
                 private=r.get("private", False),
+                default_branch=r.get("default_branch", "main"),
                 enabled=(r.get("full_name", "").lower() in enabled_set),
             )
             for r in repos_raw
@@ -112,7 +116,7 @@ async def list_installation_repos_endpoint(
     user_access_token = oauth_token.access_token if oauth_token else None
 
     repos_raw = await app_service.list_installation_repos(
-        installation_id=installation_id, user_access_token=user_access_token
+        installation_id=installation_id
     )
 
     selected = await get_selected_repos_for_installation(inst.id)
@@ -120,9 +124,12 @@ async def list_installation_repos_endpoint(
 
     return [
         RepoResponse(
-            repo_id=r.get("id", 0),
+            repo_id=r.get("repo_id") or r.get("id", 0),
             full_name=r.get("full_name", ""),
+            name=r.get("name", ""),
+            owner_login=r.get("owner", {}).get("login", ""),
             private=r.get("private", False),
+            default_branch=r.get("default_branch", "main"),
             enabled=(r.get("full_name", "").lower() in enabled_set),
         )
         for r in repos_raw
@@ -149,11 +156,15 @@ async def sync_installation_endpoint(
             detail=f"Unable to sync installation {installation_id} from GitHub API.",
         )
 
-    oauth_token = await get_oauth_token(user.id)
-    user_access_token = oauth_token.access_token if oauth_token else None
-
     repos_raw = await app_service.list_installation_repos(
-        installation_id=installation_id, user_access_token=user_access_token
+        installation_id=installation_id
+    )
+
+    db_rows = await sync_repos_in_db(inst.id, repos_raw)
+    logger.info(
+        "Installation sync saved %d repositories for installation_id=%s",
+        len(db_rows),
+        installation_id,
     )
 
     selected = await get_selected_repos_for_installation(inst.id)
@@ -161,9 +172,12 @@ async def sync_installation_endpoint(
 
     repo_models = [
         RepoResponse(
-            repo_id=r.get("id", 0),
+            repo_id=r.get("repo_id") or r.get("id", 0),
             full_name=r.get("full_name", ""),
+            name=r.get("name", ""),
+            owner_login=r.get("owner", {}).get("login", ""),
             private=r.get("private", False),
+            default_branch=r.get("default_branch", "main"),
             enabled=(r.get("full_name", "").lower() in enabled_set),
         )
         for r in repos_raw
@@ -498,6 +512,11 @@ async def sync_repositories(
     """
     try:
         repos = await app_service.sync_all_repositories(user.id)
+        logger.info(
+            "Repository sync completed for user_id=%s with %d repositories saved",
+            user.id,
+            len(repos),
+        )
         return {
             "status": "success",
             "synced_count": len(repos),

@@ -172,6 +172,7 @@ class TestSyncReposInDb:
 
             assert len(result) == 1
             assert result[0]["github_repo_id"] == 111
+            assert result[0]["repo_id"] == 111
 
             # Confirm the removed repo is disabled in the DB
             async with db.execute(
@@ -257,6 +258,7 @@ class TestGetReposForUser:
             assert len(repos) == 1
             r = repos[0]
             assert r["id"] == 999
+            assert r["repo_id"] == 999
             assert r["name"] == "my-repo"
             assert r["full_name"] == "user/my-repo"
             assert r["private"] is False

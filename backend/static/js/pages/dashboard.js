@@ -103,7 +103,8 @@ export async function renderDashboardPage(outlet) {
     store.setInstallations(installations);
 
     const hasInstallations = installations.length > 0;
-    const totalSelectedRepos = stats?.selected_repos_count ?? 0;
+    const totalSelectedRepos =
+      stats?.selected_repos_count ?? stats?.monitored_repositories_count ?? 0;
     const totalReviews = stats?.total_reviews ?? 0;
 
     // --- Render Real Metrics Grid ---
