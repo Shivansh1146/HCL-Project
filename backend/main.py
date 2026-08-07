@@ -192,30 +192,48 @@ async def debug_pr(owner: str, repo: str, pr_number: int):
 async def debug_review(owner: str, repo: str, pr_number: int):
     """Debug endpoint to check AI review status for a PR."""
     from auth.store import get_pull_request
+    from db_engine import get_db
     
     repo_full_name = f"{owner}/{repo}"
     
     try:
+        # First check what columns exist in pull_requests table
+        async with get_db() as db:
+            async with db.execute("PRAGMA table_info(pull_requests);") as cursor:
+                existing_cols = {row["name"] for row in await cursor.fetchall()}
+        
+        # Get PR record
         pr_record = await get_pull_request(pr_number, repo_full_name)
         if not pr_record:
             return {"error": "PR not found in database"}
         
-        return {
+        # Build response with only existing columns
+        response = {
             "repository": repo_full_name,
             "pr_number": pr_number,
-            "review_status": pr_record.get("review_status"),
-            "decision": pr_record.get("decision"),
-            "review_summary": pr_record.get("review_summary"),
-            "issues_count": pr_record.get("issues_count"),
-            "high_count": pr_record.get("high_count"),
-            "medium_count": pr_record.get("medium_count"),
-            "low_count": pr_record.get("low_count"),
-            "coverage_percentage": pr_record.get("coverage_percentage"),
-            "reviewed_at": pr_record.get("reviewed_at"),
-            "review_published": pr_record.get("review_published"),
+            "existing_columns": list(existing_cols),
         }
+        
+        # Add review columns if they exist
+        review_cols = {
+            "review_status", "decision", "review_summary", "issues_count",
+            "high_count", "medium_count", "low_count", "coverage_percentage",
+            "reviewed_at", "review_published", "review_posted", "github_review_id"
+        }
+        
+        for col in review_cols:
+            if col in existing_cols:
+                response[col] = pr_record.get(col)
+            else:
+                response[col] = "COLUMN_NOT_EXIST"
+        
+        return response
     except Exception as e:
-        return {"error": str(e)}
+        import traceback
+        return {
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
 
 
 # AI Analysis Semaphore to prevent Groq API overload (Max 5 concurrent)
