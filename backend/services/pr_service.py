@@ -510,6 +510,14 @@ class PRService:
             task_installation_id = await get_installation_id_for_repo(owner_name, repo_name)
             logger.info(f"🔍 [PR_SERVICE] Installation ID for background task: {task_installation_id}")
             
+            # Also try to get installation_id from webhook payload
+            payload_installation_id = payload.get("installation", {}).get("id")
+            logger.info(f"🔍 [PR_SERVICE] Installation ID from webhook payload: {payload_installation_id}")
+            
+            # Use payload installation_id if available, otherwise use database lookup
+            final_installation_id = payload_installation_id if payload_installation_id else task_installation_id
+            logger.info(f"🔍 [PR_SERVICE] Final installation_id to use: {final_installation_id}")
+            
             # Store execution trace before task scheduling
             try:
                 async with get_db() as db:
@@ -528,7 +536,7 @@ class PRService:
                 repo=repo_name,
                 pr_number=number,
                 head_sha=head_sha,
-                installation_id=task_installation_id,
+                installation_id=final_installation_id,
             )
             ai_task_dispatched = True
             logger.info(f"✅ [PR_SERVICE] ===== BACKGROUND TASK ADDED FOR PR #{number} =====")
