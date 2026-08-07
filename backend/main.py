@@ -282,6 +282,74 @@ async def debug_webhooks():
         }
 
 
+@app.get("/api/debug/webhooks")
+async def debug_webhooks():
+    """Debug endpoint to check webhook delivery records."""
+    from db_engine import get_db
+    
+    try:
+        async with get_db() as db:
+            async with db.execute(
+                "SELECT * FROM webhook_deliveries ORDER BY processed_at DESC LIMIT 20"
+            ) as cursor:
+                rows = await cursor.fetchall()
+                webhooks = [
+                    {
+                        "delivery_id": row["delivery_id"],
+                        "event_type": row["event_type"],
+                        "action": row["action"],
+                        "status": row["status"],
+                        "processed_at": row["processed_at"]
+                    }
+                    for row in rows
+        ]
+        
+        return {
+            "webhooks_count": len(webhooks),
+            "webhooks": webhooks
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+
+@app.get("/api/debug/github-api/{owner}/{repo}/{pr_number}")
+async def debug_github_api(owner: str, repo: str, pr_number: int):
+    """Debug endpoint to check GitHub API failure details."""
+    from db_engine import get_db
+    
+    try:
+        async with get_db() as db:
+            async with db.execute(
+                "SELECT * FROM webhook_deliveries WHERE event_type = 'github_api' AND (delivery_id LIKE ? OR delivery_id LIKE ?) ORDER BY processed_at DESC LIMIT 10",
+                (f"github_api_{owner}_{repo}_{pr_number}%", f"github_response_{owner}_{repo}_{pr_number}%")
+            ) as cursor:
+                rows = await cursor.fetchall()
+                github_api_logs = [
+                    {
+                        "delivery_id": row["delivery_id"],
+                        "event_type": row["event_type"],
+                        "action": row["action"],
+                        "status": row["status"],
+                        "processed_at": row["processed_at"]
+                    }
+                    for row in rows
+        
+        return {
+            "github_api_logs_count": len(github_api_logs),
+            "github_api_logs": github_api_logs
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+
 @app.get("/api/debug/logs")
 async def debug_logs():
     """Debug endpoint to check recent log-level information."""
