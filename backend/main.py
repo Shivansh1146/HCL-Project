@@ -316,6 +316,39 @@ async def debug_webhooks():
         }
 
 
+@app.get("/api/debug/installation/{owner}/{repo}")
+async def debug_installation(owner: str, repo: str):
+    """Debug endpoint to check installation_id for a repository."""
+    from auth.store import get_installation_id_for_repo
+    from db_engine import get_db
+    
+    full_name = f"{owner}/{repo}".lower()
+    
+    try:
+        installation_id = await get_installation_id_for_repo(owner, repo)
+        
+        # Also check the database directly
+        async with get_db() as db:
+            async with db.execute(
+                "SELECT * FROM repositories WHERE LOWER(full_name) = ? LIMIT 1",
+                (full_name,),
+            ) as cursor:
+                row = await cursor.fetchone()
+                db_data = dict(row) if row else None
+        
+        return {
+            "repository": f"{owner}/{repo}",
+            "installation_id_from_function": installation_id,
+            "database_record": db_data
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+
 @app.get("/api/debug/github-api/{owner}/{repo}/{pr_number}")
 async def debug_github_api(owner: str, repo: str, pr_number: int):
     """Debug endpoint to check GitHub API failure details."""
