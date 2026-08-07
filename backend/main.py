@@ -121,12 +121,79 @@ async def ai_health_check():
         }
 
 
+@app.get("/api/debug/pr/{owner}/{repo}/{pr_number}")
+async def debug_pr(owner: str, repo: str, pr_number: int):
+    """Debug endpoint to trace PR processing in production."""
+    from auth.store import is_repo_whitelisted, get_pull_request
+    from stats_store import is_sha_processed
+    
+    repo_full_name = f"{owner}/{repo}"
+    
+    # Check repository whitelist
+    whitelist_result = await is_repo_whitelisted(repo_full_name)
+    
+    # Check if PR exists in database
+    try:
+        pr_record = await get_pull_request(pr_number, repo_full_name)
+        pr_exists = pr_record is not None
+        pr_data = pr_record if pr_exists else None
+    except Exception as e:
+        pr_exists = False
+        pr_data = {"error": str(e)}
+    
+    # Check database for webhook deliveries
+    async with get_db() as db:
+        # Check webhook deliveries
+        async with db.execute(
+            "SELECT * FROM webhook_deliveries ORDER BY processed_at DESC LIMIT 10"
+        ) as cursor:
+            webhook_rows = await cursor.fetchall()
+            recent_webhooks = [
+                {
+                    "delivery_id": row["delivery_id"],
+                    "event_type": row["event_type"],
+                    "action": row["action"],
+                    "status": row["status"],
+                    "processed_at": row["processed_at"]
+                }
+                for row in webhook_rows
+            ]
+        
+        # Check selected repos
+        async with db.execute(
+            "SELECT COUNT(*) as cnt FROM selected_repos WHERE enabled = 1"
+        ) as cursor:
+            row = await cursor.fetchone()
+            total_selected = row["cnt"] if row else 0
+        
+        async with db.execute(
+            "SELECT repo_full_name, enabled FROM selected_repos WHERE enabled = 1"
+        ) as cursor:
+            rows = await cursor.fetchall()
+            selected_repos = [
+                {"repo_full_name": row["repo_full_name"], "enabled": row["enabled"]}
+                for row in rows
+            ]
+    
+    return {
+        "repository": repo_full_name,
+        "pr_number": pr_number,
+        "whitelist_result": whitelist_result,
+        "total_selected_repos": total_selected,
+        "selected_repos": selected_repos,
+        "pr_exists_in_db": pr_exists,
+        "pr_data": pr_data,
+        "recent_webhooks": recent_webhooks
+    }
+
+
 # AI Analysis Semaphore to prevent Groq API overload (Max 5 concurrent)
 analysis_semaphore = asyncio.BoundedSemaphore(5)
 
 from db_engine import (  # noqa: E402 (imported after load_dotenv intentionally)
     close_db_engine,
     init_db_engine,
+    get_db,
 )
 
 
