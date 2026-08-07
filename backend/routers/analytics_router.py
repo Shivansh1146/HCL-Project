@@ -29,8 +29,8 @@ async def get_analytics(
     """Calculates enterprise PR review metrics, severity breakdown, trends, and leaderboards."""
     try:
         async with get_db() as db:
-            # 1. Total Reviews & Time breakdown
-            async with db.execute("SELECT COUNT(*) FROM prs") as c:
+            # 1. Total Reviews & Time breakdown - query pull_requests table
+            async with db.execute("SELECT COUNT(*) FROM pull_requests") as c:
                 total_reviews = (await c.fetchone())[0]
 
             now = datetime.now(timezone.utc)
@@ -38,48 +38,50 @@ async def get_analytics(
             week_iso  = (now - timedelta(days=7)).isoformat()
             month_iso = (now - timedelta(days=30)).isoformat()
 
-            async with db.execute("SELECT COUNT(*) FROM prs WHERE reviewed_at >= ?", (today_iso,)) as c:
+            async with db.execute("SELECT COUNT(*) FROM pull_requests WHERE reviewed_at >= ?", (today_iso,)) as c:
                 reviews_today = (await c.fetchone())[0]
 
-            async with db.execute("SELECT COUNT(*) FROM prs WHERE reviewed_at >= ?", (week_iso,)) as c:
+            async with db.execute("SELECT COUNT(*) FROM pull_requests WHERE reviewed_at >= ?", (week_iso,)) as c:
                 reviews_week = (await c.fetchone())[0]
 
-            async with db.execute("SELECT COUNT(*) FROM prs WHERE reviewed_at >= ?", (month_iso,)) as c:
+            async with db.execute("SELECT COUNT(*) FROM pull_requests WHERE reviewed_at >= ?", (month_iso,)) as c:
                 reviews_month = (await c.fetchone())[0]
 
-            # Average Chunks & Issues per PR
-            async with db.execute("SELECT AVG(total_chunks), AVG(high_count + medium_count + low_count) FROM prs") as c:
+            # Average Chunks & Issues per PR - query pull_requests table
+            async with db.execute("SELECT AVG(total_chunks), AVG(high_count + medium_count + low_count) FROM pull_requests") as c:
                 row = await c.fetchone()
                 avg_chunks = round(row[0] or 0.0, 1)
                 avg_issues = round(row[1] or 0.0, 1)
 
-            # 2. Decision Distribution (PERFECT, SAFE, REVIEW_REQUIRED, BLOCK)
-            async with db.execute("SELECT decision_status, COUNT(*) as cnt FROM prs GROUP BY decision_status") as c:
+            # 2. Decision Distribution (PERFECT, SAFE, REVIEW_REQUIRED, BLOCK) - query pull_requests table
+            async with db.execute("SELECT decision, COUNT(*) as cnt FROM pull_requests GROUP BY decision") as c:
                 decision_rows = await c.fetchall()
                 decision_dist = {"PERFECT": 0, "SAFE": 0, "REVIEW_REQUIRED": 0, "BLOCK": 0}
                 for r in decision_rows:
-                    status_name = r["decision_status"] or "BLOCK"
+                    status_name = r["decision"] or "BLOCK"
                     decision_dist[status_name] = r["cnt"]
 
-            # 3. Severity Distribution
-            async with db.execute("SELECT severity, COUNT(*) as cnt FROM issues GROUP BY severity") as c:
-                sev_rows = await c.fetchall()
-                severity_dist = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
-                for r in sev_rows:
-                    sev = (r["severity"] or "low").lower()
-                    if sev in severity_dist:
-                        severity_dist[sev] = r["cnt"]
+            # 3. Severity Distribution - query pull_requests table columns
+            async with db.execute("SELECT SUM(high_count) as high, SUM(medium_count) as medium, SUM(low_count) as low FROM pull_requests") as c:
+                row = await c.fetchone()
+                severity_dist = {
+                    "critical": 0,
+                    "high": row["high"] or 0,
+                    "medium": row["medium"] or 0,
+                    "low": row["low"] or 0,
+                    "info": 0
+                }
 
-            # 4. Repository Analytics & Leaderboards
+            # 4. Repository Analytics & Leaderboards - query pull_requests table
             async with db.execute("""
                 SELECT
-                    repo,
+                    repository_name as repo,
                     COUNT(*) as total_prs,
-                    SUM(CASE WHEN decision_status IN ('PERFECT', 'SAFE') THEN 1 ELSE 0 END) as safe_prs,
-                    SUM(CASE WHEN decision_status = 'BLOCK' THEN 1 ELSE 0 END) as blocked_prs,
+                    SUM(CASE WHEN decision IN ('PERFECT', 'SAFE') THEN 1 ELSE 0 END) as safe_prs,
+                    SUM(CASE WHEN decision = 'BLOCK' THEN 1 ELSE 0 END) as blocked_prs,
                     AVG(high_count + medium_count + low_count) as avg_issues
-                FROM prs
-                GROUP BY repo
+                FROM pull_requests
+                GROUP BY repository_name
                 ORDER BY total_prs DESC
                 LIMIT 10
             """) as c:
@@ -98,10 +100,10 @@ async def get_analytics(
                         "avg_issues": round(r["avg_issues"] or 0.0, 1)
                     })
 
-            # 5. Trends per day (Substrings of reviewed_at ISO dates)
+            # 5. Trends per day (Substrings of reviewed_at ISO dates) - query pull_requests table
             async with db.execute("""
                 SELECT substr(reviewed_at, 1, 10) as date_str, COUNT(*) as cnt
-                FROM prs
+                FROM pull_requests
                 GROUP BY date_str
                 ORDER BY date_str DESC
                 LIMIT 14
@@ -109,10 +111,10 @@ async def get_analytics(
                 trend_rows = await c.fetchall()
                 daily_trends = [{"date": r["date_str"], "count": r["cnt"]} for r in reversed(trend_rows)]
 
-            # 6. Activity Timeline (Combined PR reviews and audit logs)
+            # 6. Activity Timeline (Combined PR reviews and audit logs) - query pull_requests table
             async with db.execute("""
-                SELECT 'pr_review' as type, repo as title, decision_status as detail, reviewed_at as timestamp
-                FROM prs
+                SELECT 'pr_review' as type, repository_name as title, decision as detail, reviewed_at as timestamp
+                FROM pull_requests
                 ORDER BY reviewed_at DESC
                 LIMIT 10
             """) as c:
@@ -155,11 +157,11 @@ async def export_analytics(
 ):
     """Exports raw review telemetry in JSON or CSV format."""
     async with get_db() as db:
-        async with db.execute("SELECT * FROM prs ORDER BY reviewed_at DESC") as c:
+        async with db.execute("SELECT * FROM pull_requests ORDER BY reviewed_at DESC") as c:
             rows = [dict(r) for r in await c.fetchall()]
 
     if format.lower() == "csv":
-        headers = ["id", "repo", "pr_number", "reviewed_at", "status", "decision_status", "high_count", "medium_count", "low_count"]
+        headers = ["id", "repository_name", "number", "reviewed_at", "review_status", "decision", "high_count", "medium_count", "low_count"]
         csv_lines = [",".join(headers)]
         for r in rows:
             line = [str(r.get(h, "")) for h in headers]
