@@ -7,20 +7,17 @@ Handles:
 3. User profile retrieval from GitHub API.
 4. User upsert & token persistence.
 """
+
+import logging
 import os
 import secrets
-import logging
-from typing import Tuple, Dict, Any, Optional
-import httpx
+from typing import Optional, Tuple
+from urllib.parse import urlencode
 
-from auth.models import User, LoginURLResponse
-from auth.store import (
-    save_oauth_state,
-    pop_oauth_state,
-    upsert_user,
-    save_oauth_token,
-    get_oauth_token,
-)
+import httpx
+from auth.models import LoginURLResponse, User
+from auth.store import pop_oauth_state, save_oauth_state, save_oauth_token, upsert_user
+from fastapi import Request
 
 logger = logging.getLogger("backend")
 
@@ -37,8 +34,29 @@ class OAuthService:
         self.client_secret = os.getenv("GITHUB_CLIENT_SECRET", "")
         self.redirect_uri = self._resolve_redirect_uri()
 
-    def _resolve_redirect_uri(self) -> str:
-        """Resolve OAuth callback URL from env or sensible local/production defaults."""
+    def _resolve_redirect_uri(self, request: Optional[Request] = None) -> str:
+        """Resolve OAuth callback URL from the current request or configured defaults."""
+        if request is not None:
+            forwarded_proto = (
+                (
+                    request.headers.get("x-forwarded-proto")
+                    or request.url.scheme
+                    or "https"
+                )
+                .split(",")[0]
+                .strip()
+            )
+            forwarded_host = (
+                (
+                    request.headers.get("x-forwarded-host")
+                    or request.headers.get("host", "")
+                )
+                .split(",")[0]
+                .strip()
+            )
+            if forwarded_host:
+                return f"{forwarded_proto}://{forwarded_host}/auth/callback"
+
         explicit = os.getenv("GITHUB_OAUTH_REDIRECT_URI", "").strip()
         if explicit:
             return explicit
@@ -58,26 +76,41 @@ class OAuthService:
 
         return f"http://localhost:{port}/auth/callback"
 
-    def generate_login_url(self) -> LoginURLResponse:
+    def _validate_client_id(self) -> None:
+        if not self.client_id:
+            raise ValueError("GITHUB_CLIENT_ID is not configured.")
+
+    def generate_login_url(self, request: Optional[Request] = None) -> LoginURLResponse:
         """Generates GitHub OAuth login URL with secure random state."""
+        self._validate_client_id()
+        redirect_uri = self._resolve_redirect_uri(request)
+        if not redirect_uri:
+            raise ValueError("OAuth redirect URI is not configured.")
+
         state = secrets.token_urlsafe(32)
         scope = "read:user user:email repo"
-        url = (
-            f"{GITHUB_OAUTH_AUTHORIZE_URL}"
-            f"?client_id={self.client_id}"
-            f"&redirect_uri={self.redirect_uri}"
-            f"&scope={scope}"
-            f"&state={state}"
+        query = urlencode(
+            {
+                "client_id": self.client_id,
+                "redirect_uri": redirect_uri,
+                "scope": scope,
+                "state": state,
+            }
         )
+        url = f"{GITHUB_OAUTH_AUTHORIZE_URL}?{query}"
         return LoginURLResponse(authorization_url=url, state=state)
 
-    async def prepare_and_store_state(self) -> LoginURLResponse:
+    async def prepare_and_store_state(
+        self, request: Optional[Request] = None
+    ) -> LoginURLResponse:
         """Generates login URL and records state in DB for verification."""
-        resp = self.generate_login_url()
+        resp = self.generate_login_url(request=request)
         await save_oauth_state(resp.state)
         return resp
 
-    async def handle_callback(self, code: str, state: str) -> Tuple[User, str]:
+    async def handle_callback(
+        self, code: str, state: str, request: Optional[Request] = None
+    ) -> Tuple[User, str]:
         """
         Executes complete OAuth callback exchange:
         1. Validates CSRF state
@@ -89,7 +122,17 @@ class OAuthService:
         # Validate state
         is_valid_state = await pop_oauth_state(state)
         if not is_valid_state:
-            raise ValueError("Invalid or expired OAuth state parameter (CSRF protection triggered).")
+            raise ValueError(
+                "Invalid or expired OAuth state parameter (CSRF protection triggered)."
+            )
+
+        self._validate_client_id()
+        if not self.client_secret:
+            raise ValueError("GITHUB_CLIENT_SECRET is not configured.")
+
+        redirect_uri = self._resolve_redirect_uri(request)
+        if not redirect_uri:
+            raise ValueError("OAuth redirect URI is not configured.")
 
         # Exchange code for access token
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -100,14 +143,16 @@ class OAuthService:
                     "client_id": self.client_id,
                     "client_secret": self.client_secret,
                     "code": code,
-                    "redirect_uri": self.redirect_uri,
+                    "redirect_uri": redirect_uri,
                 },
             )
             token_resp.raise_for_status()
             token_data = token_resp.json()
 
             if "error" in token_data:
-                raise ValueError(f"GitHub OAuth error: {token_data.get('error_description', token_data['error'])}")
+                raise ValueError(
+                    f"GitHub OAuth error: {token_data.get('error_description', token_data['error'])}"
+                )
 
             access_token = token_data.get("access_token")
             scope = token_data.get("scope", "")
@@ -143,7 +188,11 @@ class OAuthService:
         # Save Token
         await save_oauth_token(user_id=user.id, access_token=access_token, scope=scope)
 
-        logger.info(f"User {login} (GitHub ID: {github_id}) logged in successfully via OAuth.")
+        logger.info(
+            "User %s (GitHub ID: %s) logged in successfully via OAuth.",
+            login,
+            github_id,
+        )
         return user, access_token
 
 
@@ -151,7 +200,8 @@ _oauth_service_instance: Optional[OAuthService] = None
 
 
 def get_oauth_service() -> OAuthService:
-    global _oauth_service_instance
-    if _oauth_service_instance is None:
-        _oauth_service_instance = OAuthService()
-    return _oauth_service_instance
+    service = getattr(get_oauth_service, "_instance", None)
+    if service is None:
+        service = OAuthService()
+        setattr(get_oauth_service, "_instance", service)
+    return service
