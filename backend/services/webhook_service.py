@@ -14,6 +14,7 @@ import hashlib
 import json
 import logging
 import os
+from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
 
 from fastapi import Request, HTTPException, status, BackgroundTasks
@@ -323,13 +324,33 @@ class WebhookService:
 
             # Delegate to PR processing service (upserts into DB and dispatches AI review)
             logger.info(f"🔄 [WEBHOOK:PULL_REQUEST] Calling PRService.process_pull_request_event()")
-            logger.info(f"🔍 [WEBHOOK:PULL_REQUEST] background_tasks parameter: {background_tasks}")
-            logger.info(f"🔍 [WEBHOOK:PULL_REQUEST] background_tasks type: {type(background_tasks)}")
-            logger.info(f"🔍 [WEBHOOK:PULL_REQUEST] delivery_id: {delivery_id}")
+            
+            # Store execution trace in database
+            from db_engine import get_db
+            try:
+                async with get_db() as db:
+                    await db.execute(
+                        "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                        (delivery_id, "pull_request", action, "processing", datetime.now().isoformat())
+                    )
+                    await db.commit()
+            except Exception as trace_error:
+                logger.error(f"Failed to store execution trace: {trace_error}")
             
             res = await PRService.process_pull_request_event(
                 payload, delivery_id, background_tasks=background_tasks
             )
+            
+            # Update delivery status
+            try:
+                async with get_db() as db:
+                    await db.execute(
+                        "UPDATE webhook_deliveries SET status = ?, action = ? WHERE delivery_id = ?",
+                        (res.get('status'), action, delivery_id)
+                    )
+                    await db.commit()
+            except Exception as trace_error:
+                logger.error(f"Failed to update execution trace: {trace_error}")
             
             logger.info(f"✅ [WEBHOOK:PULL_REQUEST] PRService returned: {res.get('status')}")
             logger.info(f"✅ [WEBHOOK:PULL_REQUEST] AI review dispatched: {res.get('ai_review_dispatched')}")

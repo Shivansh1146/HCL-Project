@@ -13,8 +13,10 @@ Responsibilities:
 
 import json
 import logging
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 from fastapi import BackgroundTasks
+from db_engine import get_db
 
 from auth.store import (
     get_pr_stats as store_get_pr_stats,
@@ -74,6 +76,17 @@ async def run_ai_review_task(
     logger.info(f"🤖 [AI_REVIEW_TASK] ========== STARTING AI REVIEW TASK ==========")
     logger.info(f"🤖 [AI_REVIEW_TASK] Parameters: github_pr_id={github_pr_id}, owner={owner}, repo={repo}, pr_number={pr_number}, head_sha={head_sha}")
     logger.info("📊 PR pipeline initiated")
+    
+    # Store execution trace
+    try:
+        async with get_db() as db:
+            await db.execute(
+                "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                (f"ai_task_{github_pr_id}_{pr_number}", "ai_review_task", "start", "starting", datetime.now().isoformat())
+            )
+            await db.commit()
+    except Exception as trace_error:
+        logger.error(f"Failed to store AI task start trace: {trace_error}")
 
     await update_pull_request_review_results(
         github_pr_id=github_pr_id,
@@ -378,6 +391,18 @@ class PRService:
         if background_tasks is not None and action in AI_TRIGGER_ACTIONS:
             logger.info(f"🚀 [PR_SERVICE] ===== ABOUT TO ADD BACKGROUND TASK FOR PR #{number} =====")
             logger.info(f"🚀 [PR_SERVICE] Task parameters: github_pr_id={github_pr_id}, owner={owner_name}, repo={repo_name}, pr_number={number}, head_sha={head_sha}")
+            
+            # Store execution trace before task scheduling
+            try:
+                async with get_db() as db:
+                    await db.execute(
+                        "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                        (f"task_schedule_{number}", "task_schedule", action, "scheduling", datetime.now().isoformat())
+                    )
+                    await db.commit()
+            except Exception as trace_error:
+                logger.error(f"Failed to store task scheduling trace: {trace_error}")
+            
             background_tasks.add_task(
                 run_ai_review_task,
                 github_pr_id=github_pr_id,
