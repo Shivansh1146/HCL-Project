@@ -229,51 +229,13 @@ async def upsert_review(repo: str, pr_number: int, status: str = "processing") -
     State machine: RECEIVED -> PROCESSING -> COMPLETED / FAILED.
     Never inserts duplicate rows; always updates existing ones.
     Handles legacy schema with bot_start_time NOT NULL column.
+    
+    NOTE: This function is deprecated. PR data is now stored in pull_requests table
+    via auth/store.py. This is kept for backward compatibility only.
     """
-    now = datetime.now(timezone.utc).isoformat()
-
-    async def _upsert():
-        async with get_db() as db:
-            # Detect schema once to handle legacy bot_start_time column
-            async with db.execute("PRAGMA table_info(prs)") as c:
-                cols = [row[1] for row in await c.fetchall()]
-            has_bot_start = "bot_start_time" in cols
-
-            if has_bot_start:
-                sql = """
-                    INSERT INTO prs (repo, pr_number, reviewed_at, bot_start_time, status)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(repo, pr_number)
-                    DO UPDATE SET
-                        status      = excluded.status,
-                        reviewed_at = excluded.reviewed_at,
-                        processed_chunks = 0,
-                        total_chunks = 0
-                """
-                params = (repo, pr_number, now, now, status)
-            else:
-                sql = """
-                    INSERT INTO prs (repo, pr_number, reviewed_at, status)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(repo, pr_number)
-                    DO UPDATE SET
-                        status      = excluded.status,
-                        reviewed_at = excluded.reviewed_at,
-                        processed_chunks = 0,
-                        total_chunks = 0
-                """
-                params = (repo, pr_number, now, status)
-
-            await db.execute(sql, params)
-            await db.commit()
-            # Return the existing or newly created row id
-            async with db.execute(
-                "SELECT id FROM prs WHERE repo = ? AND pr_number = ?", (repo, pr_number)
-            ) as c:
-                row = await c.fetchone()
-                return row[0]
-
-    return await db_retry(_upsert)
+    # Return a dummy ID since we're not using prs table anymore
+    # The actual PR data is in pull_requests table
+    return 0
 
 
 async def initiate_review(repo: str, pr_number: int, status: str = "pending") -> int:
@@ -299,77 +261,22 @@ async def finalize_review(
     Step 4 Fix: Empty issues list with status=success → decision stays as computed
                 (the compute_decision function in main.py already returns SAFE when
                 issues=[] and no error; we never force BLOCK here).
+    
+    NOTE: This function is deprecated. PR data is now stored in pull_requests table
+    via auth/store.py. This is kept for backward compatibility only.
     """
-
-    async def _update():
-        async with get_db() as db:
-            # Explicit transaction for atomicity
-            await db.execute("BEGIN IMMEDIATE")
-
-            # Atomic UPDATE — single row per PR, never ghost inserts
-            await db.execute(
-                """UPDATE prs SET
-                   status          = ?,
-                   decision_status = ?,
-                   high_count      = ?,
-                   medium_count    = ?,
-                   low_count       = ?,
-                   total_chunks    = ?,
-                   processed_chunks = ?,
-                   rule_based_count = ?,
-                   decision_explanation = ?
-                   WHERE id        = ?""",
-                (
-                    status,
-                    decision_status,
-                    high,
-                    medium,
-                    low,
-                    total_chunks,
-                    processed_chunks,
-                    rule_based_count,
-                    decision_explanation,
-                    pr_id,
-                ),
-            )
-
-            # Delete stale issues from previous processing attempts, then re-insert
-            await db.execute("DELETE FROM issues WHERE pr_id = ?", (pr_id,))
-            for issue in issues:
-                await db.execute(
-                    "INSERT INTO issues (pr_id, severity, type, title, description, file, line) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (
-                        pr_id,
-                        (issue.get("severity") or "low").lower(),
-                        (issue.get("type") or "bug").lower(),
-                        (issue.get("title") or "Issue Detected"),
-                        (issue.get("description") or ""),
-                        (issue.get("file") or ""),
-                        (issue.get("line") or 0),
-                    ),
-                )
-            await db.commit()
-
-    await db_retry(_update)
-    logger.info(
-        f"📈 Telemetry Finalized: PR ID {pr_id} | Status: {status} "
-        f"| Decision: {decision_status} | Issues: H={high} M={medium} L={low}"
-    )
+    # No-op since we're not using prs table anymore
+    return
 
 
 async def update_review_progress(pr_id: int, processed: int, total: int):
-    """Updates the progress counts for a PR without finalizing it."""
-
-    async def _update():
-        async with get_db() as db:
-            await db.execute(
-                "UPDATE prs SET processed_chunks = ?, total_chunks = ? WHERE id = ?",
-                (processed, total, pr_id),
-            )
-            await db.commit()
-
-    await db_retry(_update)
+    """Updates the progress counts for a PR without finalizing it.
+    
+    NOTE: This function is deprecated. PR data is now stored in pull_requests table
+    via auth/store.py. This is kept for backward compatibility only.
+    """
+    # No-op since we're not using prs table anymore
+    return
 
 
 async def get_stats(limit: int = 15, offset: int = 0) -> dict:
@@ -378,8 +285,8 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
         # Atomic read transaction to prevent dirty reads and UI flickering
         await db.execute("BEGIN")
 
-        # Counts
-        async with db.execute("SELECT COUNT(*) FROM prs") as c:
+        # Counts from pull_requests table (the actual source of truth for AI reviews)
+        async with db.execute("SELECT COUNT(*) FROM pull_requests") as c:
             total_prs = (await c.fetchone())[0]
         async with db.execute("SELECT COUNT(*) FROM issues") as c:
             total_issues = (await c.fetchone())[0]
@@ -394,18 +301,18 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
 
         # Breakdown (Filtered by successful PRs to prevent contamination)
         async with db.execute(
-            "SELECT severity, COUNT(*) as count FROM issues WHERE pr_id IN (SELECT id FROM prs WHERE status='success') GROUP BY severity"
+            "SELECT severity, COUNT(*) as count FROM issues WHERE pr_id IN (SELECT id FROM pull_requests WHERE review_status='success') GROUP BY severity"
         ) as c:
             sev_data = {row["severity"]: row["count"] for row in await c.fetchall()}
 
         async with db.execute(
-            "SELECT type, COUNT(*) as count FROM issues WHERE pr_id IN (SELECT id FROM prs WHERE status='success') GROUP BY type"
+            "SELECT type, COUNT(*) as count FROM issues WHERE pr_id IN (SELECT id FROM pull_requests WHERE review_status='success') GROUP BY type"
         ) as c:
             type_data = {row["type"]: row["count"] for row in await c.fetchall()}
 
-        # Recent (Paginated)
+        # Recent (Paginated) from pull_requests table
         async with db.execute(
-            "SELECT * FROM prs ORDER BY reviewed_at DESC LIMIT ? OFFSET ?",
+            "SELECT * FROM pull_requests ORDER BY reviewed_at DESC LIMIT ? OFFSET ?",
             (limit, offset),
         ) as c:
             prs = await c.fetchall()
@@ -413,8 +320,8 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
         recent_reviews = []
         for pr_row in prs:
             pr = dict(pr_row)
-            pr_status = pr.get("status", "error")
-            decision = pr.get("decision_status", "BLOCK")
+            pr_status = pr.get("review_status", "error")
+            decision = pr.get("decision", "BLOCK")
 
             async with db.execute(
                 "SELECT * FROM issues WHERE pr_id = ?", (pr["id"],)
@@ -423,8 +330,8 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
 
             recent_reviews.append(
                 {
-                    "repo": pr["repo"],
-                    "pr_number": pr["pr_number"],
+                    "repo": pr["repository_name"],
+                    "pr_number": pr["number"],
                     "status": pr_status,
                     "decision": decision,
                     "issue_count": len(issues),
@@ -458,7 +365,7 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
         minutes, _ = divmod(remainder, 60)
 
         async with db.execute(
-            "SELECT reviewed_at FROM prs ORDER BY reviewed_at DESC LIMIT 1"
+            "SELECT reviewed_at FROM pull_requests ORDER BY reviewed_at DESC LIMIT 1"
         ) as c:
             last_row = await c.fetchone()
             last_review_time = last_row[0] if last_row else None
