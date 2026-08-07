@@ -299,16 +299,19 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
         ) as c:
             monitored_repositories_count = (await c.fetchone())[0]
 
-        # Breakdown (Filtered by successful PRs to prevent contamination)
+        # Breakdown from pull_requests table columns (not issues table)
         async with db.execute(
-            "SELECT severity, COUNT(*) as count FROM issues WHERE pr_id IN (SELECT id FROM pull_requests WHERE review_status='success') GROUP BY severity"
+            "SELECT SUM(high_count) as high, SUM(medium_count) as medium, SUM(low_count) as low FROM pull_requests WHERE review_status='success'"
         ) as c:
-            sev_data = {row["severity"]: row["count"] for row in await c.fetchall()}
+            row = await c.fetchone()
+            sev_data = {
+                "high": row["high"] or 0,
+                "medium": row["medium"] or 0,
+                "low": row["low"] or 0
+            }
 
-        async with db.execute(
-            "SELECT type, COUNT(*) as count FROM issues WHERE pr_id IN (SELECT id FROM pull_requests WHERE review_status='success') GROUP BY type"
-        ) as c:
-            type_data = {row["type"]: row["count"] for row in await c.fetchall()}
+        # Type breakdown - default to 0 since type is not stored in pull_requests
+        type_data = {"security": 0, "bug": 0, "performance": 0, "quality": 0}
 
         # Recent (Paginated) from pull_requests table
         async with db.execute(
@@ -323,6 +326,7 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
             pr_status = pr.get("review_status", "error")
             decision = pr.get("decision", "BLOCK")
 
+            # Try to get issues from issues table if they exist
             async with db.execute(
                 "SELECT * FROM issues WHERE pr_id = ?", (pr["id"],)
             ) as c:
@@ -334,7 +338,7 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
                     "pr_number": pr["number"],
                     "status": pr_status,
                     "decision": decision,
-                    "issue_count": len(issues),
+                    "issue_count": len(issues) if issues else pr.get("issues_count", 0),
                     "reviewed_at": pr["reviewed_at"],
                     "issues": issues,
                     "coverage": {
@@ -386,17 +390,8 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
         "selected_repos_count": selected_repos_count,
         "monitored_repositories_count": monitored_repositories_count,
         "repositories_count": monitored_repositories_count,
-        "issues_by_severity": {
-            "high": sev_data.get("high", 0),
-            "medium": sev_data.get("medium", 0),
-            "low": sev_data.get("low", 0),
-        },
-        "issues_by_type": {
-            "security": type_data.get("security", 0),
-            "bug": type_data.get("bug", 0),
-            "performance": type_data.get("performance", 0),
-            "quality": type_data.get("quality", 0),
-        },
+        "issues_by_severity": sev_data,
+        "issues_by_type": type_data,
         "recent_reviews": recent_reviews,
         "bot_status": "online",
         "uptime": f"{hours}h {minutes}m",
