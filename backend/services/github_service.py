@@ -48,16 +48,44 @@ class GitHubService:
         
         logger.info(f"🔍 [GITHUB_SERVICE] URL: {url}")
         logger.info(f"🔍 [GITHUB_SERVICE] HTTP Method: GET")
+        logger.info(f"🔍 [GITHUB_SERVICE] Installation ID: {installation_id}")
         
         # Use GitHub App installation token if installation_id is provided
+        auth_header = None
         if installation_id:
             logger.info(f"🔍 [GITHUB_SERVICE] Using GitHub App installation token for installation_id={installation_id}")
-            token = await self.app_service.get_installation_access_token(installation_id)
-            if not token:
-                logger.error(f"❌ [GITHUB_SERVICE] Failed to get installation token for installation_id={installation_id}")
+            try:
+                token = await self.app_service.get_installation_access_token(installation_id)
+                if not token:
+                    logger.error(f"❌ [GITHUB_SERVICE] Failed to get installation token for installation_id={installation_id}")
+                    # Store error in database
+                    try:
+                        async with get_db() as db:
+                            await db.execute(
+                                "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                                (f"github_error_{owner}_{repo}_{pr_number}", "github_api", "token_error", f"Failed to get installation token for installation_id={installation_id}", datetime.now().isoformat())
+                            )
+                            await db.commit()
+                    except Exception as db_error:
+                        logger.error(f"Failed to store token error in database: {db_error}")
+                    return None
+                auth_header = f"Bearer {token}"
+                logger.info(f"🔍 [GITHUB_SERVICE] Authorization: Bearer token (installation token)")
+            except Exception as token_error:
+                logger.error(f"❌ [GITHUB_SERVICE] Exception getting installation token: {str(token_error)}")
+                import traceback
+                logger.error(f"❌ [GITHUB_SERVICE] Token exception traceback: {traceback.format_exc()}")
+                # Store error in database
+                try:
+                    async with get_db() as db:
+                        await db.execute(
+                            "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                            (f"github_error_{owner}_{repo}_{pr_number}", "github_api", "token_exception", f"{type(token_error).__name__}: {str(token_error)}", datetime.now().isoformat())
+                        )
+                        await db.commit()
+                except Exception as db_error:
+                    logger.error(f"Failed to store token exception in database: {db_error}")
                 return None
-            auth_header = f"Bearer {token}"
-            logger.info(f"🔍 [GITHUB_SERVICE] Authorization: Bearer token (installation token)")
         else:
             logger.info(f"🔍 [GITHUB_SERVICE] Using static GITHUB_TOKEN")
             headers = self.headers.copy()
@@ -93,14 +121,14 @@ class GitHubService:
                         async with get_db() as db:
                             await db.execute(
                                 "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
-                                (f"github_api_{owner}_{repo}_{pr_number}", "github_api", "diff_fetch", f"status_{response.status_code}", datetime.now().isoformat())
+                                (f"github_api_{owner}_{repo}_{pr_number}_{attempt}", "github_api", "diff_fetch", f"status_{response.status_code}", datetime.now().isoformat())
                             )
                             await db.commit()
                             
                             # Store response body
                             await db.execute(
                                 "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
-                                (f"github_response_{owner}_{repo}_{pr_number}", "github_api", "response_body", response.text[:500] if response.text else "EMPTY", datetime.now().isoformat())
+                                (f"github_response_{owner}_{repo}_{pr_number}_{attempt}", "github_api", "response_body", response.text[:500] if response.text else "EMPTY", datetime.now().isoformat())
                             )
                             await db.commit()
                     except Exception as db_error:
@@ -115,7 +143,7 @@ class GitHubService:
                         continue
 
                     if response.status_code == 401:
-                        logger.error(f"Unauthorized access to {url}. Token status: {'Present' if self.token else 'Missing'}")
+                        logger.error(f"Unauthorized access to {url}. Token status: {'Present' if auth_header else 'Missing'}")
 
                     if response.status_code != 200:
                         logger.error(f"❌ [GITHUB_SERVICE] HTTP Error {response.status_code}: {response.text}")
