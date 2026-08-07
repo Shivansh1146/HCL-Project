@@ -370,6 +370,7 @@ async def debug_github_api(owner: str, repo: str, pr_number: int):
                         "processed_at": row["processed_at"]
                     }
                     for row in rows
+                ]
         
         return {
             "github_api_logs_count": len(github_api_logs),
