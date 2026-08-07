@@ -175,6 +175,7 @@ async def debug_pr(owner: str, repo: str, pr_number: int):
                 for row in rows
             ]
     
+
     return {
         "repository": repo_full_name,
         "pr_number": pr_number,
@@ -185,6 +186,36 @@ async def debug_pr(owner: str, repo: str, pr_number: int):
         "pr_data": pr_data,
         "recent_webhooks": recent_webhooks
     }
+
+
+@app.get("/api/debug/review/{owner}/{repo}/{pr_number}")
+async def debug_review(owner: str, repo: str, pr_number: int):
+    """Debug endpoint to check AI review status for a PR."""
+    from auth.store import get_pull_request
+    
+    repo_full_name = f"{owner}/{repo}"
+    
+    try:
+        pr_record = await get_pull_request(pr_number, repo_full_name)
+        if not pr_record:
+            return {"error": "PR not found in database"}
+        
+        return {
+            "repository": repo_full_name,
+            "pr_number": pr_number,
+            "review_status": pr_record.get("review_status"),
+            "decision": pr_record.get("decision"),
+            "review_summary": pr_record.get("review_summary"),
+            "issues_count": pr_record.get("issues_count"),
+            "high_count": pr_record.get("high_count"),
+            "medium_count": pr_record.get("medium_count"),
+            "low_count": pr_record.get("low_count"),
+            "coverage_percentage": pr_record.get("coverage_percentage"),
+            "reviewed_at": pr_record.get("reviewed_at"),
+            "review_published": pr_record.get("review_published"),
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 
 # AI Analysis Semaphore to prevent Groq API overload (Max 5 concurrent)
