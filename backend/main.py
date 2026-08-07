@@ -201,17 +201,29 @@ async def debug_review(owner: str, repo: str, pr_number: int):
         async with get_db() as db:
             async with db.execute("PRAGMA table_info(pull_requests);") as cursor:
                 existing_cols = {row["name"] for row in await cursor.fetchall()}
+            
+            # Check recent PR records for this repository
+            async with db.execute(
+                "SELECT * FROM pull_requests WHERE repository_name = ? ORDER BY id DESC LIMIT 5",
+                (repo_full_name,)
+            ) as cursor:
+                recent_prs = await cursor.fetchall()
         
         # Get PR record
         pr_record = await get_pull_request(pr_number, repo_full_name)
         if not pr_record:
-            return {"error": "PR not found in database"}
+            return {
+                "error": "PR not found in database",
+                "recent_prs_count": len(recent_prs),
+                "existing_columns": list(existing_cols)
+            }
         
         # Build response with only existing columns
         response = {
             "repository": repo_full_name,
             "pr_number": pr_number,
             "existing_columns": list(existing_cols),
+            "recent_prs_count": len(recent_prs),
         }
         
         # Add review columns if they exist
@@ -234,6 +246,33 @@ async def debug_review(owner: str, repo: str, pr_number: int):
             "error": str(e),
             "traceback": traceback.format_exc()
         }
+
+
+@app.get("/api/debug/logs")
+async def debug_logs():
+    """Debug endpoint to check recent log-level information."""
+    import logging
+    
+    # Get the backend logger
+    backend_logger = logging.getLogger("backend")
+    
+    # Get all handlers
+    handlers = backend_logger.handlers
+    
+    return {
+        "logger_name": backend_logger.name,
+        "logger_level": backend_logger.level,
+        "effective_level": backend_logger.getEffectiveLevel(),
+        "handlers_count": len(handlers),
+        "handlers": [
+            {
+                "type": type(h).__name__,
+                "level": h.level,
+                "formatter": type(h.formatter).__name__ if h.formatter else None
+            }
+            for h in handlers
+        ]
+    }
 
 
 # AI Analysis Semaphore to prevent Groq API overload (Max 5 concurrent)
