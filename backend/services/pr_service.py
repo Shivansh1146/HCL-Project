@@ -71,7 +71,8 @@ async def run_ai_review_task(
     6. Persist review status, decision, metrics, and findings into SQLite.
     7. (Phase 2.2) Publish GitHub PR review via ReviewPublisher.
     """
-    logger.info(f"🤖 [AI_REVIEW_TASK] Starting review for {owner}/{repo} PR #{pr_number} (github_pr_id={github_pr_id})")
+    logger.info(f"🤖 [AI_REVIEW_TASK] ========== STARTING AI REVIEW TASK ==========")
+    logger.info(f"🤖 [AI_REVIEW_TASK] Parameters: github_pr_id={github_pr_id}, owner={owner}, repo={repo}, pr_number={pr_number}, head_sha={head_sha}")
     logger.info("📊 PR pipeline initiated")
 
     await update_pull_request_review_results(
@@ -261,7 +262,11 @@ class PRService:
         Supported actions: opened, edited, reopened, ready_for_review, closed, synchronize.
         Launches background AI review task for: opened, reopened, ready_for_review, synchronize.
         """
+        logger.info(f"🚀 [PR_SERVICE] process_pull_request_event() called with delivery_id={delivery_id}")
+        
         action = payload.get("action", "").lower()
+        logger.info(f"📋 [PR_SERVICE] Action: {action}")
+        
         if action not in SUPPORTED_PR_ACTIONS:
             logger.info(f"ℹ️ [PR_SERVICE] Safe ignore: unsupported PR action '{action}'")
             return {
@@ -273,6 +278,9 @@ class PRService:
         pr_data = payload.get("pull_request", {})
         repo_data = payload.get("repository", {})
         sender_data = payload.get("sender", {})
+        
+        logger.info(f"📋 [PR_SERVICE] PR data keys: {list(pr_data.keys())}")
+        logger.info(f"📋 [PR_SERVICE] Repo data: {repo_data.get('full_name')}")
 
         if not pr_data:
             logger.warning("❌ [PR_SERVICE] Webhook payload missing 'pull_request' object.")
@@ -363,7 +371,10 @@ class PRService:
 
         # Dispatch background AI review task for supported trigger actions
         ai_task_dispatched = False
+        logger.info(f"🔍 [PR_SERVICE] Checking AI task dispatch: background_tasks={background_tasks is not None}, action in AI_TRIGGER_ACTIONS={action in AI_TRIGGER_ACTIONS}")
+        
         if background_tasks is not None and action in AI_TRIGGER_ACTIONS:
+            logger.info(f"🚀 [PR_SERVICE] Adding background task for PR #{number}")
             background_tasks.add_task(
                 run_ai_review_task,
                 github_pr_id=github_pr_id,
@@ -373,7 +384,9 @@ class PRService:
                 head_sha=head_sha,
             )
             ai_task_dispatched = True
-            logger.info(f"🚀 [PR_SERVICE] Scheduled background AI review task for PR #{number} (action='{action}')")
+            logger.info(f"✅ [PR_SERVICE] Scheduled background AI review task for PR #{number} (action='{action}')")
+        else:
+            logger.warning(f"⚠️ [PR_SERVICE] AI task NOT dispatched: background_tasks={background_tasks is not None}, action={action}, trigger_actions={AI_TRIGGER_ACTIONS}")
 
         return {
             "status": "processed",

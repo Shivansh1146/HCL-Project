@@ -322,9 +322,11 @@ class WebhookService:
             )
 
             # Delegate to PR processing service (upserts into DB and dispatches AI review)
+            logger.info(f"🔄 [WEBHOOK:PULL_REQUEST] Calling PRService.process_pull_request_event()")
             res = await PRService.process_pull_request_event(
                 payload, delivery_id, background_tasks=background_tasks
             )
+            logger.info(f"✅ [WEBHOOK:PULL_REQUEST] PRService returned: {res.get('status')}")
             res["delivery_id"] = delivery_id
             return res
 
