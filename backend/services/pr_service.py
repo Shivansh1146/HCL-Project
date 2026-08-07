@@ -93,10 +93,44 @@ async def run_ai_review_task(
         review_status="processing",
         decision="PROCESSING",
     )
+    
+    # Store execution trace
+    try:
+        async with get_db() as db:
+            await db.execute(
+                "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                (f"ai_task_marked_processing_{github_pr_id}", "ai_review_task", "mark_processing", "processing", datetime.now().isoformat())
+            )
+            await db.commit()
+    except Exception as trace_error:
+        logger.error(f"Failed to store AI task processing trace: {trace_error}")
 
     try:
         logger.info("📥 Fetching PR files from GitHub")
+        
+        # Store execution trace
+        try:
+            async with get_db() as db:
+                await db.execute(
+                    "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                    (f"fetch_diff_{github_pr_id}", "ai_review_task", "fetch_diff", "fetching", datetime.now().isoformat())
+                )
+                await db.commit()
+        except Exception as trace_error:
+            logger.error(f"Failed to store fetch diff trace: {trace_error}")
+        
         diff = await fetch_diff(owner, repo, pr_number)
+        
+        # Store execution trace
+        try:
+            async with get_db() as db:
+                await db.execute(
+                    "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                    (f"diff_result_{github_pr_id}", "ai_review_task", "diff_result", f"diff_{'success' if diff else 'failed'}", datetime.now().isoformat())
+                )
+                await db.commit()
+        except Exception as trace_error:
+            logger.error(f"Failed to store diff result trace: {trace_error}")
         if diff is None:
             logger.warning(f"⚠️ [AI_REVIEW_TASK] Could not fetch diff for {owner}/{repo} PR #{pr_number}")
             await update_pull_request_review_results(
@@ -126,6 +160,18 @@ async def run_ai_review_task(
         logger.info("📥 PR files downloaded successfully")
         
         ai_service = get_ai_service()
+        
+        # Store execution trace before AI analysis
+        try:
+            async with get_db() as db:
+                await db.execute(
+                    "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                    (f"ai_service_configured_{github_pr_id}", "ai_review_task", "ai_service_check", f"configured_{ai_service.is_configured()}", datetime.now().isoformat())
+                )
+                await db.commit()
+        except Exception as trace_error:
+            logger.error(f"Failed to store AI service check trace: {trace_error}")
+        
         if not ai_service.is_configured():
             logger.error("❌ AI service not configured - skipping analysis")
             await update_pull_request_review_results(
@@ -138,6 +184,17 @@ async def run_ai_review_task(
             return
         
         analysis = await ai_service.analyze_code(diff)
+        
+        # Store execution trace for AI analysis result
+        try:
+            async with get_db() as db:
+                await db.execute(
+                    "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                    (f"ai_analysis_result_{github_pr_id}", "ai_review_task", "analysis_result", analysis.get("status", "unknown"), datetime.now().isoformat())
+                )
+                await db.commit()
+        except Exception as trace_error:
+            logger.error(f"Failed to store AI analysis result trace: {trace_error}")
 
         status_flag = analysis.get("status", "success")
         if status_flag == "failed":
@@ -205,6 +262,18 @@ async def run_ai_review_task(
         summary = f"Analyzed {len(valid_issues)} issues across diff. Decision: {decision}."
 
         issues_json_str = json.dumps(valid_issues)
+        
+        # Store execution trace for decision computation
+        try:
+            async with get_db() as db:
+                await db.execute(
+                    "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                    (f"decision_computed_{github_pr_id}", "ai_review_task", "decision", decision, datetime.now().isoformat())
+                )
+                await db.commit()
+        except Exception as trace_error:
+            logger.error(f"Failed to store decision trace: {trace_error}")
+        
         await update_pull_request_review_results(
             github_pr_id=github_pr_id,
             review_status="success",
@@ -221,6 +290,18 @@ async def run_ai_review_task(
 
         # Phase 2.2 — Publish review to GitHub
         logger.info("📤 Posting review to GitHub")
+        
+        # Store execution trace before GitHub API call
+        try:
+            async with get_db() as db:
+                await db.execute(
+                    "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                    (f"github_api_call_{github_pr_id}", "ai_review_task", "github_api", "calling", datetime.now().isoformat())
+                )
+                await db.commit()
+        except Exception as trace_error:
+            logger.error(f"Failed to store GitHub API call trace: {trace_error}")
+        
         try:
             install_id = installation_id
             if not install_id:
@@ -237,6 +318,18 @@ async def run_ai_review_task(
                 review_summary=summary,
                 installation_id=install_id,
             )
+            
+            # Store execution trace for GitHub API result
+            try:
+                async with get_db() as db:
+                    await db.execute(
+                        "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
+                        (f"github_api_result_{github_pr_id}", "ai_review_task", "github_result", pub_result.get("status", "unknown"), datetime.now().isoformat())
+                    )
+                    await db.commit()
+            except Exception as trace_error:
+                logger.error(f"Failed to store GitHub API result trace: {trace_error}")
+            
             if pub_result.get("status") == "success":
                 logger.info(
                     f"📝 [AI_REVIEW_TASK] GitHub review published: "
