@@ -5,7 +5,7 @@ from typing import Tuple, Dict, Any, Optional
 import httpx
 from datetime import datetime
 from db_engine import get_db
-from auth.app_service import AppService
+from auth.app_service import GitHubAppService
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class GitHubService:
         }
         
         # Initialize AppService for GitHub App authentication
-        self.app_service = AppService()
+        self.app_service = GitHubAppService()
 
     def extract_pr_data(self, payload: Dict[str, Any]) -> Tuple[str, str, int]:
         """Extracts owner, repo, and PR number from a webhook payload."""
