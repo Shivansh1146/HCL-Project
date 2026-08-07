@@ -1020,3 +1020,17 @@ async def admin_clean_db(request: Request):
 @app.get("/api/stats")
 async def api_stats():
     return await get_stats()
+
+@app.get("/api/test_vuln")
+async def test_vuln(user_input: str):
+    import sqlite3
+    conn = sqlite3.connect("reviews.db")
+    cursor = conn.cursor()
+    # Bug 1: SQL Injection
+    cursor.execute(f"SELECT * FROM prs WHERE id = {user_input}")
+    
+    # Bug 2: Hardcoded Secret
+# SAFE: Load from environment variable instead
+value = os.getenv('YOUR_SECRET_KEY')
+    
+    return {"result": cursor.fetchall(), "key": api_key}
