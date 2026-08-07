@@ -323,10 +323,16 @@ class WebhookService:
 
             # Delegate to PR processing service (upserts into DB and dispatches AI review)
             logger.info(f"🔄 [WEBHOOK:PULL_REQUEST] Calling PRService.process_pull_request_event()")
+            logger.info(f"🔍 [WEBHOOK:PULL_REQUEST] background_tasks parameter: {background_tasks}")
+            logger.info(f"🔍 [WEBHOOK:PULL_REQUEST] background_tasks type: {type(background_tasks)}")
+            logger.info(f"🔍 [WEBHOOK:PULL_REQUEST] delivery_id: {delivery_id}")
+            
             res = await PRService.process_pull_request_event(
                 payload, delivery_id, background_tasks=background_tasks
             )
+            
             logger.info(f"✅ [WEBHOOK:PULL_REQUEST] PRService returned: {res.get('status')}")
+            logger.info(f"✅ [WEBHOOK:PULL_REQUEST] AI review dispatched: {res.get('ai_review_dispatched')}")
             res["delivery_id"] = delivery_id
             return res
 

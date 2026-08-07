@@ -372,9 +372,12 @@ class PRService:
         # Dispatch background AI review task for supported trigger actions
         ai_task_dispatched = False
         logger.info(f"🔍 [PR_SERVICE] Checking AI task dispatch: background_tasks={background_tasks is not None}, action in AI_TRIGGER_ACTIONS={action in AI_TRIGGER_ACTIONS}")
+        logger.info(f"🔍 [PR_SERVICE] background_tasks type: {type(background_tasks)}")
+        logger.info(f"🔍 [PR_SERVICE] AI_TRIGGER_ACTIONS: {AI_TRIGGER_ACTIONS}")
         
         if background_tasks is not None and action in AI_TRIGGER_ACTIONS:
-            logger.info(f"🚀 [PR_SERVICE] Adding background task for PR #{number}")
+            logger.info(f"🚀 [PR_SERVICE] ===== ABOUT TO ADD BACKGROUND TASK FOR PR #{number} =====")
+            logger.info(f"🚀 [PR_SERVICE] Task parameters: github_pr_id={github_pr_id}, owner={owner_name}, repo={repo_name}, pr_number={number}, head_sha={head_sha}")
             background_tasks.add_task(
                 run_ai_review_task,
                 github_pr_id=github_pr_id,
@@ -384,9 +387,14 @@ class PRService:
                 head_sha=head_sha,
             )
             ai_task_dispatched = True
+            logger.info(f"✅ [PR_SERVICE] ===== BACKGROUND TASK ADDED FOR PR #{number} =====")
             logger.info(f"✅ [PR_SERVICE] Scheduled background AI review task for PR #{number} (action='{action}')")
         else:
             logger.warning(f"⚠️ [PR_SERVICE] AI task NOT dispatched: background_tasks={background_tasks is not None}, action={action}, trigger_actions={AI_TRIGGER_ACTIONS}")
+            if background_tasks is None:
+                logger.error(f"❌ [PR_SERVICE] background_tasks is None - this prevents AI review execution")
+            if action not in AI_TRIGGER_ACTIONS:
+                logger.warning(f"⚠️ [PR_SERVICE] Action '{action}' not in AI_TRIGGER_ACTIONS {AI_TRIGGER_ACTIONS}")
 
         return {
             "status": "processed",
