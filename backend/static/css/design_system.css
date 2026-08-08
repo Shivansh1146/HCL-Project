@@ -35,14 +35,16 @@
     --color-info-bg: rgba(6, 182, 212, 0.1);
     --color-error: #ef4444;
 
-    /* Severity Risk Colors */
-    --color-low-risk: #3b82f6;
-
-    /* Category & Severity Colors */
-    --severity-critical: #ef4444;
-    --severity-high: #f97316;
+    /* Severity Colors - Single Source of Truth */
+    --severity-high: #ef4444;
     --severity-medium: #f59e0b;
-    --severity-low: #10b981;
+    --severity-low: #3b82f6;
+
+    /* Category Colors */
+    --cat-security: #a855f7;
+    --cat-bugs: #ef4444;
+    --cat-performance: #f97316;
+    --cat-quality: #06b6d4;
     --cat-security: #a855f7;
     --cat-bugs: #ef4444;
     --cat-performance: #f97316;
@@ -269,6 +271,71 @@ body {
     background: var(--color-info-bg);
     color: var(--color-info);
     border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+/* Severity Badges */
+.badge-severity-high {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--severity-high);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.badge-severity-medium {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--severity-medium);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.badge-severity-low {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--severity-low);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* Severity Indicators */
+.severity-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+}
+
+.severity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.severity-dot-high {
+    background: var(--severity-high);
+}
+
+.severity-dot-medium {
+    background: var(--severity-medium);
+}
+
+.severity-dot-low {
+    background: var(--severity-low);
+}
+
+/* Severity Progress Bars */
+.progress-bar-severity {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill-high {
+    background: var(--severity-high);
+}
+
+.progress-fill-medium {
+    background: var(--severity-medium);
+}
+
+.progress-fill-low {
+    background: var(--severity-low);
 }
 
 /* Custom Checkbox */
