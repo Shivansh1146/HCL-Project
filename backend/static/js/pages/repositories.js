@@ -377,6 +377,7 @@ function _renderToolbar() {
       _state.currentPage = 1;
       _renderRepoList();
       _renderPagination();
+      _renderBulkBar();
     }, 200);
   });
 
@@ -400,6 +401,7 @@ function _renderToolbar() {
     _state.currentPage = 1;
     _renderRepoList();
     _renderPagination();
+    _renderBulkBar();
   });
 
   // AI Review Selection Filter
@@ -422,6 +424,7 @@ function _renderToolbar() {
     _state.currentPage = 1;
     _renderRepoList();
     _renderPagination();
+    _renderBulkBar();
   });
 
   // Sorting Select
@@ -439,6 +442,7 @@ function _renderToolbar() {
   sortSelect.addEventListener("change", (e) => {
     _state.sortBy = e.target.value;
     _renderRepoList();
+    _renderBulkBar();
   });
 
   card.append(searchWrap, visibilitySelect, selectionSelect, sortSelect);
