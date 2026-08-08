@@ -296,7 +296,7 @@ function _renderVisualizations() {
                 <div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:rgba(255,255,255,0.05);margin-bottom:1rem;">
                     <div style="width:${_pct(sev.high, totalSeverities)}%;background:var(--color-error);" title="High: ${sev.high || 0}"></div>
                     <div style="width:${_pct(sev.medium, totalSeverities)}%;background:var(--color-warning);" title="Medium: ${sev.medium || 0}"></div>
-                    <div style="width:${_pct(sev.low, totalSeverities)}%;background:var(--color-info);" title="Low: ${sev.low || 0}"></div>
+                    <div style="width:${_pct(sev.low, totalSeverities)}%;background:#3b82f6;" title="Low: ${sev.low || 0}"></div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;font-size:0.8rem;">
                     <div style="display:flex;align-items:center;gap:0.4rem;">
@@ -308,7 +308,7 @@ function _renderVisualizations() {
                         <span>Medium: <strong>${sev.medium || 0}</strong></span>
                     </div>
                     <div style="display:flex;align-items:center;gap:0.4rem;">
-                        <span style="width:8px;height:8px;border-radius:50%;background:var(--color-info);"></span>
+                        <span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;"></span>
                         <span>Low: <strong>${sev.low || 0}</strong></span>
                     </div>
                 </div>
@@ -704,7 +704,7 @@ function _renderDrawerDetails(container, details, mount) {
                     <div class="glass-card" style="padding:0.75rem;text-align:center;">
                         <span style="font-size:0.7rem;color:var(--text-muted);display:block;">Coverage</span>
                         <div style="margin-top:0.5rem;height:6px;background:var(--border-color);border-radius:3px;overflow:hidden;">
-                            <div style="width:${coverage}%;height:100%;background:var(--color-info);"></div>
+                            <div style="width:${coverage}%;height:100%;background:#3b82f6;"></div>
                         </div>
                         <strong style="font-size:0.95rem;color:var(--text-primary);display:block;margin-top:0.25rem;">${coverage}%</strong>
                     </div>
@@ -721,7 +721,7 @@ function _renderDrawerDetails(container, details, mount) {
                         <div style="display:flex;justify-content:center;gap:0.25rem;margin-top:0.5rem;font-size:0.7rem;">
                             <span style="color:var(--color-error);" title="High Risk">H:${pr.high_count || 0}</span>
                             <span style="color:var(--color-warning);" title="Medium Risk">M:${pr.medium_count || 0}</span>
-                            <span style="color:var(--color-info);" title="Low Risk">L:${pr.low_count || 0}</span>
+                            <span style="color:#3b82f6;" title="Low Risk">L:${pr.low_count || 0}</span>
                         </div>
                     </div>
                 </div>
@@ -757,7 +757,7 @@ function _renderDrawerDetails(container, details, mount) {
                                     <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:1rem;">
                                         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.5rem;">
                                             <div style="font-weight:600;color:var(--text-primary);">${title}</div>
-                                            <span class="badge ${sev === 'high' ? 'badge-error' : sev === 'medium' ? 'badge-warning' : 'badge-info'}" style="font-size:0.65rem;">${sev.toUpperCase()} RISK</span>
+                                            <span class="badge ${sev === 'high' ? 'badge-error' : sev === 'medium' ? 'badge-warning' : ''}" style="font-size:0.65rem;${sev === 'low' ? 'background:#3b82f6;color:white;' : ''}">${sev.toUpperCase()} RISK</span>
                                         </div>
                                         <div style="font-family:monospace;font-size:0.75rem;color:var(--primary);margin-bottom:0.75rem;background:rgba(0,0,0,0.2);padding:0.25rem 0.5rem;border-radius:4px;display:inline-block;">
                                             ${file}:${line > 0 ? line : '*'}
