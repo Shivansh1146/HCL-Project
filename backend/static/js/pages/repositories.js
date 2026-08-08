@@ -748,6 +748,7 @@ function _renderPagination() {
       _state.currentPage--;
       _renderRepoList();
       _renderPagination();
+      _renderBulkBar();
     }
   });
 
@@ -763,6 +764,7 @@ function _renderPagination() {
       _state.currentPage++;
       _renderRepoList();
       _renderPagination();
+      _renderBulkBar();
     }
   });
 
