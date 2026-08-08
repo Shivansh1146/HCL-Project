@@ -8,7 +8,7 @@
  *  - Filters: Visibility (Public/Private), AI Selection (Selected/Unselected), Language
  *  - Sorting: Alphabetical, Stars, Name
  *  - Pagination: 10, 25, 50, 100 items per page with page controls
- *  - Bulk Selection: Select All, Clear All, Bulk Enable/Disable for Filtered, Save Review Settings with unsaved indicator
+ *  - Bulk Selection: Select All, Clear All, Enable/Disable Review for current list, Save Repository Settings with unsaved indicator
  *  - GitHub App Status Card with sync/reinstall triggers
  *  - Skeleton loaders & Accessible WCAG design
  */
@@ -497,8 +497,9 @@ function _renderBulkBar() {
   bulkEnableBtn.className = "btn btn-secondary";
   bulkEnableBtn.style.cssText =
     "padding:0.4rem 0.75rem;font-size:0.85rem;color:var(--color-success);";
-  bulkEnableBtn.textContent = "Enable AI Review for Filtered";
-  bulkEnableBtn.title = "Enable AI Review for all filtered repositories.";
+  bulkEnableBtn.textContent = "Enable Review";
+  bulkEnableBtn.title = "Enable AI Review for all repositories currently shown in the list.";
+  bulkEnableBtn.disabled = filteredRepos.length === 0;
   bulkEnableBtn.addEventListener("click", () => {
     filteredRepos.forEach((r) =>
       _state.pendingSelectedRepoNames.add(r.full_name.toLowerCase())
@@ -512,8 +513,9 @@ function _renderBulkBar() {
   bulkDisableBtn.className = "btn btn-secondary";
   bulkDisableBtn.style.cssText =
     "padding:0.4rem 0.75rem;font-size:0.85rem;color:var(--color-error);";
-  bulkDisableBtn.textContent = "Disable AI Review for Filtered";
-  bulkDisableBtn.title = "Disable AI Review for all filtered repositories.";
+  bulkDisableBtn.textContent = "Disable Review";
+  bulkDisableBtn.title = "Disable AI Review for all repositories currently shown in the list.";
+  bulkDisableBtn.disabled = filteredRepos.length === 0;
   bulkDisableBtn.addEventListener("click", () => {
     filteredRepos.forEach((r) =>
       _state.pendingSelectedRepoNames.delete(r.full_name.toLowerCase())
@@ -539,10 +541,10 @@ function _renderBulkBar() {
   saveBtn.className = "btn btn-primary";
   saveBtn.disabled = !hasUnsaved || _state.isSaving;
   saveBtn.style.cssText = "gap:0.5rem;padding:0.5rem 1.25rem;";
-  saveBtn.title = "Save the current AI Review configuration.";
+  saveBtn.title = "Save the current repository review configuration.";
   saveBtn.innerHTML = _state.isSaving
     ? `<div class="spinner" style="width:16px;height:16px;"></div> Loading…`
-    : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Review Settings`;
+    : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Repository Settings`;
 
   saveBtn.addEventListener("click", () => _saveRepoSelections());
 
