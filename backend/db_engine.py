@@ -2,24 +2,20 @@
 db_engine.py — Production Database Engine & Connection Abstraction.
 
 Supports:
-  - SQLite via aiosqlite (default / development / test)
+  - PostgreSQL via asyncpg (primary)
 
 Design decisions
 ----------------
-* SQLite path yields the **raw aiosqlite.Connection** unchanged so that every
-  existing `async with db.execute(...) as cursor:` call in auth/store.py and
-  stats_store.py keeps working without modification.
-
-* Connection is configured via environment variables:
-    DATABASE_URL     sqlite://path/to/database.db  (or file path)
-    TEST_DB_PATH     (for test databases)
+* PostgreSQL connection pool for production performance
+* Environment variable configuration via DATABASE_URL
+* Async context manager for database operations
 """
 
 import os
 import logging
 from contextlib import asynccontextmanager
 
-import aiosqlite
+import asyncpg
 
 logger = logging.getLogger("backend")
 
@@ -27,54 +23,72 @@ logger = logging.getLogger("backend")
 # Configuration
 # ---------------------------------------------------------------------------
 
-DATABASE_URL: str = (
-    os.environ.get("DATABASE_URL")
-    or os.environ.get("TEST_DB_PATH")
-    or ""
-)
+DATABASE_URL: str = os.environ.get("DATABASE_URL", "")
 
-_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Log DATABASE_URL presence for debugging
+if DATABASE_URL:
+    logger.info("DATABASE_URL environment variable is present (length: %d characters)", len(DATABASE_URL))
+else:
+    logger.error("DATABASE_URL environment variable is NOT SET")
 
-def _sqlite_path() -> str:
-    raw = os.environ.get("TEST_DB_PATH") or ""
-    if raw:
-        return raw
-    return os.path.join(_BASE_DIR, "reviews.db")
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL environment variable is required. "
+        "Please set DATABASE_URL to your PostgreSQL connection string."
+    )
+
+_POOL_SIZE = int(os.environ.get("DB_POOL_SIZE", "10"))
+_POOL_TIMEOUT = float(os.environ.get("DB_POOL_TIMEOUT", "30.0"))
 
 # ---------------------------------------------------------------------------
-# SQLite connection lifecycle
+# PostgreSQL connection pool lifecycle
 # ---------------------------------------------------------------------------
 
-_db = None
+_pg_pool = None
 
 
 async def init_db_engine() -> None:
-    """Initialise the SQLite database connection."""
-    global _db
-    if _db is not None:
+    """Initialise the PostgreSQL async connection pool."""
+    global _pg_pool
+    if _pg_pool is not None:
         return
     try:
-        _db = await aiosqlite.connect(DATABASE_URL or os.path.join(_BASE_DIR, "reviews.db"))
-        _db.row_factory = aiosqlite.Row
-        await _db.execute("PRAGMA journal_mode=WAL")
-        await _db.execute("PRAGMA synchronous=NORMAL")
-        logger.info("SQLite database connected: %s", DATABASE_URL or os.path.join(_BASE_DIR, "reviews.db"))
+        _pg_pool = await asyncpg.create_pool(
+            dsn=DATABASE_URL,
+            min_size=2,
+            max_size=_POOL_SIZE,
+            command_timeout=_POOL_TIMEOUT,
+        )
+        logger.info("PostgreSQL asyncpg connection pool initialised (size=%d).", _POOL_SIZE)
     except Exception as exc:
-        logger.error("Failed to connect to SQLite database: %s", exc)
+        logger.error("Failed to initialise PostgreSQL pool: %s", exc)
         raise
 
 
 async def close_db_engine() -> None:
-    """Gracefully close the SQLite database connection."""
-    global _db
-    if _db is not None:
-        await _db.close()
-        _db = None
-        logger.info("SQLite database connection closed.")
+    """Gracefully close the PostgreSQL connection pool."""
+    global _pg_pool
+    if _pg_pool is not None:
+        await _pg_pool.close()
+        _pg_pool = None
+        logger.info("PostgreSQL asyncpg connection pool closed.")
 
+
+# ---------------------------------------------------------------------------
+# Public get_db() context manager
+# ---------------------------------------------------------------------------
 
 @asynccontextmanager
 async def get_db():
-    """Async context manager for database connections (SQLite only)."""
-    await init_db_engine()
-    yield _db
+    """
+    Async context manager that yields a PostgreSQL connection.
+    
+    PostgreSQL via asyncpg with connection pooling.
+    """
+    global _pg_pool
+    if _pg_pool is None:
+        await init_db_engine()
+    
+    async with _pg_pool.acquire() as conn:
+        async with conn.transaction():
+            yield conn

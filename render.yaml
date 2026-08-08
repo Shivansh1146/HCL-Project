@@ -18,3 +18,5 @@ services:
         sync: false # Set this in Render Dashboard
       - key: PORT
         value: 8000
+      - key: DATABASE_URL
+        sync: false # Set this in Render Dashboard (PostgreSQL connection string)
