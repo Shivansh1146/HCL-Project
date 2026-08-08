@@ -180,7 +180,14 @@ function _renderStatsCards() {
     if (!container) return;
 
     const s = _state.stats;
-    const totalRev = s.total_reviews || s.total || 0;
+    // Use the backend's total_reviews directly from /api/prs/stats
+    // This counts PRs with review_status IN ('success', 'failed', 'processing')
+    const totalRev = s.total_reviews || 0;
+    // Use the backend's decision counts directly
+    const safeCount = s.safe_count || 0;
+    const blockCount = s.block_count || 0;
+    const reviewRequiredCount = s.review_required_count || 0;
+    const errorCount = s.error_count || 0;
 
     container.innerHTML = `
         <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:1rem;margin-bottom:1.5rem;">
@@ -191,22 +198,22 @@ function _renderStatsCards() {
             </div>
             <div class="glass-card" style="padding:1.1rem 1.25rem;">
                 <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">SAFE / Approved</span>
-                <strong style="font-size:1.6rem;font-weight:800;color:var(--color-success);">${s.safe_count || 0}</strong>
+                <strong style="font-size:1.6rem;font-weight:800;color:var(--color-success);">${safeCount}</strong>
                 <p style="font-size:0.7rem;color:var(--text-muted);margin-top:0.2rem;">Low Risk Codebases</p>
             </div>
             <div class="glass-card" style="padding:1.1rem 1.25rem;">
                 <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">REVIEW REQUIRED</span>
-                <strong style="font-size:1.6rem;font-weight:800;color:var(--color-warning);">${s.review_required_count || 0}</strong>
+                <strong style="font-size:1.6rem;font-weight:800;color:var(--color-warning);">${reviewRequiredCount}</strong>
                 <p style="font-size:0.7rem;color:var(--text-muted);margin-top:0.2rem;">Needs Human Inspection</p>
             </div>
             <div class="glass-card" style="padding:1.1rem 1.25rem;">
                 <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">BLOCKED / High Risk</span>
-                <strong style="font-size:1.6rem;font-weight:800;color:var(--color-error);">${s.block_count || 0}</strong>
+                <strong style="font-size:1.6rem;font-weight:800;color:var(--color-error);">${blockCount}</strong>
                 <p style="font-size:0.7rem;color:var(--text-muted);margin-top:0.2rem;">Critical Issues Found</p>
             </div>
             <div class="glass-card" style="padding:1.1rem 1.25rem;">
                 <span style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">ERROR / Failed</span>
-                <strong style="font-size:1.6rem;font-weight:800;color:#a855f7;">${s.error_count || 0}</strong>
+                <strong style="font-size:1.6rem;font-weight:800;color:#a855f7;">${errorCount}</strong>
                 <p style="font-size:0.7rem;color:var(--text-muted);margin-top:0.2rem;">Execution Failures</p>
             </div>
             <div class="glass-card" style="padding:1.1rem 1.25rem;">

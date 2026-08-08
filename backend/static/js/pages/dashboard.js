@@ -83,11 +83,12 @@ export async function renderDashboardPage(outlet) {
 
   // Fetch Backend Data (Stats + Installations)
   try {
-    const [statsData, installationsData, appStatusData] =
+    const [statsData, installationsData, appStatusData, prStatsData] =
       await Promise.allSettled([
         api.getStats(),
         api.getInstallations(),
         api.getAppStatus(),
+        api.getPullRequestStats()
       ]);
 
     const stats = statsData.status === "fulfilled" ? statsData.value : {};
@@ -99,13 +100,17 @@ export async function renderDashboardPage(outlet) {
     const appStatus =
       appStatusData.status === "fulfilled" ? appStatusData.value : null;
     const installUrl = appStatus?.install_url || "";
+    
+    // Use PR stats for AI review counts to match Review History consistency
+    const prStats = prStatsData.status === "fulfilled" ? prStatsData.value : {};
 
     store.setInstallations(installations);
 
     const hasInstallations = installations.length > 0;
     const totalSelectedRepos =
       stats?.selected_repos_count ?? stats?.monitored_repositories_count ?? 0;
-    const totalReviews = stats?.total_reviews ?? 0;
+    // Use AI review count from /api/prs/stats for consistency
+    const totalReviews = prStats?.total_reviews ?? stats?.total_reviews ?? 0;
 
     // --- Render Real Metrics Grid ---
     gridContainer.innerHTML = `
