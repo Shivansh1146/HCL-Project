@@ -23,21 +23,27 @@ async def close_db():
     pass
 
 async def initialize_db():
-    """Initializes the SQLite database with schema versioning and migrations."""
+    """Initializes the PostgreSQL database with schema versioning and migrations."""
     async with get_db() as db:
         # 1. Base Tables
         await db.execute('''
             CREATE TABLE IF NOT EXISTS prs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 repo TEXT,
                 pr_number INTEGER,
                 reviewed_at TEXT,
                 status TEXT DEFAULT 'success'
             )
         ''')
-        # Backward compatibility migration: add decision columns for older DBs.
-        async with db.execute("PRAGMA table_info(prs)") as cursor:
-            prs_columns = [row[1] for row in await cursor.fetchall()]
+        
+        # Check existing columns using PostgreSQL information_schema
+        prs_columns_query = '''
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'prs'
+        '''
+        prs_columns_result = await db.fetch(prs_columns_query)
+        prs_columns = [row['column_name'] for row in prs_columns_result]
 
         # Ensure all required decision columns exist with safe defaults
         required_columns = {
@@ -63,7 +69,7 @@ async def initialize_db():
 
         await db.execute('''
             CREATE TABLE IF NOT EXISTS issues (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 pr_id INTEGER,
                 severity TEXT,
                 type TEXT,
@@ -76,8 +82,13 @@ async def initialize_db():
         ''')
 
         # Migration: Add title column if it doesn't exist
-        async with db.execute("PRAGMA table_info(issues)") as cursor:
-            issues_columns = [row[1] for row in await cursor.fetchall()]
+        issues_columns_query = '''
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'issues'
+        '''
+        issues_columns_result = await db.fetch(issues_columns_query)
+        issues_columns = [row['column_name'] for row in issues_columns_result]
         if "title" not in issues_columns:
             await db.execute("ALTER TABLE issues ADD COLUMN title TEXT DEFAULT ''")
 
@@ -102,7 +113,6 @@ async def initialize_db():
                 SELECT MAX(id) FROM prs GROUP BY repo, pr_number
             )
         ''')
-        await db.commit()
 
         # Now safe to create the unique index on a clean table
         await db.execute(
@@ -113,14 +123,13 @@ async def initialize_db():
 
         # 2. Schema Migrations (Example: v2 add updated_at to processed_shas if missing)
         # In a real app, use Alembic. Here we use an internal version.
-        await db.execute("INSERT OR IGNORE INTO system_meta (key, value) VALUES (?, ?)", ("schema_version", "1"))
+        await db.execute("INSERT INTO system_meta (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING", ("schema_version", "1"))
 
         # 3. Initialize bot start time if not exists
-        await db.execute("INSERT OR IGNORE INTO system_meta (key, value) VALUES (?, ?)",
+        await db.execute("INSERT INTO system_meta (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING",
                        ("bot_start_time", datetime.now(timezone.utc).isoformat()))
 
-        await db.commit()
-        logger.info("Database initialized (Persistent Mode)")
+        logger.info("Database initialized (PostgreSQL Mode)")
 
 async def claim_sha_for_processing(sha: str) -> bool:
     """
@@ -128,7 +137,7 @@ async def claim_sha_for_processing(sha: str) -> bool:
       - completed  -> NEVER re-claim (permanent lock)
       - pending    -> re-claim only if stale (>30 min old)
       - failed     -> re-claim only if stale (>30 min old)
-      - not exists -> always claim (via INSERT OR IGNORE epoch seed)
+      - not exists -> always claim (via INSERT epoch seed)
     Returns True if claimed, False if already active/completed.
     """
     async with get_db() as db:
@@ -138,8 +147,7 @@ async def claim_sha_for_processing(sha: str) -> bool:
 
         # Seed the row so the UPDATE below has something to match on first insert
         await db.execute(
-            "INSERT OR IGNORE INTO processed_shas (sha, status, updated_at) "
-            "VALUES (?, 'pending', '1970-01-01T00:00:00')",
+            "INSERT INTO processed_shas (sha, status, updated_at) VALUES (%s, 'pending', '1970-01-01T00:00:00') ON CONFLICT (sha) DO NOTHING",
             (sha,)
         )
 
@@ -147,18 +155,17 @@ async def claim_sha_for_processing(sha: str) -> bool:
         cursor = await db.execute(
             """
             UPDATE processed_shas
-            SET    status = 'pending', updated_at = ?
-            WHERE  sha = ?
+            SET    status = 'pending', updated_at = %s
+            WHERE  sha = %s
               AND  status != 'completed'
               AND (
                     updated_at = '1970-01-01T00:00:00'
-                 OR (status IN ('pending', 'failed') AND updated_at < ?)
+                 OR (status IN ('pending', 'failed') AND updated_at < %s)
                   )
             """,
             (now_str, sha, stale_time)
         )
 
-        await db.commit()
         is_claimed = cursor.rowcount > 0
         if is_claimed:
             logger.info(f"SHA {sha} atomically claimed.")
@@ -169,19 +176,17 @@ async def claim_sha_for_processing(sha: str) -> bool:
 async def is_sha_processed(sha: str) -> bool:
     """Checks if a SHA is successfully completed. Does NOT claim it."""
     async with get_db() as db:
-        async with db.execute("SELECT status FROM processed_shas WHERE sha = ?", (sha,)) as cursor:
-            row = await cursor.fetchone()
-            return row and row['status'] == 'completed'
+        row = await db.fetchrow("SELECT status FROM processed_shas WHERE sha = %s", (sha,))
+        return row and row['status'] == 'completed'
 
 async def mark_sha_status(sha: str, status: str):
     """Marks a commit SHA with a specific status."""
     updated_at = datetime.now(timezone.utc).isoformat()
     async with get_db() as db:
         await db.execute(
-            "INSERT OR REPLACE INTO processed_shas (sha, status, updated_at) VALUES (?, ?, ?)",
-            (sha, status, updated_at)
+            "INSERT INTO processed_shas (sha, status, updated_at) VALUES (%s, %s, %s) ON CONFLICT (sha) DO UPDATE SET status = %s, updated_at = %s",
+            (sha, status, updated_at, status, updated_at)
         )
-        await db.commit()
     logger.info(f"SHA {sha} marked as {status}")
 
 async def record_review(repo: str, pr_number: int, issues: list, status: str = "success"):
@@ -204,14 +209,19 @@ async def upsert_review(repo: str, pr_number: int, status: str = "processing") -
     async def _upsert():
         async with get_db() as db:
             # Detect schema once to handle legacy bot_start_time column
-            async with db.execute("PRAGMA table_info(prs)") as c:
-                cols = [row[1] for row in await c.fetchall()]
-            has_bot_start = "bot_start_time" in cols
+            prs_columns_query = '''
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'prs'
+            '''
+            prs_columns_result = await db.fetch(prs_columns_query)
+            prs_columns = [row['column_name'] for row in prs_columns_result]
+            has_bot_start = "bot_start_time" in prs_columns
 
             if has_bot_start:
                 sql = '''
                     INSERT INTO prs (repo, pr_number, reviewed_at, bot_start_time, status)
-                    VALUES (?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT(repo, pr_number)
                     DO UPDATE SET
                         status      = excluded.status,
@@ -223,7 +233,7 @@ async def upsert_review(repo: str, pr_number: int, status: str = "processing") -
             else:
                 sql = '''
                     INSERT INTO prs (repo, pr_number, reviewed_at, status)
-                    VALUES (?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s)
                     ON CONFLICT(repo, pr_number)
                     DO UPDATE SET
                         status      = excluded.status,
@@ -234,20 +244,24 @@ async def upsert_review(repo: str, pr_number: int, status: str = "processing") -
                 params = (repo, pr_number, now, status)
 
             await db.execute(sql, params)
-            await db.commit()
             # Return the existing or newly created row id
-            async with db.execute(
-                "SELECT id FROM prs WHERE repo = ? AND pr_number = ?",
+            result = await db.fetchrow(
+                "SELECT id FROM prs WHERE repo = %s AND pr_number = %s",
                 (repo, pr_number)
-            ) as c:
-                row = await c.fetchone()
-                return row[0]
+            )
+            return result['id']
 
     return await db_retry(_upsert)
 
-
-async def initiate_review(repo: str, pr_number: int, status: str = "pending") -> int:
+async def update_review_progress(pr_id: int, processed: int, total: int):
     """Backwards-compat shim — delegates to upsert_review."""
+    return await upsert_review(pr_id, status="processing")
+
+async def initiate_review(repo: str, pr_number: int, status: str = "processing") -> int:
+    """
+    Step 3 Fix: Returns the pr_id for a given (repo, pr_number).
+    Uses ATOMIC UPSERT to guarantee exactly ONE row per (repo, pr_number).
+    """
     return await upsert_review(repo, pr_number, status=status)
 
 async def finalize_review(pr_id: int, issues: list, status: str = "error",
@@ -263,31 +277,28 @@ async def finalize_review(pr_id: int, issues: list, status: str = "error",
     """
     async def _update():
         async with get_db() as db:
-            # Explicit transaction for atomicity
-            await db.execute("BEGIN IMMEDIATE")
-
             # Atomic UPDATE — single row per PR, never ghost inserts
             await db.execute(
                 """UPDATE prs SET
-                   status          = ?,
-                   decision_status = ?,
-                   high_count      = ?,
-                   medium_count    = ?,
-                   low_count       = ?,
-                   total_chunks    = ?,
-                   processed_chunks = ?,
-                   rule_based_count = ?,
-                   decision_explanation = ?
-                   WHERE id        = ?""",
+                   status          = %s,
+                   decision_status = %s,
+                   high_count      = %s,
+                   medium_count    = %s,
+                   low_count       = %s,
+                   total_chunks    = %s,
+                   processed_chunks = %s,
+                   rule_based_count = %s,
+                   decision_explanation = %s
+                   WHERE id        = %s""",
                 (status, decision_status, high, medium, low, total_chunks, processed_chunks, rule_based_count, decision_explanation, pr_id)
             )
 
             # Delete stale issues from previous processing attempts, then re-insert
-            await db.execute("DELETE FROM issues WHERE pr_id = ?", (pr_id,))
+            await db.execute("DELETE FROM issues WHERE pr_id = %s", (pr_id,))
             for issue in issues:
                 await db.execute(
                     "INSERT INTO issues (pr_id, severity, type, title, description, file, line) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s)",
                     (
                         pr_id,
                         (issue.get("severity") or "low").lower(),
@@ -298,7 +309,6 @@ async def finalize_review(pr_id: int, issues: list, status: str = "error",
                         (issue.get("line") or 0)
                     )
                 )
-            await db.commit()
 
     await db_retry(_update)
     logger.info(
@@ -311,175 +321,114 @@ async def update_review_progress(pr_id: int, processed: int, total: int):
     async def _update():
         async with get_db() as db:
             await db.execute(
-                "UPDATE prs SET processed_chunks = ?, total_chunks = ? WHERE id = ?",
+                "UPDATE prs SET processed_chunks = %s, total_chunks = %s WHERE id = %s",
                 (processed, total, pr_id)
             )
-            await db.commit()
     await db_retry(_update)
 
 async def get_stats(limit: int = 15, offset: int = 0) -> dict:
     """Aggregates telemetry with pagination."""
     async with get_db() as db:
         # Atomic read transaction to prevent dirty reads and UI flickering
-        await db.execute("BEGIN")
-
-        # Counts
-        async with db.execute("SELECT COUNT(*) FROM prs") as c: total_prs = (await c.fetchone())[0]
-        async with db.execute("SELECT COUNT(*) FROM issues") as c: total_issues = (await c.fetchone())[0]
-
-        # Breakdown (Filtered by successful PRs to prevent contamination)
-        async with db.execute("SELECT severity, COUNT(*) as count FROM issues WHERE pr_id IN (SELECT id FROM prs WHERE status='success') GROUP BY severity") as c:
-            sev_data = {row['severity']: row['count'] for row in await c.fetchall()}
-
-        async with db.execute("SELECT type, COUNT(*) as count FROM issues WHERE pr_id IN (SELECT id FROM prs WHERE status='success') GROUP BY type") as c:
-            type_data = {row['type']: row['count'] for row in await c.fetchall()}
-
-        # Recent (Paginated)
-        async with db.execute("SELECT * FROM prs ORDER BY reviewed_at DESC LIMIT ? OFFSET ?", (limit, offset)) as c:
-            prs = await c.fetchall()
-
-        recent_reviews = []
-        for pr_row in prs:
-            pr = dict(pr_row)
-            pr_status = pr.get("status", "error")
-            decision = pr.get("decision_status", "BLOCK")
-
-            async with db.execute("SELECT * FROM issues WHERE pr_id = ?", (pr['id'],)) as c:
-                issues = [dict(row) for row in await c.fetchall()]
-
-            recent_reviews.append({
-                "repo": pr['repo'],
-                "pr_number": pr['pr_number'],
-                "status": pr_status,
-                "decision": decision,
-                "issue_count": len(issues),
-                "reviewed_at": pr['reviewed_at'],
-                "issues": issues,
-                "coverage": {
-                    "processed": pr.get('processed_chunks', 0),
-                    "total": pr.get('total_chunks', 0)
-                },
-                "severities": {
-                    "high": pr.get('high_count', 0),
-                    "medium": pr.get('medium_count', 0),
-                    "low": pr.get('low_count', 0),
-                },
-                "rule_based_count": pr.get('rule_based_count', 0),
-                "decision_explanation": pr.get('decision_explanation')
-            })
-
-        # Meta
-        async with db.execute("SELECT value FROM system_meta WHERE key = 'bot_start_time'") as c:
-            row = await c.fetchone()
-            bot_start_time = row[0] if row else datetime.now(timezone.utc).isoformat()
-
-        uptime_seconds = (datetime.now(timezone.utc) - datetime.fromisoformat(bot_start_time)).total_seconds()
-        hours, remainder = divmod(int(uptime_seconds), 3600)
-        minutes, _ = divmod(remainder, 60)
-
-        async with db.execute("SELECT reviewed_at FROM prs ORDER BY reviewed_at DESC LIMIT 1") as c:
-            last_row = await c.fetchone()
-            last_review_time = last_row[0] if last_row else None
-
-        await db.commit()
-
-    return {
-        "total_prs": total_prs,
-        "total_issues": total_issues,
-        "issues_by_severity": {"high": sev_data.get("high", 0), "medium": sev_data.get("medium", 0), "low": sev_data.get("low", 0)},
-        "issues_by_type": {"security": type_data.get("security", 0), "bug": type_data.get("bug", 0), "performance": type_data.get("performance", 0), "quality": type_data.get("quality", 0)},
-        "recent_reviews": recent_reviews,
-        "bot_status": "online",
-        "uptime": f"{hours}h {minutes}m",
-        "last_review_time": last_review_time
-    }
-
-async def get_issues_for_pr(pr_number: int) -> list:
-    """Retrieves all issues associated with a specific PR number."""
-    async with get_db() as db:
-        async with db.execute("""
-            SELECT i.* FROM issues i
-            JOIN prs p ON i.pr_id = p.id
-            WHERE p.pr_number = ?
-        """, (pr_number,)) as cursor:
-            rows = await cursor.fetchall()
-            return [dict(row) for row in rows]
-
+        total_prs = await db.fetchval("SELECT COUNT(*) FROM prs")
+        
+        # Calculate coverage stats
+        coverage_stats = await db.fetchrow(
+            "SELECT AVG(total_chunks), AVG(high_count + medium_count + low_count) FROM prs"
+        )
+        
+        # Decision status distribution
+        decision_dist = await db.fetch(
+            "SELECT decision_status, COUNT(*) as cnt FROM prs GROUP BY decision_status"
+        )
+        decision_counts = {row['decision_status']: row['cnt'] for row in decision_dist}
+        
+        # Severity distribution (from issues table)
+        severity_dist = await db.fetch(
+            "SELECT severity, COUNT(*) as count FROM issues WHERE pr_id IN (SELECT id FROM prs WHERE status='success') GROUP BY severity"
+        )
+        severity_counts = {row['severity']: row['count'] for row in severity_dist}
+        
+        # Type distribution
+        type_dist = await db.fetch(
+            "SELECT type, COUNT(*) as count FROM issues WHERE pr_id IN (SELECT id FROM prs WHERE status='success') GROUP BY type"
+        )
+        type_counts = {row['type']: row['count'] for row in type_dist}
+        
+        # Paginated PR list
+        prs_list = await db.fetch(
+            "SELECT * FROM prs ORDER BY reviewed_at DESC LIMIT %s OFFSET %s",
+            (limit, offset)
+        )
+        
+        # Last reviewed timestamp
+        last_reviewed = await db.fetchval(
+            "SELECT reviewed_at FROM prs ORDER BY reviewed_at DESC LIMIT 1"
+        )
+        
+        return {
+            "total_prs": total_prs,
+            "coverage_avg_chunks": coverage_stats['avg'] if coverage_stats else 0,
+            "coverage_avg_issues": coverage_stats['avg_1'] if coverage_stats else 0,
+            "decision_distribution": decision_counts,
+            "severity_distribution": severity_counts,
+            "type_distribution": type_counts,
+            "prs": [dict(pr) for pr in prs_list],
+            "last_reviewed_at": last_reviewed
+        }
 
 async def get_pr_details(repo: str, pr_number: int) -> dict:
-    """Fetches detailed PR telemetry, decision status, and issues list."""
+    """Fetch detailed information for a specific PR."""
     async with get_db() as db:
-        async with db.execute(
-            "SELECT * FROM prs WHERE repo = ? AND pr_number = ?",
+        pr_row = await db.fetchrow(
+            "SELECT * FROM prs WHERE repo = %s AND pr_number = %s",
             (repo, pr_number)
-        ) as cursor:
-            pr_row = await cursor.fetchone()
-            if not pr_row:
-                return None
+        )
+        
+        if not pr_row:
+            return None
+            
+        issues = await db.fetch(
+            "SELECT * FROM issues WHERE pr_id = %s",
+            (pr_row['id'],)
+        )
+        
+        return {
+            "pr": dict(pr_row),
+            "issues": [dict(issue) for issue in issues]
+        }
 
-            pr = dict(pr_row)
-            async with db.execute("SELECT * FROM issues WHERE pr_id = ?", (pr['id'],)) as c:
-                issues = [dict(row) for row in await c.fetchall()]
-
-            return {
-                "id": pr['id'],
-                "repo": pr['repo'],
-                "pr_number": pr['pr_number'],
-                "status": pr.get('status', 'error'),
-                "decision": pr.get('decision_status', 'BLOCK'),
-                "reviewed_at": pr['reviewed_at'],
-                "high_count": pr.get('high_count', 0),
-                "medium_count": pr.get('medium_count', 0),
-                "low_count": pr.get('low_count', 0),
-                "rule_based_count": pr.get('rule_based_count', 0),
-                "decision_explanation": pr.get('decision_explanation'),
-                "coverage": {
-                    "processed": pr.get('processed_chunks', 0),
-                    "total": pr.get('total_chunks', 0)
-                },
-                "issues": issues
-            }
-
-
-async def list_prs(repo: str = None, status_filter: str = None, limit: int = 50, offset: int = 0) -> dict:
-    """Returns paginated list of PR reviews with filters."""
+async def list_prs(repo: str = None, limit: int = 15, offset: int = 0,
+                 status_filter: str = None, decision_filter: str = None,
+                 sort_by: str = "reviewed_at", sort_order: str = "DESC") -> list:
+    """
+    Fetch PRs with optional filtering and pagination.
+    """
     async with get_db() as db:
         query = "SELECT * FROM prs WHERE 1=1"
         params = []
-
+        
         if repo:
-            query += " AND repo = ?"
+            query += " AND repo = %s"
             params.append(repo)
+            
         if status_filter:
-            query += " AND status = ?"
+            query += " AND status = %s"
             params.append(status_filter)
-
-        query += " ORDER BY reviewed_at DESC LIMIT ? OFFSET ?"
+            
+        if decision_filter:
+            query += " AND decision_status = %s"
+            params.append(decision_filter)
+            
+        # Sorting
+        valid_sort_fields = {"reviewed_at", "status", "decision_status", "pr_number"}
+        if sort_by in valid_sort_fields:
+            query += f" ORDER BY {sort_by} {sort_order}"
+        else:
+            query += " ORDER BY reviewed_at DESC"
+            
+        query += " LIMIT %s OFFSET %s"
         params.extend([limit, offset])
-
-        async with db.execute(query, params) as cursor:
-            rows = await cursor.fetchall()
-            prs = []
-            for r in rows:
-                pr = dict(r)
-                async with db.execute("SELECT COUNT(*) FROM issues WHERE pr_id = ?", (pr['id'],)) as c:
-                    issue_count = (await c.fetchone())[0]
-
-                prs.append({
-                    "id": pr['id'],
-                    "repo": pr['repo'],
-                    "pr_number": pr['pr_number'],
-                    "status": pr.get('status', 'error'),
-                    "decision": pr.get('decision_status', 'BLOCK'),
-                    "reviewed_at": pr['reviewed_at'],
-                    "issue_count": issue_count,
-                    "severities": {
-                        "high": pr.get('high_count', 0),
-                        "medium": pr.get('medium_count', 0),
-                        "low": pr.get('low_count', 0)
-                    },
-                    "decision_explanation": pr.get('decision_explanation')
-                })
-
-        return {"total": len(prs), "prs": prs}
-
+        
+        prs = await db.fetch(query, params)
+        return [dict(pr) for pr in prs]

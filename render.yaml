@@ -15,9 +15,5 @@ services:
         sync: false # Set this in Render Dashboard
       - key: PORT
         value: 8000
-      - key: DATABASE_PATH
-        value: /opt/render/project/backend/reviews.db
-    disk:
-      name: hcl-ai-reviewer-data
-      mountPath: /opt/render/project/backend
-      sizeGB: 1
+      - key: DATABASE_URL
+        sync: false # Set this in Render Dashboard (PostgreSQL connection string)
