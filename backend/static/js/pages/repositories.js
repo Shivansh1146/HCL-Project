@@ -734,6 +734,7 @@ function _renderPagination() {
     _state.currentPage = 1;
     _renderRepoList();
     _renderPagination();
+    _renderBulkBar();
   });
 
   // Prev Button
@@ -845,3 +846,4 @@ async function _saveRepoSelections() {
     _renderRepoList();
   }
 }
+
