@@ -25,6 +25,12 @@ logger = logging.getLogger("backend")
 
 DATABASE_URL: str = os.environ.get("DATABASE_URL", "")
 
+# Log DATABASE_URL presence for debugging
+if DATABASE_URL:
+    logger.info("DATABASE_URL environment variable is present (length: %d characters)", len(DATABASE_URL))
+else:
+    logger.error("DATABASE_URL environment variable is NOT SET")
+
 if not DATABASE_URL:
     raise RuntimeError(
         "DATABASE_URL environment variable is required. "

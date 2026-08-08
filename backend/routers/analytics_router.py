@@ -37,9 +37,9 @@ async def get_analytics(
             week_iso  = (now - timedelta(days=7)).isoformat()
             month_iso = (now - timedelta(days=30)).isoformat()
 
-            reviews_today = await db.fetchval("SELECT COUNT(*) FROM prs WHERE reviewed_at >= %s", (today_iso,))
-            reviews_week = await db.fetchval("SELECT COUNT(*) FROM prs WHERE reviewed_at >= %s", (week_iso,))
-            reviews_month = await db.fetchval("SELECT COUNT(*) FROM prs WHERE reviewed_at >= %s", (month_iso,))
+            reviews_today = await db.fetchval("SELECT COUNT(*) FROM prs WHERE reviewed_at >= $1", today_iso)
+            reviews_week = await db.fetchval("SELECT COUNT(*) FROM prs WHERE reviewed_at >= $1", week_iso)
+            reviews_month = await db.fetchval("SELECT COUNT(*) FROM prs WHERE reviewed_at >= $1", month_iso)
 
             # Average Chunks & Issues per PR
             row = await db.fetchrow("SELECT AVG(total_chunks), AVG(high_count + medium_count + low_count) FROM prs")

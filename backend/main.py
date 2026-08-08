@@ -469,13 +469,12 @@ async def admin_clean_db(request: Request):
 
     async with stats_store.get_db() as db:
         # Find row ids for the PR to keep
-        keep_rows = await db.fetch("SELECT id FROM prs WHERE pr_number = %s", (keep_pr,))
+        keep_rows = await db.fetch("SELECT id FROM prs WHERE pr_number = $1", keep_pr)
         keep_ids = [row["id"] for row in keep_rows]
 
         if keep_ids:
-            placeholders = ",".join("%s" * len(keep_ids))
-            await db.execute(f"DELETE FROM issues WHERE pr_id NOT IN ({placeholders})", keep_ids)
-            await db.execute(f"DELETE FROM prs WHERE id NOT IN ({placeholders})", keep_ids)
+            await db.execute("DELETE FROM issues WHERE pr_id != ALL($1)", keep_ids)
+            await db.execute("DELETE FROM prs WHERE id != ALL($1)", keep_ids)
         else:
             del_issues = await db.execute("DELETE FROM issues")
             del_prs = await db.execute("DELETE FROM prs")

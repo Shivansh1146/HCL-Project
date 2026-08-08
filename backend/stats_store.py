@@ -123,10 +123,10 @@ async def initialize_db():
 
         # 2. Schema Migrations (Example: v2 add updated_at to processed_shas if missing)
         # In a real app, use Alembic. Here we use an internal version.
-        await db.execute("INSERT INTO system_meta (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING", ("schema_version", "1"))
+        await db.execute("INSERT INTO system_meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING", ("schema_version", "1"))
 
         # 3. Initialize bot start time if not exists
-        await db.execute("INSERT INTO system_meta (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING",
+        await db.execute("INSERT INTO system_meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING",
                        ("bot_start_time", datetime.now(timezone.utc).isoformat()))
 
         logger.info("Database initialized (PostgreSQL Mode)")
@@ -147,23 +147,23 @@ async def claim_sha_for_processing(sha: str) -> bool:
 
         # Seed the row so the UPDATE below has something to match on first insert
         await db.execute(
-            "INSERT INTO processed_shas (sha, status, updated_at) VALUES (%s, 'pending', '1970-01-01T00:00:00') ON CONFLICT (sha) DO NOTHING",
-            (sha,)
+            "INSERT INTO processed_shas (sha, status, updated_at) VALUES ($1, 'pending', '1970-01-01T00:00:00') ON CONFLICT (sha) DO NOTHING",
+            sha
         )
 
         # Claim only if NOT completed AND (brand-new OR stale pending/failed)
         cursor = await db.execute(
             """
             UPDATE processed_shas
-            SET    status = 'pending', updated_at = %s
-            WHERE  sha = %s
+            SET    status = 'pending', updated_at = $1
+            WHERE  sha = $2
               AND  status != 'completed'
               AND (
                     updated_at = '1970-01-01T00:00:00'
-                 OR (status IN ('pending', 'failed') AND updated_at < %s)
+                 OR (status IN ('pending', 'failed') AND updated_at < $3)
                   )
             """,
-            (now_str, sha, stale_time)
+            now_str, sha, stale_time
         )
 
         is_claimed = cursor.rowcount > 0
@@ -176,7 +176,7 @@ async def claim_sha_for_processing(sha: str) -> bool:
 async def is_sha_processed(sha: str) -> bool:
     """Checks if a SHA is successfully completed. Does NOT claim it."""
     async with get_db() as db:
-        row = await db.fetchrow("SELECT status FROM processed_shas WHERE sha = %s", (sha,))
+        row = await db.fetchrow("SELECT status FROM processed_shas WHERE sha = $1", sha)
         return row and row['status'] == 'completed'
 
 async def mark_sha_status(sha: str, status: str):
@@ -184,8 +184,8 @@ async def mark_sha_status(sha: str, status: str):
     updated_at = datetime.now(timezone.utc).isoformat()
     async with get_db() as db:
         await db.execute(
-            "INSERT INTO processed_shas (sha, status, updated_at) VALUES (%s, %s, %s) ON CONFLICT (sha) DO UPDATE SET status = %s, updated_at = %s",
-            (sha, status, updated_at, status, updated_at)
+            "INSERT INTO processed_shas (sha, status, updated_at) VALUES ($1, $2, $3) ON CONFLICT (sha) DO UPDATE SET status = $2, updated_at = $3",
+            sha, status, updated_at
         )
     logger.info(f"SHA {sha} marked as {status}")
 
@@ -221,7 +221,7 @@ async def upsert_review(repo: str, pr_number: int, status: str = "processing") -
             if has_bot_start:
                 sql = '''
                     INSERT INTO prs (repo, pr_number, reviewed_at, bot_start_time, status)
-                    VALUES (%s, %s, %s, %s, %s)
+                    VALUES ($1, $2, $3, $4, $5)
                     ON CONFLICT(repo, pr_number)
                     DO UPDATE SET
                         status      = excluded.status,
@@ -229,11 +229,11 @@ async def upsert_review(repo: str, pr_number: int, status: str = "processing") -
                         processed_chunks = 0,
                         total_chunks = 0
                 '''
-                params = (repo, pr_number, now, now, status)
+                await db.execute(sql, repo, pr_number, now, now, status)
             else:
                 sql = '''
                     INSERT INTO prs (repo, pr_number, reviewed_at, status)
-                    VALUES (%s, %s, %s, %s)
+                    VALUES ($1, $2, $3, $4)
                     ON CONFLICT(repo, pr_number)
                     DO UPDATE SET
                         status      = excluded.status,
@@ -241,13 +241,12 @@ async def upsert_review(repo: str, pr_number: int, status: str = "processing") -
                         processed_chunks = 0,
                         total_chunks = 0
                 '''
-                params = (repo, pr_number, now, status)
+                await db.execute(sql, repo, pr_number, now, status)
 
-            await db.execute(sql, params)
             # Return the existing or newly created row id
             result = await db.fetchrow(
-                "SELECT id FROM prs WHERE repo = %s AND pr_number = %s",
-                (repo, pr_number)
+                "SELECT id FROM prs WHERE repo = $1 AND pr_number = $2",
+                repo, pr_number
             )
             return result['id']
 
@@ -280,34 +279,32 @@ async def finalize_review(pr_id: int, issues: list, status: str = "error",
             # Atomic UPDATE — single row per PR, never ghost inserts
             await db.execute(
                 """UPDATE prs SET
-                   status          = %s,
-                   decision_status = %s,
-                   high_count      = %s,
-                   medium_count    = %s,
-                   low_count       = %s,
-                   total_chunks    = %s,
-                   processed_chunks = %s,
-                   rule_based_count = %s,
-                   decision_explanation = %s
-                   WHERE id        = %s""",
-                (status, decision_status, high, medium, low, total_chunks, processed_chunks, rule_based_count, decision_explanation, pr_id)
+                   status          = $1,
+                   decision_status = $2,
+                   high_count      = $3,
+                   medium_count    = $4,
+                   low_count       = $5,
+                   total_chunks    = $6,
+                   processed_chunks = $7,
+                   rule_based_count = $8,
+                   decision_explanation = $9
+                   WHERE id        = $10""",
+                status, decision_status, high, medium, low, total_chunks, processed_chunks, rule_based_count, decision_explanation, pr_id
             )
 
             # Delete stale issues from previous processing attempts, then re-insert
-            await db.execute("DELETE FROM issues WHERE pr_id = %s", (pr_id,))
+            await db.execute("DELETE FROM issues WHERE pr_id = $1", pr_id)
             for issue in issues:
                 await db.execute(
                     "INSERT INTO issues (pr_id, severity, type, title, description, file, line) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                    (
-                        pr_id,
-                        (issue.get("severity") or "low").lower(),
-                        (issue.get("type") or "bug").lower(),
-                        (issue.get("title") or "Issue Detected"),
-                        (issue.get("description") or ""),
-                        (issue.get("file") or ""),
-                        (issue.get("line") or 0)
-                    )
+                    "VALUES ($1, $2, $3, $4, $5, $6, $7)",
+                    pr_id,
+                    (issue.get("severity") or "low").lower(),
+                    (issue.get("type") or "bug").lower(),
+                    (issue.get("title") or "Issue Detected"),
+                    (issue.get("description") or ""),
+                    (issue.get("file") or ""),
+                    (issue.get("line") or 0)
                 )
 
     await db_retry(_update)
@@ -321,8 +318,8 @@ async def update_review_progress(pr_id: int, processed: int, total: int):
     async def _update():
         async with get_db() as db:
             await db.execute(
-                "UPDATE prs SET processed_chunks = %s, total_chunks = %s WHERE id = %s",
-                (processed, total, pr_id)
+                "UPDATE prs SET processed_chunks = $1, total_chunks = $2 WHERE id = $3",
+                processed, total, pr_id
             )
     await db_retry(_update)
 
@@ -357,8 +354,8 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
         
         # Paginated PR list
         prs_list = await db.fetch(
-            "SELECT * FROM prs ORDER BY reviewed_at DESC LIMIT %s OFFSET %s",
-            (limit, offset)
+            "SELECT * FROM prs ORDER BY reviewed_at DESC LIMIT $1 OFFSET $2",
+            limit, offset
         )
         
         # Last reviewed timestamp
@@ -381,16 +378,16 @@ async def get_pr_details(repo: str, pr_number: int) -> dict:
     """Fetch detailed information for a specific PR."""
     async with get_db() as db:
         pr_row = await db.fetchrow(
-            "SELECT * FROM prs WHERE repo = %s AND pr_number = %s",
-            (repo, pr_number)
+            "SELECT * FROM prs WHERE repo = $1 AND pr_number = $2",
+            repo, pr_number
         )
         
         if not pr_row:
             return None
             
         issues = await db.fetch(
-            "SELECT * FROM issues WHERE pr_id = %s",
-            (pr_row['id'],)
+            "SELECT * FROM issues WHERE pr_id = $1",
+            pr_row['id']
         )
         
         return {
@@ -406,19 +403,19 @@ async def list_prs(repo: str = None, limit: int = 15, offset: int = 0,
     """
     async with get_db() as db:
         query = "SELECT * FROM prs WHERE 1=1"
-        params = []
+        param_count = 0
         
         if repo:
-            query += " AND repo = %s"
-            params.append(repo)
+            param_count += 1
+            query += f" AND repo = ${param_count}"
             
         if status_filter:
-            query += " AND status = %s"
-            params.append(status_filter)
+            param_count += 1
+            query += f" AND status = ${param_count}"
             
         if decision_filter:
-            query += " AND decision_status = %s"
-            params.append(decision_filter)
+            param_count += 1
+            query += f" AND decision_status = ${param_count}"
             
         # Sorting
         valid_sort_fields = {"reviewed_at", "status", "decision_status", "pr_number"}
@@ -427,8 +424,20 @@ async def list_prs(repo: str = None, limit: int = 15, offset: int = 0,
         else:
             query += " ORDER BY reviewed_at DESC"
             
-        query += " LIMIT %s OFFSET %s"
+        param_count += 1
+        query += f" LIMIT ${param_count}"
+        param_count += 1
+        query += f" OFFSET ${param_count}"
+        
+        # Build params in correct order
+        params = []
+        if repo:
+            params.append(repo)
+        if status_filter:
+            params.append(status_filter)
+        if decision_filter:
+            params.append(decision_filter)
         params.extend([limit, offset])
         
-        prs = await db.fetch(query, params)
+        prs = await db.fetch(query, *params)
         return [dict(pr) for pr in prs]
