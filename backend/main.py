@@ -125,7 +125,6 @@ async def ai_health_check():
 async def debug_pr(owner: str, repo: str, pr_number: int):
     """Debug endpoint to trace PR processing in production."""
     from auth.store import is_repo_whitelisted, get_pull_request
-    from stats_store import is_sha_processed
     
     repo_full_name = f"{owner}/{repo}"
     
