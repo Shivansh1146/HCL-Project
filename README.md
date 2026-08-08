@@ -170,8 +170,20 @@ This project was fully designed, developed, and implemented by Shivansh Jaiswal.
 - Project: [HCL AI Code Reviewer](https://github.com/Shivansh1146/HCL-Project)
 
 _Built with Python · FastAPI · Groq · GitHub REST API · Optimized for Production_
-T e s t i n g   A I   a f t e r   n e w   G r o q   k e y  
- T e s t i n g   A I   a f t e r   n e w   G r o q   k e y  
- T e s t i n g   A I   a f t e r   n e w   G r o q   k e y  
- T e s t i n g   A I   a f t e r   n e w   G r o q   k e y  
- 
+
+---
+
+## 📝 Recent Updates & Fixes
+
+### Analytics Dashboard Enhancements (August 2026)
+- **Fixed Data Inconsistency**: Updated Analytics API to query the correct `pull_requests` table instead of the deprecated `prs` table, ensuring consistent data across Dashboard, Analytics, Review History, and Pull Requests pages
+- **Fixed Connection Error**: Added missing database columns (`total_chunks`, `processed_chunks`) to the pull_requests schema migration, resolving Analytics page loading issues
+- **Improved UI**: Standardized severity distribution colors - High/Critical (red), Medium (orange), Low/Code Smell (blue) for better visual consistency with the application's design system
+
+### System Status
+- ✅ All webhooks processing correctly
+- ✅ AI review pipeline fully operational
+- ✅ GitHub App integration working
+- ✅ Dashboard and Analytics displaying real-time data
+- ✅ Database schema up-to-date with all required columns
+- ✅ Production deployment stable on Render
