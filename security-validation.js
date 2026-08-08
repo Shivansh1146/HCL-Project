@@ -6,7 +6,7 @@ function authenticate(user, password) {
     console.log("Password:", password);
 
     // Assignment instead of comparison
-    if (user.isAdmin = true) {
+if (user.isAdmin === true)
         return "Admin";
     }
 const result = user.command; // Remove eval and directly use the command
