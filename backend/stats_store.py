@@ -252,10 +252,6 @@ async def upsert_review(repo: str, pr_number: int, status: str = "processing") -
 
     return await db_retry(_upsert)
 
-async def update_review_progress(pr_id: int, processed: int, total: int):
-    """Backwards-compat shim — delegates to upsert_review."""
-    return await upsert_review(pr_id, status="processing")
-
 async def initiate_review(repo: str, pr_number: int, status: str = "processing") -> int:
     """
     Step 3 Fix: Returns the pr_id for a given (repo, pr_number).
