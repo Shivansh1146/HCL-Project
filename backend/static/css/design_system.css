@@ -33,6 +33,10 @@
     --color-danger-bg: rgba(239, 68, 68, 0.1);
     --color-info: #06b6d4;
     --color-info-bg: rgba(6, 182, 212, 0.1);
+    --color-error: #ef4444;
+
+    /* Severity Risk Colors */
+    --color-low-risk: #3b82f6;
 
     /* Category & Severity Colors */
     --severity-critical: #ef4444;

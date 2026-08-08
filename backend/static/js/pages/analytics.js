@@ -203,11 +203,11 @@ function _renderDashboardContent(container) {
                 </div>
                 <div>
                     <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.25rem;">
-                        <span style="color:#3b82f6;font-weight:600;">Low / Code Smell</span>
-                        <strong style="color:#3b82f6;">${sev.low || 0}</strong>
+                        <span style="color:var(--color-low-risk);font-weight:600;">Low / Code Smell</span>
+                        <strong style="color:var(--color-low-risk);">${sev.low || 0}</strong>
                     </div>
                     <div style="height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">
-                        <div style="width:${_pct(sev.low, (sev.high+sev.medium+sev.low)||1)}%;height:100%;background:#3b82f6;"></div>
+                        <div style="width:${_pct(sev.low, (sev.high+sev.medium+sev.low)||1)}%;height:100%;background:var(--color-low-risk);"></div>
                     </div>
                 </div>
             </div>
