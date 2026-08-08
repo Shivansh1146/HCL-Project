@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger("backend")
 
-from db_engine import get_db, init_db_engine, close_db_engine
+from db_engine import get_db
 
 async def db_retry(func, *args, retries=3, delay=1, **kwargs):
     """Wrapper to retry database operations on failure."""
