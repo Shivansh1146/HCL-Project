@@ -252,6 +252,16 @@ async def upsert_review(repo: str, pr_number: int, status: str = "processing") -
 
     return await db_retry(_upsert)
 
+async def update_review_progress(pr_id: int, processed: int, total: int):
+    """Updates the progress counts for a PR without finalizing it."""
+    async def _update():
+        async with get_db() as db:
+            await db.execute(
+                "UPDATE prs SET processed_chunks = $1, total_chunks = $2 WHERE id = $3",
+                processed, total, pr_id
+            )
+    await db_retry(_update)
+
 async def initiate_review(repo: str, pr_number: int, status: str = "processing") -> int:
     """
     Step 3 Fix: Returns the pr_id for a given (repo, pr_number).
