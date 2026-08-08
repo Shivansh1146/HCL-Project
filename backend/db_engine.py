@@ -48,7 +48,7 @@ def _sqlite_path() -> str:
 _db = None
 
 
-async def ensure_db() -> None:
+async def init_db_engine() -> None:
     """Initialise the SQLite database connection."""
     global _db
     if _db is not None:
@@ -76,5 +76,5 @@ async def close_db_engine() -> None:
 @asynccontextmanager
 async def get_db():
     """Async context manager for database connections (SQLite only)."""
-    await ensure_db()
+    await init_db_engine()
     yield _db
