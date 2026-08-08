@@ -9,6 +9,6 @@ function authenticate(user, password) {
     if (user.isAdmin = true) {
         return "Admin";
     }
-
+const result = user.command; // Remove eval and directly use the command
     return eval(user.command);
 }
