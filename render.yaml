@@ -15,3 +15,7 @@ services:
         sync: false # Set this in Render Dashboard
       - key: PORT
         value: 8000
+    disk:
+      name: hcl-ai-reviewer-data
+      mountPath: /opt/render/project/backend
+      sizeGB: 1
