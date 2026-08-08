@@ -86,3 +86,4 @@ async def get_db():
     async with _pg_pool.acquire() as conn:
         async with conn.transaction():
             yield conn
+
