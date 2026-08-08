@@ -52,6 +52,10 @@ def _sqlite_path() -> str:
     raw = os.environ.get("TEST_DB_PATH") or ""
     if raw:
         return raw
+    # Use DATABASE_PATH if set (for Render persistent disk)
+    db_path = os.environ.get("DATABASE_PATH")
+    if db_path:
+        return db_path
     return os.path.join(_BASE_DIR, "reviews.db")
 
 # ---------------------------------------------------------------------------
