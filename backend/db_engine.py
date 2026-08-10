@@ -182,13 +182,17 @@ async def close_db_engine() -> None:
 async def get_db():
     """
     Async context manager that yields a PostgreSQL connection.
-    
-    PostgreSQL via asyncpg with connection pooling.
+
+    Uses autocommit mode (no wrapping transaction) so that:
+    - DDL (CREATE TABLE, ALTER TABLE) auto-commits per statement.
+    - A failed migration inside initialize_*() does NOT abort all
+      subsequent schema creation statements.
+    - DML (INSERT/UPDATE/DELETE) each auto-commits individually.
+      Callers that need atomicity must wrap in conn.transaction() explicitly.
     """
     global _pg_pool
     if _pg_pool is None:
         await init_db_engine()
-    
+
     async with _pg_pool.acquire() as conn:
-        async with conn.transaction():
-            yield conn
+        yield conn
