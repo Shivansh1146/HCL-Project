@@ -623,7 +623,7 @@ async def get_selected_repos_for_installation(installation_internal_id: int) -> 
     """Gets all currently enabled repositories for an installation."""
     async with get_db() as db:
         rows = await db.fetch(
-            "SELECT * FROM selected_repos WHERE installation_id = $1 ORDER BY added_at DESC",
+            "SELECT * FROM selected_repos WHERE installation_id = $1 AND enabled = 1 ORDER BY added_at DESC",
             installation_internal_id
         )
         return [
