@@ -283,6 +283,27 @@ async def debug_webhooks():
         }
 
 
+@app.post("/api/admin/clear-stuck-webhooks")
+async def clear_stuck_webhooks():
+    """Admin: Delete stuck 'processing' pull_request delivery records that block re-delivery."""
+    from db_engine import get_db
+    async with get_db() as db:
+        result = await db.execute(
+            "DELETE FROM webhook_deliveries WHERE event_type = 'pull_request' AND status = 'processing'"
+        )
+    return {"status": "cleared", "message": "Stuck pull_request processing records removed"}
+
+
+@app.get("/api/debug/pull-requests-raw")
+async def debug_pull_requests_raw():
+    """Debug: List all rows in pull_requests table."""
+    from db_engine import get_db
+    async with get_db() as db:
+        rows = await db.fetch("SELECT id, github_pr_id, number, repository_name, owner, state, review_status, decision, reviewed_at FROM pull_requests ORDER BY id DESC LIMIT 10")
+    return {"count": len(rows), "rows": [dict(r) for r in rows]}
+
+
+
 @app.get("/api/debug/installation/{owner}/{repo}")
 async def debug_installation(owner: str, repo: str):
     """Debug endpoint to check installation_id for a repository."""
