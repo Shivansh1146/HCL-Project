@@ -58,33 +58,10 @@ class GitHubService:
                 token = await self.app_service.get_installation_access_token(installation_id)
                 if not token:
                     logger.error(f"❌ [GITHUB_SERVICE] Failed to get installation token for installation_id={installation_id}")
-                    # Store error in database
-                    try:
-                        async with get_db() as db:
-                            await db.execute(
-                                "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
-                                (f"github_error_{owner}_{repo}_{pr_number}", "github_api", "token_error", f"Failed to get installation token for installation_id={installation_id}", datetime.now().isoformat())
-                            )
-                            await db.commit()
-                    except Exception as db_error:
-                        logger.error(f"Failed to store token error in database: {db_error}")
                     return None
                 auth_header = f"Bearer {token}"
-                logger.info(f"🔍 [GITHUB_SERVICE] Authorization: Bearer token (installation token)")
             except Exception as token_error:
                 logger.error(f"❌ [GITHUB_SERVICE] Exception getting installation token: {str(token_error)}")
-                import traceback
-                logger.error(f"❌ [GITHUB_SERVICE] Token exception traceback: {traceback.format_exc()}")
-                # Store error in database
-                try:
-                    async with get_db() as db:
-                        await db.execute(
-                            "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
-                            (f"github_error_{owner}_{repo}_{pr_number}", "github_api", "token_exception", f"{type(token_error).__name__}: {str(token_error)}", datetime.now().isoformat())
-                        )
-                        await db.commit()
-                except Exception as db_error:
-                    logger.error(f"Failed to store token exception in database: {db_error}")
                 return None
         else:
             logger.info(f"🔍 [GITHUB_SERVICE] Using static GITHUB_TOKEN")
@@ -98,95 +75,35 @@ class GitHubService:
                 logger.warning(f"⚠️ [GITHUB_SERVICE] Authorization: {auth_header[:50] if auth_header else 'MISSING'}")
         
         headers = {
-            "Authorization": auth_header,
             "Accept": "application/vnd.github.v3.diff",
         }
-        
-        logger.info(f"🔍 [GITHUB_SERVICE] Accept header: {headers.get('Accept')}")
+        if auth_header and auth_header.strip():
+            headers["Authorization"] = auth_header
+
+        logger.info(f"🔍 [GITHUB_SERVICE] Fetching diff from {url}")
 
         try:
-            # Explicitly follow redirects for diff fetching as GitHub may redirect to patch-diff.githubusercontent.com
-            async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+            async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
                 for attempt in range(3):
-                    logger.info(f"🔄 [GITHUB_SERVICE] Attempt {attempt + 1}/3 to fetch diff")
-                    
                     response = await client.get(url, headers=headers)
-                    
                     logger.info(f"📊 [GITHUB_SERVICE] HTTP Status: {response.status_code}")
-                    logger.info(f"📊 [GITHUB_SERVICE] Response Headers: {dict(response.headers)}")
-                    logger.info(f"📊 [GITHUB_SERVICE] Response Body (first 500 chars): {response.text[:500] if response.text else 'EMPTY'}")
-                    
-                    # Store API response in database for debugging
-                    try:
-                        async with get_db() as db:
-                            await db.execute(
-                                "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
-                                (f"github_api_{owner}_{repo}_{pr_number}_{attempt}", "github_api", "diff_fetch", f"status_{response.status_code}", datetime.now().isoformat())
-                            )
-                            await db.commit()
-                            
-                            # Store response body
-                            await db.execute(
-                                "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
-                                (f"github_response_{owner}_{repo}_{pr_number}_{attempt}", "github_api", "response_body", response.text[:500] if response.text else "EMPTY", datetime.now().isoformat())
-                            )
-                            await db.commit()
-                    except Exception as db_error:
-                        logger.error(f"Failed to store GitHub API response in database: {db_error}")
                     
                     if response.status_code == 429:
-                        # Adaptive Rate Limiting: Respect GitHub's Retry-After header
                         retry_after = response.headers.get("Retry-After")
                         wait = int(retry_after) if retry_after and retry_after.isdigit() else (attempt + 1) * 2
-                        logger.warning(f"Rate limited by GitHub. Waiting {wait}s (Retry-After)...")
+                        logger.warning(f"Rate limited by GitHub. Waiting {wait}s...")
                         await asyncio.sleep(wait)
                         continue
 
-                    if response.status_code == 401:
-                        logger.error(f"Unauthorized access to {url}. Token status: {'Present' if auth_header else 'Missing'}")
-
                     if response.status_code != 200:
-                        logger.error(f"❌ [GITHUB_SERVICE] HTTP Error {response.status_code}: {response.text}")
+                        logger.error(f"❌ [GITHUB_SERVICE] HTTP Error {response.status_code}: {response.text[:200]}")
                         return None
                     
                     logger.info(f"✅ [GITHUB_SERVICE] Diff fetched successfully, length: {len(response.text)}")
                     return response.text
                     
-        except httpx.HTTPError as e:
-            import traceback
-            logger.error(f"❌ [GITHUB_SERVICE] HTTP Error while fetching diff: {str(e)}")
-            logger.error(f"❌ [GITHUB_SERVICE] Exception type: {type(e).__name__}")
-            logger.error(f"❌ [GITHUB_SERVICE] Traceback: {traceback.format_exc()}")
-            
-            # Store error in database
-            try:
-                async with get_db() as db:
-                    await db.execute(
-                        "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
-                        (f"github_error_{owner}_{repo}_{pr_number}", "github_api", "http_error", f"{type(e).__name__}: {str(e)}", datetime.now().isoformat())
-                    )
-                    await db.commit()
-            except Exception as db_error:
-                logger.error(f"Failed to store GitHub error in database: {db_error}")
-            
-            return None
         except Exception as e:
-            import traceback
-            logger.error(f"❌ [GITHUB_SERVICE] Unexpected error while fetching diff: {str(e)}")
-            logger.error(f"❌ [GITHUB_SERVICE] Exception type: {type(e).__name__}")
-            logger.error(f"❌ [GITHUB_SERVICE] Traceback: {traceback.format_exc()}")
-            
-            # Store error in database
-            try:
-                async with get_db() as db:
-                    await db.execute(
-                        "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
-                        (f"github_error_{owner}_{repo}_{pr_number}", "github_api", "unexpected_error", f"{type(e).__name__}: {str(e)}", datetime.now().isoformat())
-                    )
-                    await db.commit()
-            except Exception as db_error:
-                logger.error(f"Failed to store GitHub error in database: {db_error}")
-            
+            logger.error(f"❌ [GITHUB_SERVICE] Error fetching diff: {str(e)}")
             return None
 
     async def post_comment(self, owner: str, repo: str, pr_number: int, comment: str) -> bool:
