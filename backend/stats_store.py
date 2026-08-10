@@ -121,6 +121,17 @@ async def initialize_db():
 
         await db.execute('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT)')
 
+        # Create webhook_deliveries table if it doesn't exist
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS webhook_deliveries (
+                delivery_id TEXT PRIMARY KEY,
+                event_type TEXT,
+                action TEXT,
+                status TEXT DEFAULT 'processed',
+                processed_at TEXT NOT NULL
+            )
+        ''')
+
         # 2. Schema Migrations (Example: v2 add updated_at to processed_shas if missing)
         # In a real app, use Alembic. Here we use an internal version.
         await db.execute("INSERT INTO system_meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING", "schema_version", "1")
