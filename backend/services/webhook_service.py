@@ -325,30 +325,9 @@ class WebhookService:
             # Delegate to PR processing service (upserts into DB and dispatches AI review)
             logger.info(f"🔄 [WEBHOOK:PULL_REQUEST] Calling PRService.process_pull_request_event()")
             
-            # Store execution trace in database
-            from db_engine import get_db
-            try:
-                async with get_db() as db:
-                    await db.execute(
-                        "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES ($1, $2, $3, $4, $5)",
-                        delivery_id, "pull_request", action, "processing", datetime.now().isoformat()
-                    )
-            except Exception as trace_error:
-                logger.error(f"Failed to store execution trace: {trace_error}")
-            
             res = await PRService.process_pull_request_event(
                 payload, delivery_id, background_tasks=background_tasks
             )
-            
-            # Update delivery status
-            try:
-                async with get_db() as db:
-                    await db.execute(
-                        "UPDATE webhook_deliveries SET status = $1, action = $2 WHERE delivery_id = $3",
-                        res.get('status'), action, delivery_id
-                    )
-            except Exception as trace_error:
-                logger.error(f"Failed to update execution trace: {trace_error}")
             
             logger.info(f"✅ [WEBHOOK:PULL_REQUEST] PRService returned: {res.get('status')}")
             logger.info(f"✅ [WEBHOOK:PULL_REQUEST] AI review dispatched: {res.get('ai_review_dispatched')}")
