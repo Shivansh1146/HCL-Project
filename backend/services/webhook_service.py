@@ -330,10 +330,9 @@ class WebhookService:
             try:
                 async with get_db() as db:
                     await db.execute(
-                        "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES (?, ?, ?, ?, ?)",
-                        (delivery_id, "pull_request", action, "processing", datetime.now().isoformat())
+                        "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES ($1, $2, $3, $4, $5)",
+                        delivery_id, "pull_request", action, "processing", datetime.now().isoformat()
                     )
-                    await db.commit()
             except Exception as trace_error:
                 logger.error(f"Failed to store execution trace: {trace_error}")
             
@@ -345,10 +344,9 @@ class WebhookService:
             try:
                 async with get_db() as db:
                     await db.execute(
-                        "UPDATE webhook_deliveries SET status = ?, action = ? WHERE delivery_id = ?",
-                        (res.get('status'), action, delivery_id)
+                        "UPDATE webhook_deliveries SET status = $1, action = $2 WHERE delivery_id = $3",
+                        res.get('status'), action, delivery_id
                     )
-                    await db.commit()
             except Exception as trace_error:
                 logger.error(f"Failed to update execution trace: {trace_error}")
             
