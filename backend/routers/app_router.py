@@ -314,6 +314,18 @@ async def select_repositories_endpoint(
 ):
     """Saves selected repositories for an installation to enable AI code review coverage."""
     try:
+        # If installation not in DB yet, sync it from GitHub first (matches list_repos behaviour)
+        inst = await get_installation_by_id(installation_id)
+        if not inst:
+            inst = await app_service.sync_installation_from_github(
+                installation_id, user_id=user.id
+            )
+            if not inst:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Installation {installation_id} not found on GitHub.",
+                )
+
         enabled, disabled = await app_service.update_selected_repositories(
             installation_id=installation_id, repo_full_names=body.repo_full_names
         )
@@ -322,6 +334,8 @@ async def select_repositories_endpoint(
             enabled_repos=enabled,
             disabled_repos=disabled,
         )
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
@@ -330,6 +344,7 @@ async def select_repositories_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update repository selections.",
         )
+
 
 
 @router.post("/webhook")

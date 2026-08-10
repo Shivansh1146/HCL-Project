@@ -42,9 +42,9 @@ async def get_analytics(
             reviews_month = await db.fetchval("SELECT COUNT(*) FROM prs WHERE reviewed_at >= $1", month_iso)
 
             # Average Chunks & Issues per PR
-            row = await db.fetchrow("SELECT AVG(total_chunks), AVG(high_count + medium_count + low_count) FROM prs")
-            avg_chunks = round(row['avg'] or 0.0, 1)
-            avg_issues = round(row['avg_1'] or 0.0, 1)
+            row = await db.fetchrow("SELECT AVG(total_chunks) AS avg_chunks, AVG(high_count + medium_count + low_count) AS avg_issues FROM prs")
+            avg_chunks = round(float(row['avg_chunks']) if row and row['avg_chunks'] is not None else 0.0, 1)
+            avg_issues = round(float(row['avg_issues']) if row and row['avg_issues'] is not None else 0.0, 1)
 
             # 2. Decision Distribution (PERFECT, SAFE, REVIEW_REQUIRED, BLOCK)
             decision_rows = await db.fetch("SELECT decision_status, COUNT(*) as cnt FROM prs GROUP BY decision_status")

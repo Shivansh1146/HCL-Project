@@ -121,13 +121,24 @@ async def initialize_db():
 
         await db.execute('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT)')
 
+        # Create webhook_deliveries table if it doesn't exist
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS webhook_deliveries (
+                delivery_id TEXT PRIMARY KEY,
+                event_type TEXT,
+                action TEXT,
+                status TEXT DEFAULT 'processed',
+                processed_at TEXT NOT NULL
+            )
+        ''')
+
         # 2. Schema Migrations (Example: v2 add updated_at to processed_shas if missing)
         # In a real app, use Alembic. Here we use an internal version.
-        await db.execute("INSERT INTO system_meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING", ("schema_version", "1"))
+        await db.execute("INSERT INTO system_meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING", "schema_version", "1")
 
         # 3. Initialize bot start time if not exists
         await db.execute("INSERT INTO system_meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING",
-                       ("bot_start_time", datetime.now(timezone.utc).isoformat()))
+                       "bot_start_time", datetime.now(timezone.utc).isoformat())
 
         logger.info("Database initialized (PostgreSQL Mode)")
 
@@ -337,7 +348,7 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
         
         # Calculate coverage stats
         coverage_stats = await db.fetchrow(
-            "SELECT AVG(total_chunks), AVG(high_count + medium_count + low_count) FROM prs"
+            "SELECT AVG(total_chunks) AS avg_chunks, AVG(high_count + medium_count + low_count) AS avg_issues FROM prs"
         )
         
         # Decision status distribution
@@ -371,8 +382,8 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
         
         return {
             "total_prs": total_prs,
-            "coverage_avg_chunks": coverage_stats['avg'] if coverage_stats else 0,
-            "coverage_avg_issues": coverage_stats['avg_1'] if coverage_stats else 0,
+            "coverage_avg_chunks": float(coverage_stats['avg_chunks']) if coverage_stats and coverage_stats['avg_chunks'] is not None else 0,
+            "coverage_avg_issues": float(coverage_stats['avg_issues']) if coverage_stats and coverage_stats['avg_issues'] is not None else 0,
             "decision_distribution": decision_counts,
             "severity_distribution": severity_counts,
             "type_distribution": type_counts,
