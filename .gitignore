@@ -17,3 +17,4 @@ backend/uvicorn_*.log
 pr_bug_demo.py
 backend.zip
 scratch/
+temp-test-repo/
