@@ -56,24 +56,17 @@ class GitHubService:
             logger.info(f"🔍 [GITHUB_SERVICE] Using GitHub App installation token for installation_id={installation_id}")
             try:
                 token = await self.app_service.get_installation_access_token(installation_id)
-                if not token:
-                    logger.error(f"❌ [GITHUB_SERVICE] Failed to get installation token for installation_id={installation_id}")
-                    return None
-                auth_header = f"Bearer {token}"
+                if token:
+                    auth_header = f"Bearer {token}"
+                else:
+                    logger.warning(f"⚠️ [GITHUB_SERVICE] Failed installation token for installation_id={installation_id}, falling back to static/public authorization.")
             except Exception as token_error:
-                logger.error(f"❌ [GITHUB_SERVICE] Exception getting installation token: {str(token_error)}")
-                return None
-        else:
-            logger.info(f"🔍 [GITHUB_SERVICE] Using static GITHUB_TOKEN")
+                logger.warning(f"⚠️ [GITHUB_SERVICE] Exception getting installation token: {token_error}, falling back.")
+        
+        if not auth_header:
             headers = self.headers.copy()
             auth_header = headers.get("Authorization", "")
-            if "Bearer" in auth_header:
-                logger.info(f"🔍 [GITHUB_SERVICE] Authorization: Bearer token (static token)")
-            elif "token" in auth_header:
-                logger.info(f"🔍 [GITHUB_SERVICE] Authorization: Token-based")
-            else:
-                logger.warning(f"⚠️ [GITHUB_SERVICE] Authorization: {auth_header[:50] if auth_header else 'MISSING'}")
-        
+
         headers = {
             "Accept": "application/vnd.github.v3.diff",
         }
@@ -88,6 +81,15 @@ class GitHubService:
                     response = await client.get(url, headers=headers)
                     logger.info(f"📊 [GITHUB_SERVICE] HTTP Status: {response.status_code}")
                     
+                    if response.status_code == 401 or response.status_code == 403:
+                        # Fallback: retry without Authorization header for public repos
+                        if "Authorization" in headers:
+                            logger.warning(f"⚠️ [GITHUB_SERVICE] Got {response.status_code} with auth, retrying without auth for public repo...")
+                            pub_resp = await client.get(url, headers={"Accept": "application/vnd.github.v3.diff"})
+                            if pub_resp.status_code == 200:
+                                logger.info(f"✅ [GITHUB_SERVICE] Public diff fetched successfully, length: {len(pub_resp.text)}")
+                                return pub_resp.text
+
                     if response.status_code == 429:
                         retry_after = response.headers.get("Retry-After")
                         wait = int(retry_after) if retry_after and retry_after.isdigit() else (attempt + 1) * 2
