@@ -143,36 +143,36 @@ async def debug_pr(owner: str, repo: str, pr_number: int):
     # Check database for webhook deliveries
     async with get_db() as db:
         # Check webhook deliveries
-        async with db.execute(
+        cursor = await db.execute(
             "SELECT * FROM webhook_deliveries ORDER BY processed_at DESC LIMIT 10"
-        ) as cursor:
-            webhook_rows = await cursor.fetchall()
-            recent_webhooks = [
-                {
-                    "delivery_id": row["delivery_id"],
-                    "event_type": row["event_type"],
-                    "action": row["action"],
-                    "status": row["status"],
-                    "processed_at": row["processed_at"]
-                }
-                for row in webhook_rows
-            ]
-        
+        )
+        webhook_rows = await cursor.fetchall()
+        recent_webhooks = [
+            {
+                "delivery_id": row["delivery_id"],
+                "event_type": row["event_type"],
+                "action": row["action"],
+                "status": row["status"],
+                "processed_at": row["processed_at"]
+            }
+            for row in webhook_rows
+        ]
+
         # Check selected repos
-        async with db.execute(
-            "SELECT COUNT(*) as cnt FROM selected_repos WHERE enabled = 1"
-        ) as cursor:
-            row = await cursor.fetchone()
-            total_selected = row["cnt"] if row else 0
-        
-        async with db.execute(
+        count_cursor = await db.execute(
+            "SELECT COUNT(*) AS cnt FROM selected_repos WHERE enabled = 1"
+        )
+        count_row = await count_cursor.fetchone()
+        total_selected = count_row["cnt"] if count_row else 0
+
+        repos_cursor = await db.execute(
             "SELECT repo_full_name, enabled FROM selected_repos WHERE enabled = 1"
-        ) as cursor:
-            rows = await cursor.fetchall()
-            selected_repos = [
-                {"repo_full_name": row["repo_full_name"], "enabled": row["enabled"]}
-                for row in rows
-            ]
+        )
+        repos_rows = await repos_cursor.fetchall()
+        selected_repos = [
+            {"repo_full_name": r["repo_full_name"], "enabled": r["enabled"]}
+            for r in repos_rows
+        ]
     
 
     return {
@@ -196,18 +196,20 @@ async def debug_review(owner: str, repo: str, pr_number: int):
     repo_full_name = f"{owner}/{repo}"
     
     try:
-        # First check what columns exist in pull_requests table
+        # Check columns in pull_requests table using PostgreSQL information_schema
         async with get_db() as db:
-            async with db.execute("PRAGMA table_info(pull_requests);") as cursor:
-                existing_cols = {row["name"] for row in await cursor.fetchall()}
-            
+            cols_result = await db.fetch(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'pull_requests'"
+            )
+            existing_cols = {row["column_name"] for row in cols_result}
+
             # Check recent PR records for this repository
-            async with db.execute(
-                "SELECT * FROM pull_requests WHERE repository_name = ? ORDER BY id DESC LIMIT 5",
-                (repo_full_name,)
-            ) as cursor:
-                recent_prs = await cursor.fetchall()
-        
+            prs_cursor = await db.execute(
+                "SELECT * FROM pull_requests WHERE repository_name = $1 ORDER BY id DESC LIMIT 5",
+                repo_full_name
+            )
+            recent_prs = await prs_cursor.fetchall()
+
         # Get PR record
         pr_record = await get_pull_request(pr_number, repo_full_name)
         if not pr_record:
@@ -216,7 +218,7 @@ async def debug_review(owner: str, repo: str, pr_number: int):
                 "recent_prs_count": len(recent_prs),
                 "existing_columns": list(existing_cols)
             }
-        
+
         # Build response with only existing columns
         response = {
             "repository": repo_full_name,
@@ -224,20 +226,20 @@ async def debug_review(owner: str, repo: str, pr_number: int):
             "existing_columns": list(existing_cols),
             "recent_prs_count": len(recent_prs),
         }
-        
+
         # Add review columns if they exist
         review_cols = {
             "review_status", "decision", "review_summary", "issues_count",
             "high_count", "medium_count", "low_count", "coverage_percentage",
             "reviewed_at", "review_published", "review_posted", "github_review_id"
         }
-        
+
         for col in review_cols:
             if col in existing_cols:
                 response[col] = pr_record.get(col)
             else:
                 response[col] = "COLUMN_NOT_EXIST"
-        
+
         return response
     except Exception as e:
         import traceback
@@ -254,21 +256,21 @@ async def debug_webhooks():
     
     try:
         async with get_db() as db:
-            async with db.execute(
+            cursor = await db.execute(
                 "SELECT * FROM webhook_deliveries ORDER BY processed_at DESC LIMIT 20"
-            ) as cursor:
-                rows = await cursor.fetchall()
-                webhooks = [
-                    {
-                        "delivery_id": row["delivery_id"],
-                        "event_type": row["event_type"],
-                        "action": row["action"],
-                        "status": row["status"],
-                        "processed_at": row["processed_at"]
-                    }
-                    for row in rows
-        ]
-        
+            )
+            rows = await cursor.fetchall()
+            webhooks = [
+                {
+                    "delivery_id": row["delivery_id"],
+                    "event_type": row["event_type"],
+                    "action": row["action"],
+                    "status": row["status"],
+                    "processed_at": row["processed_at"]
+                }
+                for row in rows
+            ]
+
         return {
             "webhooks_count": len(webhooks),
             "webhooks": webhooks
@@ -294,12 +296,12 @@ async def debug_installation(owner: str, repo: str):
         
         # Also check the database directly
         async with get_db() as db:
-            async with db.execute(
-                "SELECT * FROM repositories WHERE LOWER(full_name) = ? LIMIT 1",
-                (full_name,),
-            ) as cursor:
-                row = await cursor.fetchone()
-                db_data = dict(row) if row else None
+            cursor = await db.execute(
+                "SELECT * FROM repositories WHERE LOWER(full_name) = $1 LIMIT 1",
+                full_name,
+            )
+            row = await cursor.fetchone()
+            db_data = dict(row) if row else None
         
         return {
             "repository": f"{owner}/{repo}",
@@ -321,22 +323,24 @@ async def debug_github_api(owner: str, repo: str, pr_number: int):
     
     try:
         async with get_db() as db:
-            async with db.execute(
-                "SELECT * FROM webhook_deliveries WHERE event_type = 'github_api' AND (delivery_id LIKE ? OR delivery_id LIKE ?) ORDER BY processed_at DESC LIMIT 10",
-                (f"github_api_{owner}_{repo}_{pr_number}%", f"github_response_{owner}_{repo}_{pr_number}%")
-            ) as cursor:
-                rows = await cursor.fetchall()
-                github_api_logs = [
-                    {
-                        "delivery_id": row["delivery_id"],
-                        "event_type": row["event_type"],
-                        "action": row["action"],
-                        "status": row["status"],
-                        "processed_at": row["processed_at"]
-                    }
-                    for row in rows
-                ]
-        
+            cursor = await db.execute(
+                "SELECT * FROM webhook_deliveries WHERE event_type = 'github_api' "
+                "AND (delivery_id LIKE $1 OR delivery_id LIKE $2) ORDER BY processed_at DESC LIMIT 10",
+                f"github_api_{owner}_{repo}_{pr_number}%",
+                f"github_response_{owner}_{repo}_{pr_number}%"
+            )
+            rows = await cursor.fetchall()
+            github_api_logs = [
+                {
+                    "delivery_id": row["delivery_id"],
+                    "event_type": row["event_type"],
+                    "action": row["action"],
+                    "status": row["status"],
+                    "processed_at": row["processed_at"]
+                }
+                for row in rows
+            ]
+
         return {
             "github_api_logs_count": len(github_api_logs),
             "github_api_logs": github_api_logs

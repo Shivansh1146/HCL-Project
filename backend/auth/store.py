@@ -294,6 +294,37 @@ async def initialize_auth_db() -> None:
             )
         """)
 
+        # Migration: add columns required by upsert_pull_request() that may not exist
+        # in databases created from older schema versions. All ADD COLUMN ops are idempotent.
+        _pr_extra_cols = {
+            "repository_id": "INTEGER",
+            "body": "TEXT DEFAULT ''",
+            "mergeable": "INTEGER DEFAULT 1",
+            "author_avatar": "TEXT DEFAULT ''",
+            "base_sha": "TEXT DEFAULT ''",
+            "api_url": "TEXT DEFAULT ''",
+            "additions": "INTEGER DEFAULT 0",
+            "deletions": "INTEGER DEFAULT 0",
+            "changed_files": "INTEGER DEFAULT 0",
+            "commits": "INTEGER DEFAULT 0",
+            "labels": "TEXT DEFAULT '[]'",
+            "requested_reviewers": "TEXT DEFAULT '[]'",
+            "raw_payload": "TEXT DEFAULT '{}'",
+            "last_synced_at": "TEXT",
+        }
+        try:
+            pr_col_result = await db.fetch(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'pull_requests'"
+            )
+            pr_existing_cols = {r["column_name"] for r in pr_col_result}
+            for col_name, col_def in _pr_extra_cols.items():
+                if col_name not in pr_existing_cols:
+                    await db.execute(
+                        f"ALTER TABLE pull_requests ADD COLUMN {col_name} {col_def};"
+                    )
+        except Exception as e:
+            logger.warning(f"Note on pull_requests migration: {e}")
+
         # Indexes for query performance & scale
         await db.execute("CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);")
