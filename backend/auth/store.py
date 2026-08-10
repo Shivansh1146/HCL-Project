@@ -544,22 +544,22 @@ async def get_installation_by_id(installation_id: int) -> Optional[Installation]
         row = await db.fetchrow("SELECT * FROM installations WHERE installation_id = $1", installation_id)
         if not row:
             return None
-            return Installation(
-                id=row["id"],
-                installation_id=row["installation_id"],
-                account_login=row["account_login"],
-                account_type=AccountType(row["account_type"]),
-                target_id=row["target_id"],
-                target_type=row["target_type"],
-                status=InstallationStatus(row["status"]),
-                user_id=row["user_id"],
-                suspended_at=datetime.fromisoformat(row["suspended_at"]) if row["suspended_at"] else None,
-                removed_at=datetime.fromisoformat(row["removed_at"]) if row["removed_at"] else None,
-                last_token_refresh=datetime.fromisoformat(row["last_token_refresh"]) if row["last_token_refresh"] else None,
-                last_sync=datetime.fromisoformat(row["last_sync"]) if row["last_sync"] else None,
-                created_at=datetime.fromisoformat(row["created_at"]),
-                updated_at=datetime.fromisoformat(row["updated_at"]),
-            )
+        return Installation(
+            id=row["id"],
+            installation_id=row["installation_id"],
+            account_login=row["account_login"],
+            account_type=AccountType(row["account_type"]),
+            target_id=row["target_id"],
+            target_type=row["target_type"],
+            status=InstallationStatus(row["status"]),
+            user_id=row["user_id"],
+            suspended_at=datetime.fromisoformat(row["suspended_at"]) if row["suspended_at"] else None,
+            removed_at=datetime.fromisoformat(row["removed_at"]) if row["removed_at"] else None,
+            last_token_refresh=datetime.fromisoformat(row["last_token_refresh"]) if row["last_token_refresh"] else None,
+            last_sync=datetime.fromisoformat(row["last_sync"]) if row["last_sync"] else None,
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+        )
 
 
 # ---------------------------------------------------------------------------
