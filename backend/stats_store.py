@@ -123,11 +123,11 @@ async def initialize_db():
 
         # 2. Schema Migrations (Example: v2 add updated_at to processed_shas if missing)
         # In a real app, use Alembic. Here we use an internal version.
-        await db.execute("INSERT INTO system_meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING", ("schema_version", "1"))
+        await db.execute("INSERT INTO system_meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING", "schema_version", "1")
 
         # 3. Initialize bot start time if not exists
         await db.execute("INSERT INTO system_meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING",
-                       ("bot_start_time", datetime.now(timezone.utc).isoformat()))
+                       "bot_start_time", datetime.now(timezone.utc).isoformat())
 
         logger.info("Database initialized (PostgreSQL Mode)")
 

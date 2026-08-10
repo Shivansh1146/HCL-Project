@@ -17,6 +17,99 @@ from contextlib import asynccontextmanager
 
 import asyncpg
 
+# ---------------------------------------------------------------------------
+# Monkeypatch asyncpg Connection for SQLite backward compatibility
+# ---------------------------------------------------------------------------
+
+class CursorWrapper:
+    def __init__(self, result, status_str):
+        self._result = result
+        self.status_str = status_str
+        self._idx = 0
+
+    @property
+    def rowcount(self) -> int:
+        if not self.status_str:
+            return 0
+        parts = self.status_str.split()
+        if not parts:
+            return 0
+        try:
+            return int(parts[-1])
+        except ValueError:
+            return 0
+
+    async def fetchall(self):
+        return self._result
+
+    async def fetchone(self):
+        if self._idx < len(self._result):
+            row = self._result[self._idx]
+            self._idx += 1
+            return row
+        return None
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+_original_execute = asyncpg.Connection.execute
+_original_fetch = asyncpg.Connection.fetch
+_original_fetchrow = asyncpg.Connection.fetchrow
+_original_fetchval = asyncpg.Connection.fetchval
+
+def _normalize_query_and_args(query: str, args: tuple):
+    # Convert '?' placeholders to '$1', '$2', ... for PostgreSQL compatibility
+    if '?' in query:
+        count = 1
+        while '?' in query:
+            query = query.replace('?', f'${count}', 1)
+            count += 1
+    
+    # Unpack tuple/list argument if it is the only argument passed
+    if len(args) == 1 and isinstance(args[0], (tuple, list)):
+        args = tuple(args[0])
+        
+    return query, args
+
+async def _wrapped_execute(self, query, *args, **kwargs):
+    query, args = _normalize_query_and_args(query, args)
+    
+    # Check if this is a SELECT-like query or PRAGMA
+    q_upper = query.strip().upper()
+    if q_upper.startswith(('SELECT', 'PRAGMA', 'SHOW', 'WITH')):
+        rows = await _original_fetch(self, query, *args, **kwargs)
+        status_str = f"SELECT {len(rows)}"
+        return CursorWrapper(rows, status_str)
+    else:
+        status_str = await _original_execute(self, query, *args, **kwargs)
+        return CursorWrapper([], status_str)
+
+async def _wrapped_fetch(self, query, *args, **kwargs):
+    query, args = _normalize_query_and_args(query, args)
+    return await _original_fetch(self, query, *args, **kwargs)
+
+async def _wrapped_fetchrow(self, query, *args, **kwargs):
+    query, args = _normalize_query_and_args(query, args)
+    return await _original_fetchrow(self, query, *args, **kwargs)
+
+async def _wrapped_fetchval(self, query, *args, **kwargs):
+    query, args = _normalize_query_and_args(query, args)
+    return await _original_fetchval(self, query, *args, **kwargs)
+
+async def _noop_commit(self, *args, **kwargs):
+    pass
+
+asyncpg.Connection.execute = _wrapped_execute
+asyncpg.Connection.fetch = _wrapped_fetch
+asyncpg.Connection.fetchrow = _wrapped_fetchrow
+asyncpg.Connection.fetchval = _wrapped_fetchval
+asyncpg.Connection.commit = _noop_commit
+asyncpg.Connection.rollback = _noop_commit
+
 logger = logging.getLogger("backend")
 
 # ---------------------------------------------------------------------------
