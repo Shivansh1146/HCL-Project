@@ -311,6 +311,15 @@ async def initialize_auth_db() -> None:
             "requested_reviewers": "TEXT DEFAULT '[]'",
             "raw_payload": "TEXT DEFAULT '{}'",
             "last_synced_at": "TEXT",
+            "issues_count": "INTEGER DEFAULT 0",
+            "high_count": "INTEGER DEFAULT 0",
+            "medium_count": "INTEGER DEFAULT 0",
+            "low_count": "INTEGER DEFAULT 0",
+            "review_summary": "TEXT",
+            "issues_json": "TEXT DEFAULT '[]'",
+            "previous_issues_json": "TEXT",
+            "previous_review_summary": "TEXT",
+            "reviewed_at": "TEXT"
         }
         try:
             pr_col_result = await db.fetch(
