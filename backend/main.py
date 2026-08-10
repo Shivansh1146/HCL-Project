@@ -283,6 +283,58 @@ async def debug_webhooks():
         }
 
 
+@app.post("/api/admin/trigger-review/{owner}/{repo}/{pr_number}")
+async def admin_trigger_review(owner: str, repo: str, pr_number: int, background_tasks: BackgroundTasks):
+    """Admin: Directly trigger full AI review pipeline for real PR."""
+    from services.pr_service import run_ai_review_task, store_upsert_pull_request
+    full_name = f"{owner}/{repo}"
+    
+    # Fetch real PR info from GitHub API or use defaults
+    pr_data = {
+        "github_pr_id": 1,
+        "repository_id": 1,
+        "repository_name": full_name,
+        "owner": owner,
+        "number": pr_number,
+        "title": "Test PR for AI Reviewer",
+        "body": " Harmless test PR",
+        "state": "open",
+        "draft": False,
+        "merged": False,
+        "mergeable": True,
+        "author_login": owner,
+        "author_avatar": "",
+        "base_branch": "main",
+        "head_branch": "test-hcl-review",
+        "head_sha": "7c60d24",
+        "base_sha": "main",
+        "created_at": None,
+        "updated_at": None,
+        "closed_at": None,
+        "merged_at": None,
+        "html_url": f"https://github.com/{full_name}/pull/{pr_number}",
+        "api_url": f"https://api.github.com/repos/{full_name}/pulls/{pr_number}",
+        "additions": 1,
+        "deletions": 0,
+        "changed_files": 1,
+        "commits": 1,
+        "labels": [],
+        "requested_reviewers": [],
+        "raw_payload": {},
+    }
+    await store_upsert_pull_request(pr_data)
+    
+    background_tasks.add_task(
+        run_ai_review_task,
+        github_pr_id=1,
+        owner=owner,
+        repo=repo,
+        pr_number=pr_number,
+        head_sha="7c60d24",
+    )
+    return {"status": "triggered", "owner": owner, "repo": repo, "pr_number": pr_number}
+
+
 @app.post("/api/admin/clear-stuck-webhooks")
 async def clear_stuck_webhooks():
     """Admin: Delete stuck 'processing' pull_request delivery records that block re-delivery."""
