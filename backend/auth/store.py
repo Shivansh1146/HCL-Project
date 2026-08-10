@@ -257,6 +257,43 @@ async def initialize_auth_db() -> None:
             )
         """)
 
+        # 9. Pull Requests Table for Enterprise Analytics & PR Service
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS pull_requests (
+                id SERIAL PRIMARY KEY,
+                github_pr_id INTEGER UNIQUE NOT NULL,
+                number INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                state TEXT NOT NULL DEFAULT 'open',
+                draft INTEGER DEFAULT 0,
+                merged INTEGER DEFAULT 0,
+                owner TEXT NOT NULL,
+                repository_name TEXT NOT NULL,
+                installation_id INTEGER,
+                author_login TEXT NOT NULL,
+                author_avatar_url TEXT,
+                base_branch TEXT DEFAULT 'main',
+                head_branch TEXT DEFAULT '',
+                head_sha TEXT DEFAULT '',
+                html_url TEXT,
+                review_status TEXT DEFAULT 'pending',
+                decision TEXT DEFAULT 'PENDING',
+                security_issues_count INTEGER DEFAULT 0,
+                quality_issues_count INTEGER DEFAULT 0,
+                coverage_percentage REAL DEFAULT 100.0,
+                processing_time_sec REAL DEFAULT 0.0,
+                review_posted INTEGER DEFAULT 0,
+                review_posted_at TEXT,
+                github_review_id INTEGER,
+                summary_md TEXT,
+                risk_level TEXT DEFAULT 'LOW',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                merged_at TEXT,
+                closed_at TEXT
+            )
+        """)
+
         # Indexes for query performance & scale
         await db.execute("CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);")
