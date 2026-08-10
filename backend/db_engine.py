@@ -76,6 +76,13 @@ def _normalize_query_and_args(query: str, args: tuple):
     return query, args
 
 async def _wrapped_execute(self, query, *args, **kwargs):
+    # Check for multi-command queries (semicolons in the middle of the query)
+    # connection.reset() uses multi-commands like "RESET ALL; UNLISTEN *;"
+    cleaned_query = query.strip()
+    if ';' in cleaned_query[:-1]:
+        status_str = await _original_execute(self, query, *args, **kwargs)
+        return CursorWrapper([], status_str)
+
     query, args = _normalize_query_and_args(query, args)
     
     # Check if this is a SELECT-like query or PRAGMA
