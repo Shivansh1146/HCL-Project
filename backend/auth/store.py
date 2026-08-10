@@ -993,7 +993,7 @@ async def upsert_pull_request(pr_data: Dict[str, Any]) -> Dict[str, Any]:
                 merged_at, html_url, api_url, additions, deletions,
                 changed_files, commits, labels, requested_reviewers,
                 raw_payload, last_synced_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
             ON CONFLICT(github_pr_id) DO UPDATE SET
                 repository_id=excluded.repository_id,
                 repository_name=excluded.repository_name,
