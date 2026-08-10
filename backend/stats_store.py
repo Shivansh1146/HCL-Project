@@ -348,7 +348,7 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
         
         # Calculate coverage stats
         coverage_stats = await db.fetchrow(
-            "SELECT AVG(total_chunks), AVG(high_count + medium_count + low_count) FROM prs"
+            "SELECT AVG(total_chunks) AS avg_chunks, AVG(high_count + medium_count + low_count) AS avg_issues FROM prs"
         )
         
         # Decision status distribution
@@ -382,8 +382,8 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
         
         return {
             "total_prs": total_prs,
-            "coverage_avg_chunks": coverage_stats['avg'] if coverage_stats else 0,
-            "coverage_avg_issues": coverage_stats['avg_1'] if coverage_stats else 0,
+            "coverage_avg_chunks": float(coverage_stats['avg_chunks']) if coverage_stats and coverage_stats['avg_chunks'] is not None else 0,
+            "coverage_avg_issues": float(coverage_stats['avg_issues']) if coverage_stats and coverage_stats['avg_issues'] is not None else 0,
             "decision_distribution": decision_counts,
             "severity_distribution": severity_counts,
             "type_distribution": type_counts,
