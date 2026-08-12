@@ -310,6 +310,46 @@ class TestPublishReview:
         asyncio.run(_run())
 
 
+class TestGitHubReviewEventPreservation:
+
+    def test_rejected_request_changes_is_not_retried_as_comment(self):
+        """A BLOCK event remains REQUEST_CHANGES even when GitHub rejects it."""
+        class RejectedResponse:
+            status_code = 422
+            text = "Review event is not permitted"
+            headers = {}
+
+        class RecordingClient:
+            def __init__(self):
+                self.payloads = []
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def post(self, url, headers, json):
+                self.payloads.append(json)
+                return RejectedResponse()
+
+        async def _run():
+            client = RecordingClient()
+            with patch("services.github_service.httpx.AsyncClient", return_value=client):
+                from services.github_service import GitHubService
+                service = GitHubService()
+                with pytest.raises(RuntimeError, match="HTTP 422"):
+                    await service.post_pull_request_review(
+                        owner="acme", repo="backend", pr_number=1,
+                        event="REQUEST_CHANGES", body="BLOCK", comments=[],
+                    )
+
+            assert len(client.payloads) == 1
+            assert client.payloads[0]["event"] == "REQUEST_CHANGES"
+
+        asyncio.run(_run())
+
+
 # ---------------------------------------------------------------------------
 # Integration tests: PRService.publish_pr_review()
 # ---------------------------------------------------------------------------

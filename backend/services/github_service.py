@@ -225,7 +225,8 @@ class GitHubService:
         """
         Publishes a pull request review using GitHub's Pull Request Review API.
         Event: APPROVE, COMMENT, REQUEST_CHANGES.
-        Handles transient retries (429 rate limit, 5xx errors) and self-review fallback (422).
+        Handles transient retries (429 rate limit, 5xx errors). Client errors,
+        including a rejected review event, are returned to the caller unchanged.
         """
         url = f"{GITHUB_API_BASE}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
         headers = self.headers.copy()
@@ -255,12 +256,6 @@ class GitHubService:
                         logger.warning(f"GitHub review API returned {resp.status_code}. Retrying in {wait}s...")
                         await asyncio.sleep(wait)
                         continue
-
-                    # GitHub returns 422 if user tries to APPROVE or REQUEST_CHANGES on their own PR
-                    if resp.status_code == 422 and payload.get("event") in ("APPROVE", "REQUEST_CHANGES"):
-                        logger.warning(f"GitHub returned 422 for event={payload['event']}. Body: {resp.text}. Retrying with event='COMMENT'.")
-                        payload["event"] = "COMMENT"
-                        resp = await client.post(url, headers=headers, json=payload)
 
                     if resp.status_code != 200:
                         logger.error(f"GitHub API returned {resp.status_code}: {resp.text}")
