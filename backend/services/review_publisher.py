@@ -230,15 +230,23 @@ async def publish_review(
 
     # Persist publish state
     try:
-        await update_pull_request_review_published(
+        persisted_pr = await update_pull_request_review_published(
             github_pr_id=github_pr_id,
             review_id=review_id,
             posted_at=now_str,
             repository_name=f"{owner}/{repo}",
             number=pr_number,
         )
+        if persisted_pr is None:
+            raise RuntimeError("No matching pull_requests row was updated.")
     except Exception as exc:
         logger.error(f"[ReviewPublisher] DB persistence of review_posted failed: {exc}")
+        return {
+            "status": "error",
+            "review_id": review_id,
+            "comments_posted": len(inline_comments),
+            "error": f"GitHub review was created, but local publication state was not saved: {exc}",
+        }
 
     logger.info(
         f"✅ [ReviewPublisher] Review published for {owner}/{repo}#{pr_number}: "

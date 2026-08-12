@@ -263,6 +263,28 @@ class TestPublishReview:
             mock_db.assert_not_called()
         asyncio.run(_run())
 
+    def test_persistence_failure_is_not_reported_as_published(self):
+        """A GitHub success is not a local success unless pull_requests is updated."""
+        async def _run():
+            mock_gh = MagicMock()
+            mock_gh.post_pull_request_review = AsyncMock(return_value=_mock_review_result(4918559018))
+            mock_app = MagicMock()
+            mock_app.get_installation_access_token = AsyncMock(return_value="tok")
+
+            with patch("services.github_service._github_service_instance", mock_gh), \
+                 patch("auth.store.update_pull_request_review_published", new_callable=AsyncMock, return_value=None), \
+                 patch("auth.app_service.get_app_service", return_value=mock_app):
+                from services.review_publisher import publish_review
+                result = await publish_review(
+                    github_pr_id=5007, owner="acme", repo="backend", pr_number=48,
+                    head_sha="persist000", decision="BLOCK", issues_json="[]", installation_id=99,
+                )
+
+            assert result["status"] == "error"
+            assert result["review_id"] == 4918559018
+            assert "local publication state was not saved" in result["error"]
+        asyncio.run(_run())
+
     def test_token_refresh_fallback_to_github_token(self):
         """Empty installation token → fall back to GITHUB_TOKEN env var."""
         async def _run():

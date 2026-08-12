@@ -284,7 +284,7 @@ async def initialize_auth_db() -> None:
                 processing_time_sec REAL DEFAULT 0.0,
                 review_posted INTEGER DEFAULT 0,
                 review_posted_at TEXT,
-                github_review_id INTEGER,
+                github_review_id BIGINT,
                 summary_md TEXT,
                 risk_level TEXT DEFAULT 'LOW',
                 created_at TEXT NOT NULL,
@@ -359,19 +359,15 @@ async def initialize_auth_db() -> None:
         except Exception:
             pass  # Columns already exist
 
-        # Auto-sync published status for existing reviews that were published to GitHub
+        # GitHub review IDs can exceed PostgreSQL's 32-bit INTEGER range.
+        # This migration preserves existing values while allowing the review ID
+        # returned by a successful publication to be stored reliably.
         try:
             await db.execute(
-                """
-                UPDATE pull_requests
-                SET review_posted = 1,
-                    review_posted_at = COALESCE(review_posted_at, CURRENT_TIMESTAMP),
-                    github_review_id = COALESCE(github_review_id, 4918559018)
-                WHERE review_status = 'success' AND (github_review_id IS NOT NULL OR number = 1);
-                """
+                "ALTER TABLE pull_requests ALTER COLUMN github_review_id TYPE BIGINT;"
             )
-        except Exception:
-            pass
+        except Exception as err:
+            logger.warning(f"Note on github_review_id migration: {err}")
 
         logger.info("Auth Database Schema Initialized with Enterprise Rules.")
 
@@ -1361,30 +1357,19 @@ async def update_pull_request_review_published(
     repository_name: Optional[str] = None,
     number: Optional[int] = None,
 ) -> Optional[Dict[str, Any]]:
-    """Updates review_posted, review_posted_at, and github_review_id fields on pull_requests."""
+    """Persist the confirmed GitHub publication state on its unique PR row."""
     now_str = posted_at or datetime.now(timezone.utc).isoformat()
     async with get_db() as db:
-        await db.execute(
+        row = await db.fetchrow(
             """
             UPDATE pull_requests
             SET review_posted = 1,
                 review_posted_at = $1,
                 github_review_id = COALESCE($2, github_review_id)
             WHERE github_pr_id = $3
-               OR id = $3
-               OR ($4::text IS NOT NULL AND $5::int IS NOT NULL AND (repository_name = $4 OR owner || '/' || repository_name = $4) AND number = $5)
+            RETURNING *
             """,
-            now_str, review_id, github_pr_id, repository_name, number,
-        )
-
-        row = await db.fetchrow(
-            """
-            SELECT * FROM pull_requests
-            WHERE github_pr_id = $1
-               OR id = $1
-               OR ($2::text IS NOT NULL AND $3::int IS NOT NULL AND (repository_name = $2 OR owner || '/' || repository_name = $2) AND number = $3)
-            """,
-            github_pr_id, repository_name, number
+            now_str, review_id, github_pr_id,
         )
         if not row:
             return None
