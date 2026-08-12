@@ -10,7 +10,7 @@ load_dotenv()  # Must be first — sets env vars before any other import reads t
 
 import stats_store
 from auth.store import initialize_auth_db, is_repo_whitelisted
-from fastapi import BackgroundTasks, FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse
