@@ -290,42 +290,62 @@ async def initialize_auth_db() -> None:
             """
             CREATE TABLE IF NOT EXISTS pull_requests (
                 id SERIAL PRIMARY KEY,
-                github_pr_id INTEGER UNIQUE NOT NULL,
+
+                -- GitHub IDs must use BIGINT because GitHub IDs can exceed
+                -- PostgreSQL's 32-bit INTEGER range.
+                github_pr_id BIGINT UNIQUE NOT NULL,
+
                 number INTEGER NOT NULL,
                 title TEXT NOT NULL,
                 state TEXT NOT NULL DEFAULT 'open',
                 draft INTEGER DEFAULT 0,
                 merged INTEGER DEFAULT 0,
+
                 owner TEXT NOT NULL,
                 repository_name TEXT NOT NULL,
+
                 installation_id INTEGER,
                 author_login TEXT NOT NULL,
                 author_avatar_url TEXT,
+
                 base_branch TEXT DEFAULT 'main',
                 head_branch TEXT DEFAULT '',
                 head_sha TEXT DEFAULT '',
                 html_url TEXT,
+
                 review_status TEXT DEFAULT 'pending',
                 decision TEXT DEFAULT 'PENDING',
+
                 security_issues_count INTEGER DEFAULT 0,
                 quality_issues_count INTEGER DEFAULT 0,
+
                 coverage_percentage REAL DEFAULT 100.0,
                 processing_time_sec REAL DEFAULT 0.0,
+
                 review_posted INTEGER DEFAULT 0,
                 review_posted_at TEXT,
+
+                -- GitHub review IDs can also exceed 32-bit INTEGER.
                 github_review_id BIGINT,
+
                 summary_md TEXT,
                 risk_level TEXT DEFAULT 'LOW',
+
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
+
                 merged_at TEXT,
                 closed_at TEXT
             )
         """
         )
 
-        # Migration: add columns required by upsert_pull_request() that may not exist
-        # in databases created from older schema versions. All ADD COLUMN ops are idempotent.
+        # ---------------------------------------------------------------------------
+        # Pull Requests schema migrations
+        # ---------------------------------------------------------------------------
+        # These migrations are idempotent. They are safe to run on every startup.
+        # They upgrade older production databases without deleting existing data.
+
         _pr_extra_cols = {
             "repository_id": "BIGINT",
             "body": "TEXT DEFAULT ''",
@@ -351,81 +371,161 @@ async def initialize_auth_db() -> None:
             "previous_review_summary": "TEXT",
             "reviewed_at": "TEXT",
         }
+
         try:
             pr_col_result = await db.fetch(
-                "SELECT column_name FROM information_schema.columns WHERE table_name = 'pull_requests'"
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'pull_requests'
+                """
             )
+
             pr_existing_cols = {r["column_name"] for r in pr_col_result}
+
             for col_name, col_def in _pr_extra_cols.items():
                 if col_name not in pr_existing_cols:
                     await db.execute(
                         f"ALTER TABLE pull_requests ADD COLUMN {col_name} {col_def};"
                     )
+
         except Exception as e:
             logger.warning(f"Note on pull_requests migration: {e}")
 
+
+        # ---------------------------------------------------------------------------
+        # GitHub ID type migrations
+        # ---------------------------------------------------------------------------
+
+        # GitHub PR IDs can exceed PostgreSQL's 32-bit INTEGER range.
+        # Example:
+        # 4265044189 > 2147483647
+        #
+        # This migration upgrades existing production data from INTEGER -> BIGINT.
+        # Existing values are preserved.
+        try:
+            await db.execute(
+                """
+                ALTER TABLE pull_requests
+                ALTER COLUMN github_pr_id TYPE BIGINT;
+                """
+            )
+        except Exception as err:
+            logger.warning(
+                f"Note on github_pr_id BIGINT migration: {err}"
+            )
+
+
+        # GitHub repository IDs can exceed PostgreSQL's 32-bit INTEGER range.
+        # Keep repository_id BIGINT as well.
+        try:
+            await db.execute(
+                """
+                ALTER TABLE pull_requests
+                ALTER COLUMN repository_id TYPE BIGINT;
+                """
+            )
+        except Exception as err:
+            logger.warning(
+                f"Note on repository_id BIGINT migration: {err}"
+            )
+
+
+        # GitHub review IDs can exceed PostgreSQL's 32-bit INTEGER range.
+        # This is required for values such as:
+        # 4919237848
+        try:
+            await db.execute(
+                """
+                ALTER TABLE pull_requests
+                ALTER COLUMN github_review_id TYPE BIGINT;
+                """
+            )
+        except Exception as err:
+            logger.warning(
+                f"Note on github_review_id BIGINT migration: {err}"
+            )
+
+
+        # ---------------------------------------------------------------------------
         # Indexes for query performance & scale
+        # ---------------------------------------------------------------------------
+
         await db.execute(
             "CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);"
         )
+
         await db.execute(
             "CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);"
         )
+
         await db.execute(
             "CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at);"
         )
+
         await db.execute(
             "CREATE INDEX IF NOT EXISTS idx_repos_inst ON repositories(installation_id);"
         )
+
         await db.execute(
             "CREATE INDEX IF NOT EXISTS idx_repos_enabled ON selected_repos(enabled);"
         )
+
         await db.execute(
             "CREATE INDEX IF NOT EXISTS idx_repos_full_name ON selected_repos(repo_full_name);"
         )
+
         await db.execute(
             "CREATE INDEX IF NOT EXISTS idx_orgs_user ON organizations(user_id);"
         )
 
-        # Migration helper for existing DBs: ensure deleted_at exists in users table
-        try:
-            await db.execute("ALTER TABLE users ADD COLUMN deleted_at TEXT;")
-        except Exception:
-            pass  # Column already exists
 
+        # ---------------------------------------------------------------------------
+        # Existing DB migrations
+        # ---------------------------------------------------------------------------
+
+        # Ensure deleted_at exists in users table.
         try:
-            await db.execute("ALTER TABLE audit_logs ADD COLUMN request_id TEXT;")
-            await db.execute("ALTER TABLE audit_logs ADD COLUMN trace_id TEXT;")
-            await db.execute("ALTER TABLE audit_logs ADD COLUMN entity_type TEXT;")
-            await db.execute("ALTER TABLE audit_logs ADD COLUMN entity_id TEXT;")
+            await db.execute(
+                "ALTER TABLE users ADD COLUMN deleted_at TEXT;"
+            )
+        except Exception:
+            pass
+
+
+        # Ensure enterprise audit columns exist.
+        try:
+            await db.execute(
+                "ALTER TABLE audit_logs ADD COLUMN request_id TEXT;"
+            )
+
+            await db.execute(
+                "ALTER TABLE audit_logs ADD COLUMN trace_id TEXT;"
+            )
+
+            await db.execute(
+                "ALTER TABLE audit_logs ADD COLUMN entity_type TEXT;"
+            )
+
+            await db.execute(
+                "ALTER TABLE audit_logs ADD COLUMN entity_id TEXT;"
+            )
+
             await db.execute(
                 "ALTER TABLE audit_logs ADD COLUMN severity TEXT DEFAULT 'INFO';"
             )
-            await db.execute("ALTER TABLE audit_logs ADD COLUMN details_json TEXT;")
+
+            await db.execute(
+                "ALTER TABLE audit_logs ADD COLUMN details_json TEXT;"
+            )
+
         except Exception:
-            pass  # Columns already exist
+            pass
 
-        # GitHub repository IDs can exceed PostgreSQL's 32-bit INTEGER range.
-        # This migration preserves existing values while allowing repository IDs
-        # returned by GitHub to be stored reliably in production PostgreSQL.
-        try:
-            await db.execute(
-                "ALTER TABLE pull_requests ALTER COLUMN repository_id TYPE BIGINT;"
-            )
-        except Exception as err:
-            logger.warning(f"Note on repository_id BIGINT migration: {err}")
 
-        # GitHub review IDs can exceed PostgreSQL's 32-bit INTEGER range.
-        # This migration preserves existing values while allowing the review ID
-        # returned by a successful publication to be stored reliably.
-        try:
-            await db.execute(
-                "ALTER TABLE pull_requests ALTER COLUMN github_review_id TYPE BIGINT;"
-            )
-        except Exception as err:
-            logger.warning(f"Note on github_review_id migration: {err}")
-
-        logger.info("Auth Database Schema Initialized with Enterprise Rules.")
+        logger.info(
+            "Auth Database Schema Initialized with Enterprise Rules."
+        )
 
 
 # ---------------------------------------------------------------------------
