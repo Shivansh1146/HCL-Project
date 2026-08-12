@@ -93,7 +93,8 @@ async def get_analytics(
             repo_rows = await db.fetch(
                 """
                 SELECT
-                    owner || '/' || repository_name AS repo,
+                    CASE WHEN repository_name LIKE '%/%' THEN repository_name
+                         ELSE owner || '/' || repository_name END AS repo,
                     COUNT(*)                         AS total_prs,
                     SUM(CASE WHEN decision IN ('PERFECT', 'SAFE') THEN 1 ELSE 0 END) AS safe_prs,
                     SUM(CASE WHEN decision = 'BLOCK' THEN 1 ELSE 0 END)              AS blocked_prs,
@@ -137,7 +138,8 @@ async def get_analytics(
                 """
                 SELECT
                     'pr_review'                   AS type,
-                    owner || '/' || repository_name AS title,
+                    CASE WHEN repository_name LIKE '%/%' THEN repository_name
+                         ELSE owner || '/' || repository_name END AS title,
                     decision                       AS detail,
                     reviewed_at                   AS timestamp
                 FROM pull_requests
@@ -188,7 +190,8 @@ async def export_analytics(
             """
             SELECT
                 github_pr_id AS id,
-                owner || '/' || repository_name AS repo,
+                CASE WHEN repository_name LIKE '%/%' THEN repository_name
+                     ELSE owner || '/' || repository_name END AS repo,
                 number AS pr_number,
                 reviewed_at,
                 review_status AS status,

@@ -234,6 +234,8 @@ async def publish_review(
             github_pr_id=github_pr_id,
             review_id=review_id,
             posted_at=now_str,
+            repository_name=f"{owner}/{repo}",
+            number=pr_number,
         )
     except Exception as exc:
         logger.error(f"[ReviewPublisher] DB persistence of review_posted failed: {exc}")

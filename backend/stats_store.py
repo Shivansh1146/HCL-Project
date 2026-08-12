@@ -380,6 +380,10 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
             "SELECT reviewed_at FROM prs ORDER BY reviewed_at DESC LIMIT 1"
         )
         
+        monitored_count = await db.fetchval("SELECT COUNT(*) FROM selected_repos WHERE enabled = 1") or 0
+        if monitored_count == 0:
+            monitored_count = await db.fetchval("SELECT COUNT(*) FROM repositories WHERE disabled = 0") or 0
+
         return {
             "total_prs": total_prs,
             "coverage_avg_chunks": float(coverage_stats['avg_chunks']) if coverage_stats and coverage_stats['avg_chunks'] is not None else 0,
@@ -388,7 +392,9 @@ async def get_stats(limit: int = 15, offset: int = 0) -> dict:
             "severity_distribution": severity_counts,
             "type_distribution": type_counts,
             "prs": [dict(pr) for pr in prs_list],
-            "last_reviewed_at": last_reviewed
+            "last_reviewed_at": last_reviewed,
+            "selected_repos_count": int(monitored_count),
+            "monitored_repositories_count": int(monitored_count),
         }
 
 async def get_pr_details(repo: str, pr_number: int) -> dict:

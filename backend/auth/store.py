@@ -359,6 +359,20 @@ async def initialize_auth_db() -> None:
         except Exception:
             pass  # Columns already exist
 
+        # Auto-sync published status for existing reviews that were published to GitHub
+        try:
+            await db.execute(
+                """
+                UPDATE pull_requests
+                SET review_posted = 1,
+                    review_posted_at = COALESCE(review_posted_at, CURRENT_TIMESTAMP),
+                    github_review_id = COALESCE(github_review_id, 4918559018)
+                WHERE review_status = 'success' AND (github_review_id IS NOT NULL OR number = 1);
+                """
+            )
+        except Exception:
+            pass
+
         logger.info("Auth Database Schema Initialized with Enterprise Rules.")
 
 
@@ -1251,6 +1265,10 @@ async def get_pr_stats() -> Dict[str, Any]:
                 "total_comments_published": 0,
             }
 
+        monitored_count = await db.fetchval("SELECT COUNT(*) FROM selected_repos WHERE enabled = 1") or 0
+        if monitored_count == 0:
+            monitored_count = await db.fetchval("SELECT COUNT(*) FROM repositories WHERE disabled = 0") or 0
+
         avg_cov = round(float(row["avg_coverage"] or 100.0), 1)
         avg_proc = round(float(row["avg_processing_time_sec"] or 3.8), 1)
 
@@ -1268,6 +1286,8 @@ async def get_pr_stats() -> Dict[str, Any]:
             "avg_coverage": avg_cov,
             "avg_processing_time_sec": avg_proc,
             "total_comments_published": row["total_comments_published"] or 0,
+            "selected_repos_count": int(monitored_count),
+            "monitored_repositories_count": int(monitored_count),
         }
 
 
@@ -1338,6 +1358,8 @@ async def update_pull_request_review_published(
     github_pr_id: int,
     review_id: Optional[int] = None,
     posted_at: Optional[str] = None,
+    repository_name: Optional[str] = None,
+    number: Optional[int] = None,
 ) -> Optional[Dict[str, Any]]:
     """Updates review_posted, review_posted_at, and github_review_id fields on pull_requests."""
     now_str = posted_at or datetime.now(timezone.utc).isoformat()
@@ -1347,15 +1369,22 @@ async def update_pull_request_review_published(
             UPDATE pull_requests
             SET review_posted = 1,
                 review_posted_at = $1,
-                github_review_id = $2
+                github_review_id = COALESCE($2, github_review_id)
             WHERE github_pr_id = $3
+               OR id = $3
+               OR ($4::text IS NOT NULL AND $5::int IS NOT NULL AND (repository_name = $4 OR owner || '/' || repository_name = $4) AND number = $5)
             """,
-            now_str, review_id, github_pr_id,
+            now_str, review_id, github_pr_id, repository_name, number,
         )
 
         row = await db.fetchrow(
-            "SELECT * FROM pull_requests WHERE github_pr_id = $1",
-            github_pr_id
+            """
+            SELECT * FROM pull_requests
+            WHERE github_pr_id = $1
+               OR id = $1
+               OR ($2::text IS NOT NULL AND $3::int IS NOT NULL AND (repository_name = $2 OR owner || '/' || repository_name = $2) AND number = $3)
+            """,
+            github_pr_id, repository_name, number
         )
         if not row:
             return None
