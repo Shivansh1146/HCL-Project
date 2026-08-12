@@ -190,6 +190,12 @@ _Built with Python · FastAPI · Groq · PostgreSQL · asyncpg · GitHub REST AP
   - PostgreSQL Review Metadata Persistence (`reviewed_at`, severity counts, summaries)
   - Interactive Dashboard, Review History, and Enterprise Telemetry updates.
 
+### Analytics and GitHub Publication-State Synchronization (August 2026)
+- **Canonical repository names**: Analytics now uses the stored full repository name when it is present and prefixes the owner only for short names. This prevents duplicate values such as `owner/owner/repository`.
+- **Reliable GitHub publication persistence**: After GitHub confirms a review, the corresponding `pull_requests` row records `review_posted`, `review_posted_at`, and the GitHub review ID.
+- **Large GitHub review IDs**: `github_review_id` uses PostgreSQL `BIGINT`, so GitHub review identifiers are stored without 32-bit integer overflow.
+- **No false Published state**: A GitHub success is reported as published only after the local PostgreSQL update succeeds. Existing PR analysis data, findings, decisions, and review history are preserved by these migrations.
+
 ### System Status
 - ✅ All webhooks processing with zero race conditions
 - ✅ AI review pipeline fully operational and verified on Render
