@@ -293,6 +293,18 @@ async def clear_stuck_webhooks():
         )
     return {"status": "cleared", "message": "Stuck pull_request processing records removed"}
 
+@app.post("/api/debug/sql")
+async def debug_sql(query: str = Body(..., embed=True)):
+    from db_engine import get_db
+    async with get_db() as db:
+        if query.strip().upper().startswith("SELECT"):
+            rows = await db.fetch(query)
+            return [dict(r) for r in rows]
+        else:
+            await db.execute(query)
+            return {"status": "executed"}
+
+
 
 
 
