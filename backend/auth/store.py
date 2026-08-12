@@ -4,6 +4,7 @@ auth/store.py — Async persistence layer for OAuth and GitHub App models.
 Uses db_engine.get_db() which transparently handles both SQLite (development)
 and PostgreSQL (production) — same aiosqlite-compatible cursor API in both cases.
 """
+
 import base64
 import json
 import os
@@ -42,8 +43,11 @@ def _coerce_datetime(value: Any) -> Optional[datetime]:
         except ValueError:
             return None
 
+
 # Simple obfuscation/encryption secret from env or default fallback for dev
-ENCRYPTION_KEY = os.environ.get("TOKEN_ENCRYPTION_SECRET", "hcl_secret_key_32bytes_change_in_prod")
+ENCRYPTION_KEY = os.environ.get(
+    "TOKEN_ENCRYPTION_SECRET", "hcl_secret_key_32bytes_change_in_prod"
+)
 
 
 def _encrypt(plain_text: str) -> str:
@@ -52,7 +56,9 @@ def _encrypt(plain_text: str) -> str:
         return ""
     key_bytes = ENCRYPTION_KEY.encode("utf-8")
     text_bytes = plain_text.encode("utf-8")
-    xor_bytes = bytes([b ^ key_bytes[i % len(key_bytes)] for i, b in enumerate(text_bytes)])
+    xor_bytes = bytes(
+        [b ^ key_bytes[i % len(key_bytes)] for i, b in enumerate(text_bytes)]
+    )
     return base64.b64encode(xor_bytes).decode("utf-8")
 
 
@@ -63,7 +69,9 @@ def _decrypt(cipher_text: str) -> str:
     try:
         xor_bytes = base64.b64decode(cipher_text.encode("utf-8"))
         key_bytes = ENCRYPTION_KEY.encode("utf-8")
-        text_bytes = bytes([b ^ key_bytes[i % len(key_bytes)] for i, b in enumerate(xor_bytes)])
+        text_bytes = bytes(
+            [b ^ key_bytes[i % len(key_bytes)] for i, b in enumerate(xor_bytes)]
+        )
         return text_bytes.decode("utf-8")
     except Exception:
         return cipher_text  # Fallback if plaintext was stored
@@ -73,7 +81,8 @@ async def initialize_auth_db() -> None:
     """Creates all required tables for GitHub OAuth and GitHub App integrations with enterprise constraints."""
     async with get_db() as db:
         # 1. Users Table (with soft delete support)
-        await db.execute("""
+        await db.execute(
+            """
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 github_id INTEGER UNIQUE NOT NULL,
@@ -85,10 +94,12 @@ async def initialize_auth_db() -> None:
                 updated_at TEXT NOT NULL,
                 deleted_at TEXT
             )
-        """)
+        """
+        )
 
         # 2. OAuth Tokens Table
-        await db.execute("""
+        await db.execute(
+            """
             CREATE TABLE IF NOT EXISTS oauth_tokens (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER UNIQUE NOT NULL,
@@ -99,10 +110,12 @@ async def initialize_auth_db() -> None:
                 expires_at TEXT,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # 3. Installations Table
-        await db.execute("""
+        await db.execute(
+            """
             CREATE TABLE IF NOT EXISTS installations (
                 id SERIAL PRIMARY KEY,
                 installation_id INTEGER UNIQUE NOT NULL,
@@ -120,17 +133,18 @@ async def initialize_auth_db() -> None:
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
             )
-        """)
+        """
+        )
 
         # Ensure any missing columns exist on installations table for existing databases
         try:
-            installations_columns_query = '''
-                SELECT column_name 
-                FROM information_schema.columns 
+            installations_columns_query = """
+                SELECT column_name
+                FROM information_schema.columns
                 WHERE table_name = 'installations'
-            '''
+            """
             installations_columns_result = await db.fetch(installations_columns_query)
-            existing_cols = {row['column_name'] for row in installations_columns_result}
+            existing_cols = {row["column_name"] for row in installations_columns_result}
             missing_cols = {
                 "suspended_at": "TEXT",
                 "removed_at": "TEXT",
@@ -141,12 +155,15 @@ async def initialize_auth_db() -> None:
             }
             for col_name, col_type in missing_cols.items():
                 if col_name not in existing_cols:
-                    await db.execute(f"ALTER TABLE installations ADD COLUMN {col_name} {col_type};")
+                    await db.execute(
+                        f"ALTER TABLE installations ADD COLUMN {col_name} {col_type};"
+                    )
         except Exception as e:
             logger.warning(f"Note on installations table schema migration: {str(e)}")
 
         # 4. Selected Repositories Table
-        await db.execute("""
+        await db.execute(
+            """
             CREATE TABLE IF NOT EXISTS selected_repos (
                 id SERIAL PRIMARY KEY,
                 installation_id INTEGER NOT NULL,
@@ -157,19 +174,23 @@ async def initialize_auth_db() -> None:
                 FOREIGN KEY (installation_id) REFERENCES installations (id) ON DELETE CASCADE,
                 UNIQUE(installation_id, repo_full_name)
             )
-        """)
+        """
+        )
 
         # 5. Ephemeral OAuth States Table
-        await db.execute("""
+        await db.execute(
+            """
             CREATE TABLE IF NOT EXISTS oauth_states (
                 state TEXT PRIMARY KEY,
                 user_data TEXT,
                 created_at TEXT NOT NULL
             )
-        """)
+        """
+        )
 
         # 6. Organizations Table
-        await db.execute("""
+        await db.execute(
+            """
             CREATE TABLE IF NOT EXISTS organizations (
                 id SERIAL PRIMARY KEY,
                 github_org_id INTEGER UNIQUE NOT NULL,
@@ -182,10 +203,12 @@ async def initialize_auth_db() -> None:
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
                 UNIQUE(user_id, github_org_id)
             )
-        """)
+        """
+        )
 
         # 7. Repositories Table
-        await db.execute("""
+        await db.execute(
+            """
             CREATE TABLE IF NOT EXISTS repositories (
                 id SERIAL PRIMARY KEY,
                 github_repo_id INTEGER UNIQUE NOT NULL,
@@ -212,17 +235,18 @@ async def initialize_auth_db() -> None:
                 FOREIGN KEY (installation_id) REFERENCES installations (id) ON DELETE CASCADE,
                 UNIQUE(installation_id, github_repo_id)
             )
-        """)
+        """
+        )
 
         # Ensure any missing columns exist on repositories table for existing databases
         try:
-            repositories_columns_query = '''
-                SELECT column_name 
-                FROM information_schema.columns 
+            repositories_columns_query = """
+                SELECT column_name
+                FROM information_schema.columns
                 WHERE table_name = 'repositories'
-            '''
+            """
             repositories_columns_result = await db.fetch(repositories_columns_query)
-            existing_cols = {row['column_name'] for row in repositories_columns_result}
+            existing_cols = {row["column_name"] for row in repositories_columns_result}
             missing_cols = {
                 "disabled": "INTEGER DEFAULT 0",
                 "archived": "INTEGER DEFAULT 0",
@@ -234,12 +258,15 @@ async def initialize_auth_db() -> None:
             }
             for col_name, col_type in missing_cols.items():
                 if col_name not in existing_cols:
-                    await db.execute(f"ALTER TABLE repositories ADD COLUMN {col_name} {col_type};")
+                    await db.execute(
+                        f"ALTER TABLE repositories ADD COLUMN {col_name} {col_type};"
+                    )
         except Exception as e:
             logger.warning(f"Note on repositories table schema migration: {str(e)}")
 
         # 8. Redesigned Enterprise Audit Logs Table
-        await db.execute("""
+        await db.execute(
+            """
             CREATE TABLE IF NOT EXISTS audit_logs (
                 id SERIAL PRIMARY KEY,
                 request_id TEXT,
@@ -255,10 +282,12 @@ async def initialize_auth_db() -> None:
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
             )
-        """)
+        """
+        )
 
         # 9. Pull Requests Table for Enterprise Analytics & PR Service
-        await db.execute("""
+        await db.execute(
+            """
             CREATE TABLE IF NOT EXISTS pull_requests (
                 id SERIAL PRIMARY KEY,
                 github_pr_id INTEGER UNIQUE NOT NULL,
@@ -292,12 +321,13 @@ async def initialize_auth_db() -> None:
                 merged_at TEXT,
                 closed_at TEXT
             )
-        """)
+        """
+        )
 
         # Migration: add columns required by upsert_pull_request() that may not exist
         # in databases created from older schema versions. All ADD COLUMN ops are idempotent.
         _pr_extra_cols = {
-            "repository_id": "INTEGER",
+            "repository_id": "BIGINT",
             "body": "TEXT DEFAULT ''",
             "mergeable": "INTEGER DEFAULT 1",
             "author_avatar": "TEXT DEFAULT ''",
@@ -319,7 +349,7 @@ async def initialize_auth_db() -> None:
             "issues_json": "TEXT DEFAULT '[]'",
             "previous_issues_json": "TEXT",
             "previous_review_summary": "TEXT",
-            "reviewed_at": "TEXT"
+            "reviewed_at": "TEXT",
         }
         try:
             pr_col_result = await db.fetch(
@@ -335,13 +365,27 @@ async def initialize_auth_db() -> None:
             logger.warning(f"Note on pull_requests migration: {e}")
 
         # Indexes for query performance & scale
-        await db.execute("CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);")
-        await db.execute("CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);")
-        await db.execute("CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at);")
-        await db.execute("CREATE INDEX IF NOT EXISTS idx_repos_inst ON repositories(installation_id);")
-        await db.execute("CREATE INDEX IF NOT EXISTS idx_repos_enabled ON selected_repos(enabled);")
-        await db.execute("CREATE INDEX IF NOT EXISTS idx_repos_full_name ON selected_repos(repo_full_name);")
-        await db.execute("CREATE INDEX IF NOT EXISTS idx_orgs_user ON organizations(user_id);")
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);"
+        )
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);"
+        )
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at);"
+        )
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_repos_inst ON repositories(installation_id);"
+        )
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_repos_enabled ON selected_repos(enabled);"
+        )
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_repos_full_name ON selected_repos(repo_full_name);"
+        )
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_orgs_user ON organizations(user_id);"
+        )
 
         # Migration helper for existing DBs: ensure deleted_at exists in users table
         try:
@@ -354,10 +398,22 @@ async def initialize_auth_db() -> None:
             await db.execute("ALTER TABLE audit_logs ADD COLUMN trace_id TEXT;")
             await db.execute("ALTER TABLE audit_logs ADD COLUMN entity_type TEXT;")
             await db.execute("ALTER TABLE audit_logs ADD COLUMN entity_id TEXT;")
-            await db.execute("ALTER TABLE audit_logs ADD COLUMN severity TEXT DEFAULT 'INFO';")
+            await db.execute(
+                "ALTER TABLE audit_logs ADD COLUMN severity TEXT DEFAULT 'INFO';"
+            )
             await db.execute("ALTER TABLE audit_logs ADD COLUMN details_json TEXT;")
         except Exception:
             pass  # Columns already exist
+
+        # GitHub repository IDs can exceed PostgreSQL's 32-bit INTEGER range.
+        # This migration preserves existing values while allowing repository IDs
+        # returned by GitHub to be stored reliably in production PostgreSQL.
+        try:
+            await db.execute(
+                "ALTER TABLE pull_requests ALTER COLUMN repository_id TYPE BIGINT;"
+            )
+        except Exception as err:
+            logger.warning(f"Note on repository_id BIGINT migration: {err}")
 
         # GitHub review IDs can exceed PostgreSQL's 32-bit INTEGER range.
         # This migration preserves existing values while allowing the review ID
@@ -376,12 +432,19 @@ async def initialize_auth_db() -> None:
 # User CRUD & Soft Delete
 # ---------------------------------------------------------------------------
 
-async def upsert_user(github_id: int, login: str, name: Optional[str] = None,
-                      avatar_url: Optional[str] = None, email: Optional[str] = None) -> User:
+
+async def upsert_user(
+    github_id: int,
+    login: str,
+    name: Optional[str] = None,
+    avatar_url: Optional[str] = None,
+    email: Optional[str] = None,
+) -> User:
     """Inserts or updates a GitHub user in the database."""
     now = datetime.now(timezone.utc).isoformat()
     async with get_db() as db:
-        await db.execute("""
+        await db.execute(
+            """
             INSERT INTO users (github_id, login, name, avatar_url, email, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             ON CONFLICT(github_id) DO UPDATE SET
@@ -391,7 +454,15 @@ async def upsert_user(github_id: int, login: str, name: Optional[str] = None,
                 email = COALESCE(excluded.email, users.email),
                 updated_at = excluded.updated_at,
                 deleted_at = NULL
-        """, github_id, login, name, avatar_url, email, now, now)
+        """,
+            github_id,
+            login,
+            name,
+            avatar_url,
+            email,
+            now,
+            now,
+        )
 
         row = await db.fetchrow("SELECT * FROM users WHERE github_id = $1", github_id)
         return User(
@@ -403,14 +474,18 @@ async def upsert_user(github_id: int, login: str, name: Optional[str] = None,
             email=row["email"],
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
-            deleted_at=datetime.fromisoformat(row["deleted_at"]) if row["deleted_at"] else None,
+            deleted_at=(
+                datetime.fromisoformat(row["deleted_at"]) if row["deleted_at"] else None
+            ),
         )
 
 
 async def get_user_by_id(user_id: int) -> Optional[User]:
     """Retrieves an active (non-deleted) user by primary key."""
     async with get_db() as db:
-        row = await db.fetchrow("SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL", user_id)
+        row = await db.fetchrow(
+            "SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL", user_id
+        )
         if not row:
             return None
         return User(
@@ -422,7 +497,9 @@ async def get_user_by_id(user_id: int) -> Optional[User]:
             email=row["email"],
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
-            deleted_at=datetime.fromisoformat(row["deleted_at"]) if row["deleted_at"] else None,
+            deleted_at=(
+                datetime.fromisoformat(row["deleted_at"]) if row["deleted_at"] else None
+            ),
         )
 
 
@@ -430,7 +507,11 @@ async def soft_delete_user(user_id: int) -> bool:
     """Soft-deletes a user by setting deleted_at timestamp."""
     now_str = datetime.now(timezone.utc).isoformat()
     async with get_db() as db:
-        cursor = await db.execute("UPDATE users SET deleted_at = $1 WHERE id = $2 AND deleted_at IS NULL", now_str, user_id)
+        cursor = await db.execute(
+            "UPDATE users SET deleted_at = $1 WHERE id = $2 AND deleted_at IS NULL",
+            now_str,
+            user_id,
+        )
         return cursor.rowcount > 0
 
 
@@ -438,8 +519,13 @@ async def soft_delete_user(user_id: int) -> bool:
 # OAuth Token CRUD
 # ---------------------------------------------------------------------------
 
-async def save_oauth_token(user_id: int, access_token: str, scope: str = "",
-                           expires_at: Optional[datetime] = None) -> OAuthToken:
+
+async def save_oauth_token(
+    user_id: int,
+    access_token: str,
+    scope: str = "",
+    expires_at: Optional[datetime] = None,
+) -> OAuthToken:
     """Saves or updates an encrypted OAuth access token for a user."""
     now = datetime.now(timezone.utc)
     now_str = now.isoformat()
@@ -447,16 +533,25 @@ async def save_oauth_token(user_id: int, access_token: str, scope: str = "",
     enc_token = _encrypt(access_token)
 
     async with get_db() as db:
-        await db.execute("""
+        await db.execute(
+            """
             INSERT INTO oauth_tokens (user_id, access_token_enc, token_type, scope, created_at, expires_at)
             VALUES ($1, $2, 'bearer', $3, $4, $5)
             ON CONFLICT(user_id) DO UPDATE SET
                 access_token_enc = excluded.access_token_enc,
                 scope = excluded.scope,
                 expires_at = excluded.expires_at
-        """, user_id, enc_token, scope, now_str, expires_str)
+        """,
+            user_id,
+            enc_token,
+            scope,
+            now_str,
+            expires_str,
+        )
 
-        row = await db.fetchrow("SELECT * FROM oauth_tokens WHERE user_id = $1", user_id)
+        row = await db.fetchrow(
+            "SELECT * FROM oauth_tokens WHERE user_id = $1", user_id
+        )
         return OAuthToken(
             id=row["id"],
             user_id=row["user_id"],
@@ -464,14 +559,18 @@ async def save_oauth_token(user_id: int, access_token: str, scope: str = "",
             token_type=row["token_type"],
             scope=row["scope"],
             created_at=datetime.fromisoformat(row["created_at"]),
-            expires_at=datetime.fromisoformat(row["expires_at"]) if row["expires_at"] else None,
+            expires_at=(
+                datetime.fromisoformat(row["expires_at"]) if row["expires_at"] else None
+            ),
         )
 
 
 async def get_oauth_token(user_id: int) -> Optional[OAuthToken]:
     """Retrieves and decrypts the OAuth token for a given user."""
     async with get_db() as db:
-        row = await db.fetchrow("SELECT * FROM oauth_tokens WHERE user_id = $1", user_id)
+        row = await db.fetchrow(
+            "SELECT * FROM oauth_tokens WHERE user_id = $1", user_id
+        )
         if not row:
             return None
         decrypted_token = _decrypt(row["access_token_enc"])
@@ -482,7 +581,9 @@ async def get_oauth_token(user_id: int) -> Optional[OAuthToken]:
             token_type=row["token_type"],
             scope=row["scope"],
             created_at=datetime.fromisoformat(row["created_at"]),
-            expires_at=datetime.fromisoformat(row["expires_at"]) if row["expires_at"] else None,
+            expires_at=(
+                datetime.fromisoformat(row["expires_at"]) if row["expires_at"] else None
+            ),
         )
 
 
@@ -490,20 +591,25 @@ async def get_oauth_token(user_id: int) -> Optional[OAuthToken]:
 # State CSRF Management
 # ---------------------------------------------------------------------------
 
+
 async def save_oauth_state(state: str, user_data: Optional[str] = None) -> None:
     """Stores state string for CSRF validation."""
     now_str = datetime.now(timezone.utc).isoformat()
     async with get_db() as db:
         await db.execute(
             "INSERT INTO oauth_states (state, user_data, created_at) VALUES ($1, $2, $3)",
-            state, user_data, now_str
+            state,
+            user_data,
+            now_str,
         )
 
 
 async def pop_oauth_state(state: str) -> bool:
     """Validates state and consumes it immediately to prevent replay attacks."""
     async with get_db() as db:
-        row = await db.fetchrow("SELECT state FROM oauth_states WHERE state = $1", state)
+        row = await db.fetchrow(
+            "SELECT state FROM oauth_states WHERE state = $1", state
+        )
         if not row:
             return False
         await db.execute("DELETE FROM oauth_states WHERE state = $1", state)
@@ -514,6 +620,7 @@ async def pop_oauth_state(state: str) -> bool:
 # Installation CRUD
 # ---------------------------------------------------------------------------
 
+
 async def upsert_installation(
     installation_id: int,
     account_login: str,
@@ -521,7 +628,7 @@ async def upsert_installation(
     target_id: int,
     target_type: str,
     user_id: Optional[int] = None,
-    status: str = "active"
+    status: str = "active",
 ) -> Installation:
     """Upserts a GitHub App installation into SQLite."""
     now_str = datetime.now(timezone.utc).isoformat()
@@ -529,7 +636,8 @@ async def upsert_installation(
     removed_at = now_str if status == "deleted" else None
 
     async with get_db() as db:
-        await db.execute("""
+        await db.execute(
+            """
             INSERT INTO installations (
                 installation_id, account_login, account_type, target_id,
                 target_type, status, user_id, suspended_at, removed_at, created_at, updated_at
@@ -542,9 +650,23 @@ async def upsert_installation(
                 suspended_at = excluded.suspended_at,
                 removed_at = excluded.removed_at,
                 updated_at = excluded.updated_at
-        """, installation_id, account_login, account_type, target_id, target_type, status, user_id, suspended_at, removed_at, now_str, now_str)
+        """,
+            installation_id,
+            account_login,
+            account_type,
+            target_id,
+            target_type,
+            status,
+            user_id,
+            suspended_at,
+            removed_at,
+            now_str,
+            now_str,
+        )
 
-        row = await db.fetchrow("SELECT * FROM installations WHERE installation_id = $1", installation_id)
+        row = await db.fetchrow(
+            "SELECT * FROM installations WHERE installation_id = $1", installation_id
+        )
         return Installation(
             id=row["id"],
             installation_id=row["installation_id"],
@@ -554,10 +676,22 @@ async def upsert_installation(
             target_type=row["target_type"],
             status=InstallationStatus(row["status"]),
             user_id=row["user_id"],
-            suspended_at=datetime.fromisoformat(row["suspended_at"]) if row["suspended_at"] else None,
-            removed_at=datetime.fromisoformat(row["removed_at"]) if row["removed_at"] else None,
-            last_token_refresh=datetime.fromisoformat(row["last_token_refresh"]) if row["last_token_refresh"] else None,
-            last_sync=datetime.fromisoformat(row["last_sync"]) if row["last_sync"] else None,
+            suspended_at=(
+                datetime.fromisoformat(row["suspended_at"])
+                if row["suspended_at"]
+                else None
+            ),
+            removed_at=(
+                datetime.fromisoformat(row["removed_at"]) if row["removed_at"] else None
+            ),
+            last_token_refresh=(
+                datetime.fromisoformat(row["last_token_refresh"])
+                if row["last_token_refresh"]
+                else None
+            ),
+            last_sync=(
+                datetime.fromisoformat(row["last_sync"]) if row["last_sync"] else None
+            ),
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
         )
@@ -566,7 +700,10 @@ async def upsert_installation(
 async def get_installations_for_user(user_id: int) -> List[Installation]:
     """Retrieves all active app installations associated with a user."""
     async with get_db() as db:
-        rows = await db.fetch("SELECT * FROM installations WHERE user_id = $1 AND status = 'active'", user_id)
+        rows = await db.fetch(
+            "SELECT * FROM installations WHERE user_id = $1 AND status = 'active'",
+            user_id,
+        )
         return [
             Installation(
                 id=row["id"],
@@ -577,10 +714,26 @@ async def get_installations_for_user(user_id: int) -> List[Installation]:
                 target_type=row["target_type"],
                 status=InstallationStatus(row["status"]),
                 user_id=row["user_id"],
-                suspended_at=datetime.fromisoformat(row["suspended_at"]) if row["suspended_at"] else None,
-                removed_at=datetime.fromisoformat(row["removed_at"]) if row["removed_at"] else None,
-                last_token_refresh=datetime.fromisoformat(row["last_token_refresh"]) if row["last_token_refresh"] else None,
-                last_sync=datetime.fromisoformat(row["last_sync"]) if row["last_sync"] else None,
+                suspended_at=(
+                    datetime.fromisoformat(row["suspended_at"])
+                    if row["suspended_at"]
+                    else None
+                ),
+                removed_at=(
+                    datetime.fromisoformat(row["removed_at"])
+                    if row["removed_at"]
+                    else None
+                ),
+                last_token_refresh=(
+                    datetime.fromisoformat(row["last_token_refresh"])
+                    if row["last_token_refresh"]
+                    else None
+                ),
+                last_sync=(
+                    datetime.fromisoformat(row["last_sync"])
+                    if row["last_sync"]
+                    else None
+                ),
                 created_at=datetime.fromisoformat(row["created_at"]),
                 updated_at=datetime.fromisoformat(row["updated_at"]),
             )
@@ -591,7 +744,9 @@ async def get_installations_for_user(user_id: int) -> List[Installation]:
 async def get_installation_by_id(installation_id: int) -> Optional[Installation]:
     """Finds installation by GitHub's installation_id."""
     async with get_db() as db:
-        row = await db.fetchrow("SELECT * FROM installations WHERE installation_id = $1", installation_id)
+        row = await db.fetchrow(
+            "SELECT * FROM installations WHERE installation_id = $1", installation_id
+        )
         if not row:
             return None
         return Installation(
@@ -603,10 +758,22 @@ async def get_installation_by_id(installation_id: int) -> Optional[Installation]
             target_type=row["target_type"],
             status=InstallationStatus(row["status"]),
             user_id=row["user_id"],
-            suspended_at=datetime.fromisoformat(row["suspended_at"]) if row["suspended_at"] else None,
-            removed_at=datetime.fromisoformat(row["removed_at"]) if row["removed_at"] else None,
-            last_token_refresh=datetime.fromisoformat(row["last_token_refresh"]) if row["last_token_refresh"] else None,
-            last_sync=datetime.fromisoformat(row["last_sync"]) if row["last_sync"] else None,
+            suspended_at=(
+                datetime.fromisoformat(row["suspended_at"])
+                if row["suspended_at"]
+                else None
+            ),
+            removed_at=(
+                datetime.fromisoformat(row["removed_at"]) if row["removed_at"] else None
+            ),
+            last_token_refresh=(
+                datetime.fromisoformat(row["last_token_refresh"])
+                if row["last_token_refresh"]
+                else None
+            ),
+            last_sync=(
+                datetime.fromisoformat(row["last_sync"]) if row["last_sync"] else None
+            ),
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
         )
@@ -616,7 +783,10 @@ async def get_installation_by_id(installation_id: int) -> Optional[Installation]
 # Selected Repos CRUD & Webhook Verification
 # ---------------------------------------------------------------------------
 
-async def save_selected_repos(installation_internal_id: int, selected_repos: List[Tuple[str, int]]) -> None:
+
+async def save_selected_repos(
+    installation_internal_id: int, selected_repos: List[Tuple[str, int]]
+) -> None:
     """
     Saves a list of (repo_full_name, repo_id) tuples as enabled for a given installation.
     Disables any previously selected repos for that installation that are not in the new list.
@@ -625,25 +795,36 @@ async def save_selected_repos(installation_internal_id: int, selected_repos: Lis
     now_str = datetime.now(timezone.utc).isoformat()
     async with get_db() as db:
         # Step 1: Mark all current repos for this installation as disabled (0)
-        await db.execute("UPDATE selected_repos SET enabled = 0 WHERE installation_id = $1", installation_internal_id)
+        await db.execute(
+            "UPDATE selected_repos SET enabled = 0 WHERE installation_id = $1",
+            installation_internal_id,
+        )
 
         # Step 2: Upsert selected repos as enabled (1)
         for full_name, repo_id in selected_repos:
-            await db.execute("""
+            await db.execute(
+                """
                 INSERT INTO selected_repos (installation_id, repo_full_name, repo_id, enabled, added_at)
                 VALUES ($1, $2, $3, 1, $4)
                 ON CONFLICT(installation_id, repo_full_name) DO UPDATE SET
                     enabled = 1,
                     repo_id = excluded.repo_id
-            """, installation_internal_id, full_name, repo_id, now_str)
+            """,
+                installation_internal_id,
+                full_name,
+                repo_id,
+                now_str,
+            )
 
 
-async def get_selected_repos_for_installation(installation_internal_id: int) -> List[SelectedRepo]:
+async def get_selected_repos_for_installation(
+    installation_internal_id: int,
+) -> List[SelectedRepo]:
     """Gets all currently enabled repositories for an installation."""
     async with get_db() as db:
         rows = await db.fetch(
             "SELECT * FROM selected_repos WHERE installation_id = $1 AND enabled = 1 ORDER BY added_at DESC",
-            installation_internal_id
+            installation_internal_id,
         )
         return [
             SelectedRepo(
@@ -664,14 +845,16 @@ async def is_repo_whitelisted(repo_full_name: str) -> bool:
     If no repositories have been explicitly configured/selected yet in the DB, defaults to True.
     """
     async with get_db() as db:
-        total_selected = await db.fetchval("SELECT COUNT(*) FROM selected_repos WHERE enabled = 1")
+        total_selected = await db.fetchval(
+            "SELECT COUNT(*) FROM selected_repos WHERE enabled = 1"
+        )
 
         if total_selected == 0:
             return True
 
         match = await db.fetchrow(
             "SELECT id FROM selected_repos WHERE LOWER(repo_full_name) = LOWER($1) AND enabled = 1",
-            repo_full_name
+            repo_full_name,
         )
         return match is not None
 
@@ -679,6 +862,7 @@ async def is_repo_whitelisted(repo_full_name: str) -> bool:
 # ---------------------------------------------------------------------------
 # Redesigned Enterprise Audit Log CRUD
 # ---------------------------------------------------------------------------
+
 
 async def create_audit_log(
     action: str,
@@ -690,19 +874,32 @@ async def create_audit_log(
     severity: str = "INFO",
     details_json: Optional[Dict[str, Any]] = None,
     ip_address: Optional[str] = None,
-    user_agent: Optional[str] = None
+    user_agent: Optional[str] = None,
 ) -> None:
     """Inserts a structured enterprise audit log entry."""
     now_str = datetime.now(timezone.utc).isoformat()
     json_str = json.dumps(details_json) if details_json else None
 
     async with get_db() as db:
-        await db.execute("""
+        await db.execute(
+            """
             INSERT INTO audit_logs (
                 request_id, trace_id, user_id, action, entity_type, entity_id,
                 severity, details_json, ip_address, user_agent, created_at
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        """, request_id, trace_id, user_id, action, entity_type, entity_id, severity, json_str, ip_address, user_agent, now_str)
+        """,
+            request_id,
+            trace_id,
+            user_id,
+            action,
+            entity_type,
+            entity_id,
+            severity,
+            json_str,
+            ip_address,
+            user_agent,
+            now_str,
+        )
 
 
 async def get_audit_logs_for_user(user_id: int, limit: int = 50) -> List[AuditLog]:
@@ -710,7 +907,8 @@ async def get_audit_logs_for_user(user_id: int, limit: int = 50) -> List[AuditLo
     async with get_db() as db:
         rows = await db.fetch(
             "SELECT * FROM audit_logs WHERE user_id = $1 ORDER BY id DESC LIMIT $2",
-            user_id, limit
+            user_id,
+            limit,
         )
         return [
             AuditLog(
@@ -734,6 +932,7 @@ async def get_audit_logs_for_user(user_id: int, limit: int = 50) -> List[AuditLo
 # ---------------------------------------------------------------------------
 # Repository Sync & Query
 # ---------------------------------------------------------------------------
+
 
 async def sync_repos_in_db(
     installation_internal_id: int,
@@ -803,7 +1002,9 @@ async def sync_repos_in_db(
                 await db.execute(
                     "UPDATE repositories SET disabled = 1, sync_status = 'inactive', updated_at = $1 "
                     "WHERE github_repo_id = $2 AND installation_id = $3",
-                    now_str, repo_id, installation_internal_id,
+                    now_str,
+                    repo_id,
+                    installation_internal_id,
                 )
 
         # Step 3 – return all active repos for this installation
@@ -848,14 +1049,14 @@ async def get_repos_for_user(user_id: int) -> List[Dict[str, Any]]:
 # Webhook Delivery Deduplication
 # ---------------------------------------------------------------------------
 
+
 async def is_delivery_processed(delivery_id: str) -> bool:
     """Check if a webhook delivery GUID has already been processed."""
     if not delivery_id:
         return False
     async with get_db() as db:
         row = await db.fetchrow(
-            "SELECT 1 FROM webhook_deliveries WHERE delivery_id = $1",
-            delivery_id
+            "SELECT 1 FROM webhook_deliveries WHERE delivery_id = $1", delivery_id
         )
         return row is not None
 
@@ -875,7 +1076,10 @@ async def record_webhook_delivery(
             await db.execute(
                 "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) "
                 "VALUES ($1, $2, $3, 'processed', $4)",
-                delivery_id, event_type, action, now_str,
+                delivery_id,
+                event_type,
+                action,
+                now_str,
             )
             return True
     except Exception:
@@ -910,7 +1114,12 @@ async def record_github_webhook_delivery(
         try:
             await db.execute(
                 "INSERT INTO github_webhook_deliveries (delivery_id, event, payload_sha256, action, installation_id, received_at) VALUES ($1, $2, $3, $4, $5, $6)",
-                delivery_id, event, payload_sha256, action, installation_id, now,
+                delivery_id,
+                event,
+                payload_sha256,
+                action,
+                installation_id,
+                now,
             )
         except Exception as exc:
             if "unique" in str(exc).lower() or "constraint" in str(exc).lower():
@@ -940,6 +1149,7 @@ async def record_github_webhook_delivery(
 # ---------------------------------------------------------------------------
 # Pull Request Processing Functions
 # ---------------------------------------------------------------------------
+
 
 async def upsert_pull_request(pr_data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -1070,8 +1280,7 @@ async def upsert_pull_request(pr_data: Dict[str, Any]) -> Dict[str, Any]:
         )
 
         row = await db.fetchrow(
-            "SELECT * FROM pull_requests WHERE github_pr_id = $1",
-            github_pr_id
+            "SELECT * FROM pull_requests WHERE github_pr_id = $1", github_pr_id
         )
         res = dict(row)
         res["draft"] = bool(res["draft"])
@@ -1093,12 +1302,13 @@ async def get_pull_request(
         if repository_name:
             row = await db.fetchrow(
                 "SELECT * FROM pull_requests WHERE number = $1 AND (repository_name = $2 OR owner || '/' || repository_name = $2)",
-                number, repository_name
+                number,
+                repository_name,
             )
         else:
             row = await db.fetchrow(
                 "SELECT * FROM pull_requests WHERE number = $1 ORDER BY id DESC LIMIT 1",
-                number
+                number,
             )
         if not row:
             return None
@@ -1165,7 +1375,9 @@ async def list_pull_requests(
     if review_status and review_status.lower() != "all":
         st = review_status.lower()
         if st == "completed":
-            where_conditions.append("review_status IN ('success', 'failed', 'processing')")
+            where_conditions.append(
+                "review_status IN ('success', 'failed', 'processing')"
+            )
         elif st == "pending":
             where_conditions.append("review_status = 'pending'")
         elif st == "processing":
@@ -1191,7 +1403,9 @@ async def list_pull_requests(
 
     # Get total count
     async with get_db() as db:
-        count_query = f"SELECT COUNT(*) as count FROM pull_requests WHERE {where_clause}"
+        count_query = (
+            f"SELECT COUNT(*) as count FROM pull_requests WHERE {where_clause}"
+        )
         total_row = await db.fetchrow(count_query, *params)
         total = total_row["count"] if total_row else 0
 
@@ -1261,9 +1475,17 @@ async def get_pr_stats() -> Dict[str, Any]:
                 "total_comments_published": 0,
             }
 
-        monitored_count = await db.fetchval("SELECT COUNT(*) FROM selected_repos WHERE enabled = 1") or 0
+        monitored_count = (
+            await db.fetchval("SELECT COUNT(*) FROM selected_repos WHERE enabled = 1")
+            or 0
+        )
         if monitored_count == 0:
-            monitored_count = await db.fetchval("SELECT COUNT(*) FROM repositories WHERE disabled = 0") or 0
+            monitored_count = (
+                await db.fetchval(
+                    "SELECT COUNT(*) FROM repositories WHERE disabled = 0"
+                )
+                or 0
+            )
 
         avg_cov = round(float(row["avg_coverage"] or 100.0), 1)
         avg_proc = round(float(row["avg_processing_time_sec"] or 3.8), 1)
@@ -1333,8 +1555,7 @@ async def update_pull_request_review_results(
         )
 
         row = await db.fetchrow(
-            "SELECT * FROM pull_requests WHERE github_pr_id = $1",
-            github_pr_id
+            "SELECT * FROM pull_requests WHERE github_pr_id = $1", github_pr_id
         )
         if not row:
             return None
@@ -1369,7 +1590,9 @@ async def update_pull_request_review_published(
             WHERE github_pr_id = $3
             RETURNING *
             """,
-            now_str, review_id, github_pr_id,
+            now_str,
+            review_id,
+            github_pr_id,
         )
         if not row:
             return None
