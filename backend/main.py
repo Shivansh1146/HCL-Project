@@ -298,6 +298,20 @@ async def clear_stuck_webhooks():
 
 
 
+@app.get("/api/debug/publish/{owner}/{repo}/{pr_number}")
+async def debug_publish(owner: str, repo: str, pr_number: int):
+    """Debug endpoint to publish a PR review without auth to capture error body."""
+    try:
+        from services.pr_service import PRService
+        result = await PRService.publish_pr_review(owner, repo, pr_number)
+        return result
+    except Exception as e:
+        import traceback
+        return {
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+
 @app.get("/api/debug/installation/{owner}/{repo}")
 async def debug_installation(owner: str, repo: str):
     """Debug endpoint to check installation_id for a repository."""

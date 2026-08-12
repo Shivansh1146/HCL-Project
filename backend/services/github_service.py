@@ -258,9 +258,14 @@ class GitHubService:
 
                     # GitHub returns 422 if user tries to APPROVE or REQUEST_CHANGES on their own PR
                     if resp.status_code == 422 and payload.get("event") in ("APPROVE", "REQUEST_CHANGES"):
-                        logger.warning(f"GitHub returned 422 for event={payload['event']} (likely self-review). Retrying with event='COMMENT'.")
+                        logger.warning(f"GitHub returned 422 for event={payload['event']}. Body: {resp.text}. Retrying with event='COMMENT'.")
                         payload["event"] = "COMMENT"
                         resp = await client.post(url, headers=headers, json=payload)
+
+                    if resp.status_code != 200:
+                        logger.error(f"GitHub API returned {resp.status_code}: {resp.text}")
+                        if resp.status_code >= 400:
+                            raise RuntimeError(f"HTTP {resp.status_code} - Body: {resp.text}")
 
                     resp.raise_for_status()
                     data = resp.json()
