@@ -98,6 +98,13 @@ def _build_inline_comments(issues: List[Dict[str, Any]], commit_sha: str) -> Lis
     Build the GitHub 'comments' array for the PR Review payload.
     Only includes issues that have been validated by DiffValidator (line is set and valid).
     Issues without a valid path or line number are silently skipped.
+
+    Suggestion-block validation invariant (enforced here as the final gate):
+      - fix must be non-empty and non-None
+      - fix.strip() must not be empty
+      - fix.strip() must not equal the current source line (new_content)
+      - fix.strip() must not equal the old source line (old_content)
+      If any check fails, the issue is posted as a textual comment without a suggestion.
     """
     comments = []
     for issue in issues:
@@ -120,12 +127,57 @@ def _build_inline_comments(issues: List[Dict[str, Any]], commit_sha: str) -> Lis
         title = issue.get("title") or "Code Issue"
         description = issue.get("description") or ""
 
-        fix = issue.get("fix") or ""
-        if fix and isinstance(fix, str) and fix.strip() and fix.strip() != "None":
+        # -----------------------------------------------------------------------
+        # Suggestion validation gate
+        # Priority 1: use the pre-validated suggestion string set by
+        #             DiffValidator.generate_suggestion() in main.py pipeline
+        #             (stored as issue["_validated_suggestion"]).
+        # Priority 2: fall back to raw fix field ONLY after strict validation.
+        # If neither passes, emit a textual comment with no suggestion block.
+        # -----------------------------------------------------------------------
+        suggestion_block: str = ""
+
+        validated_suggestion = issue.get("_validated_suggestion")
+        if validated_suggestion and isinstance(validated_suggestion, str) and validated_suggestion.strip():
+            # Already validated upstream by DiffValidator.generate_suggestion
+            suggestion_block = validated_suggestion
+            logger.info(
+                f"[SUGGESTION_VALIDATION] PASSED (pre-validated) — {file_path}:{line}"
+            )
+        else:
+            # Fallback: validate raw fix field before using it
+            fix = issue.get("fix") or ""
+            fix_str = fix.strip() if isinstance(fix, str) else ""
+
+            if not fix_str or fix_str.lower() == "none":
+                logger.info(
+                    f"[SUGGESTION_VALIDATION] REJECTED (empty fix) — {file_path}:{line}"
+                )
+            else:
+                old_code = (issue.get("_old_content") or "").strip()
+                new_code = (issue.get("_new_content") or "").strip()
+
+                if new_code and fix_str == new_code:
+                    logger.warning(
+                        f"[SUGGESTION_VALIDATION] REJECTED: fix == current source line "
+                        f"(no-op suggestion) for {file_path}:{line}"
+                    )
+                elif old_code and fix_str == old_code:
+                    logger.warning(
+                        f"[SUGGESTION_VALIDATION] REJECTED: fix == old source line "
+                        f"for {file_path}:{line}"
+                    )
+                else:
+                    suggestion_block = f"```suggestion\n{fix_str}\n```"
+                    logger.info(
+                        f"[SUGGESTION_VALIDATION] PASSED (raw fix) — {file_path}:{line}"
+                    )
+
+        if suggestion_block:
             comment_body = (
                 f"{severity_emoji} **[{severity}] {title}**\n\n"
                 f"{description}\n\n"
-                f"```suggestion\n{fix}\n```"
+                f"{suggestion_block}"
             )
         else:
             comment_body = (

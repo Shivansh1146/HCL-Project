@@ -104,13 +104,20 @@ class DiffValidator:
     @staticmethod
     def generate_suggestion(issue: Dict[str, Any], mapping: Dict[str, Dict[int, Tuple[str, str]]]) -> Optional[str]:
         """
-        Generates GitHub committable suggestion format for an issue.
-        Always prefers the AI's fix field. Falls back to diff content.
-        Works for both modified lines and pure additions (+lines).
+        Generates a GitHub committable suggestion for an issue.
+
+        Invariant: the returned suggestion_code must differ from the current
+        source line (new_content) so that GitHub can apply it as a real change.
+        Returns None if no valid, non-identical suggestion can be produced.
         """
         file_path = issue.get("file")
         line_num = issue.get("line")
         fix_code = issue.get("fix", "")
+
+        logger.info(
+            f"[AI_SUGGESTION] Generating suggestion — file={file_path} "
+            f"line={line_num} fix_length={len(fix_code.strip()) if fix_code else 0}"
+        )
 
         matched_key = DiffValidator._find_matching_file(file_path, mapping)
         if not matched_key or line_num not in mapping[matched_key]:
@@ -122,32 +129,82 @@ class DiffValidator:
                         line_num = vl
                         break
                 else:
+                    logger.warning(
+                        f"[SUGGESTION_VALIDATION] REJECTED: line {line_num} not found in diff for {file_path}"
+                    )
                     return None
             else:
+                logger.warning(
+                    f"[SUGGESTION_VALIDATION] REJECTED: file {file_path} not found in diff mapping"
+                )
                 return None
 
         old_content, new_content = mapping[matched_key][line_num]
 
-        # Priority 1: Always use the AI's fix if valid code (not plain English)
+        logger.info(
+            f"[AI_SUGGESTION] old_length={len(old_content)} new_length={len(new_content)}"
+        )
+
+        # Determine the candidate suggestion code from the AI fix field.
+        # IMPORTANT: Never fall back to new_content — that would produce a
+        # no-op suggestion (old_code == new_code) that GitHub rejects.
+        suggestion_code: Optional[str] = None
         if fix_code and len(fix_code.strip()) > 2:
             cleaned = DiffValidator._clean_code(fix_code)
             if cleaned and not cleaned.lower().startswith(("use ", "add ", "replace ", "consider ")):
                 suggestion_code = cleaned
             else:
-                suggestion_code = new_content  # fall back to diff line
-        elif new_content:
-            # For pure additions (old == ""), new_content is the added line
-            suggestion_code = new_content
+                # AI fix is plain English prose — cannot use as code suggestion
+                logger.warning(
+                    f"[SUGGESTION_VALIDATION] REJECTED: AI fix is natural-language prose "
+                    f"for {file_path}:{line_num} — no valid code replacement available"
+                )
+                return None
         else:
+            # No usable fix from AI — do not fabricate a suggestion
+            logger.warning(
+                f"[SUGGESTION_VALIDATION] REJECTED: AI fix is empty or too short "
+                f"for {file_path}:{line_num}"
+            )
             return None
 
-        if not suggestion_code or len(suggestion_code.strip()) < 1:
+        # Guard: suggestion_code must be non-empty
+        if not suggestion_code or not suggestion_code.strip():
+            logger.warning(
+                f"[SUGGESTION_VALIDATION] REJECTED: suggestion_code is empty for {file_path}:{line_num}"
+            )
+            return None
+
+        # Guard: suggestion_code must differ from the CURRENT source line (new_content).
+        # GitHub shows suggestions as a diff of (new_content → suggestion_code).
+        # If they are equal, GitHub rejects it as "no changes made".
+        if suggestion_code.strip() == new_content.strip():
+            logger.warning(
+                f"[SUGGESTION_VALIDATION] REJECTED: suggestion_code == current source line "
+                f"(no-op suggestion) for {file_path}:{line_num}"
+            )
+            return None
+
+        # Guard: suggestion_code must also differ from old_content
+        # (catches the identical-replacement edge case on modified lines)
+        if old_content.strip() and suggestion_code.strip() == old_content.strip():
+            logger.warning(
+                f"[SUGGESTION_VALIDATION] REJECTED: suggestion_code == old source line "
+                f"for {file_path}:{line_num}"
+            )
             return None
 
         # Anti-hallucination guard: skip if old content is a comment or keyword
         if not AntiHallucinationValidator.validate_suggestion(issue, old_content):
+            logger.warning(
+                f"[SUGGESTION_VALIDATION] REJECTED: AntiHallucinationValidator blocked suggestion "
+                f"for {file_path}:{line_num}"
+            )
             return None
 
+        logger.info(
+            f"[SUGGESTION_VALIDATION] PASSED — valid suggestion for {file_path}:{line_num}"
+        )
         return f"```suggestion\n{suggestion_code}\n```"
 
     @staticmethod

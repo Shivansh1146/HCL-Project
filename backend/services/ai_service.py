@@ -189,6 +189,16 @@ IMPORTANT - This is a git diff:
 
 Stability is more important than completeness. When in doubt, return {"issues": []}.
 
+FIX FIELD RULES (strictly enforced by the backend — violations will be rejected):
+- The "fix" field MUST contain valid source code, NOT prose or English explanations.
+- The "fix" field MUST be genuinely different from the current source line being flagged.
+- Do NOT copy the existing line unchanged into "fix".
+- Do NOT reproduce the same code as the existing line — that is a no-op and will be rejected.
+- The "fix" must actually remediate the reported issue (e.g. add validation, change the call, remove unsafe code).
+- If no safe, concrete, code-level fix exists for the issue, set "fix" to "" and do NOT include a suggestion.
+- Do NOT invent source code that is not present in the diff context.
+- Preserve indentation and surrounding code structure.
+
 Output ONLY valid JSON:
 {
   "issues": [
@@ -199,7 +209,7 @@ Output ONLY valid JSON:
       "description": "Exactly what is wrong",
       "line": 3,
       "file": "filename.py",
-      "fix": "replacement code ONLY"
+      "fix": "replacement code ONLY — must differ from current line, or empty string if no safe fix"
     }
   ]
 }

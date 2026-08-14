@@ -754,6 +754,25 @@ async def process_webhook(payload: dict):
                         suggestion = DiffValidator.generate_suggestion(
                             issue, diff_mapping
                         )
+
+                        # Stamp validated suggestion and source context onto the issue
+                        # so that review_publisher._build_inline_comments can reuse
+                        # the already-validated result without re-validating.
+                        issue["_validated_suggestion"] = suggestion  # None if rejected
+
+                        # Also stamp source context for the secondary validation gate
+                        file_key = issue.get("file", "")
+                        line_num = issue.get("line", 0)
+                        matched_file = None
+                        for k in diff_mapping:
+                            if k == file_key or k.endswith(file_key) or file_key.endswith(k):
+                                matched_file = k
+                                break
+                        if matched_file and line_num in diff_mapping[matched_file]:
+                            old_c, new_c = diff_mapping[matched_file][line_num]
+                            issue["_old_content"] = old_c
+                            issue["_new_content"] = new_c
+
                         success = await post_inline_comment(
                             owner,
                             repo,
