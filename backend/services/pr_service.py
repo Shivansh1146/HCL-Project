@@ -14,6 +14,7 @@ Responsibilities:
 import json
 import logging
 from datetime import datetime
+import uuid
 from typing import Any, Dict, List, Optional
 from fastapi import BackgroundTasks
 from db_engine import get_db
@@ -77,12 +78,13 @@ async def run_ai_review_task(
     logger.info(f"🤖 [AI_REVIEW_TASK] Parameters: github_pr_id={github_pr_id}, owner={owner}, repo={repo}, pr_number={pr_number}, head_sha={head_sha}")
     logger.info("📊 PR pipeline initiated")
     
+    task_run_id = uuid.uuid4().hex[:8]
     # Store execution trace
     try:
         async with get_db() as db:
             await db.execute(
                 "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES ($1, $2, $3, $4, $5)",
-                f"ai_task_{github_pr_id}_{pr_number}", "ai_review_task", "start", "starting", datetime.now().isoformat()
+                f"ai_task_{github_pr_id}_{pr_number}_{task_run_id}", "ai_review_task", "start", "starting", datetime.now().isoformat()
             )
     except Exception as trace_error:
         logger.error(f"Failed to store AI task start trace: {trace_error}")
@@ -98,7 +100,7 @@ async def run_ai_review_task(
         async with get_db() as db:
             await db.execute(
                 "INSERT INTO webhook_deliveries (delivery_id, event_type, action, status, processed_at) VALUES ($1, $2, $3, $4, $5)",
-                f"ai_task_marked_processing_{github_pr_id}", "ai_review_task", "mark_processing", "processing", datetime.now().isoformat()
+                f"ai_task_marked_processing_{github_pr_id}_{task_run_id}", "ai_review_task", "mark_processing", "processing", datetime.now().isoformat()
             )
     except Exception as trace_error:
         logger.error(f"Failed to store AI task processing trace: {trace_error}")
