@@ -33,6 +33,26 @@ let _prsState = {
 };
 
 let _debounceTimer = null;
+let _pollInterval = null;
+
+function _startPolling() {
+    _stopPolling();
+    _pollInterval = setInterval(async () => {
+        if (document.visibilityState !== "visible") return;
+        try {
+            await _loadPullRequests(true);
+        } catch (e) {
+            // silent fail on auto-refresh
+        }
+    }, 5000);
+}
+
+function _stopPolling() {
+    if (_pollInterval) {
+        clearInterval(_pollInterval);
+        _pollInterval = null;
+    }
+}
 
 /**
  * Main render entry point for Pull Requests page.
@@ -65,6 +85,13 @@ export async function renderPullRequestsPage(outlet) {
         </div>
     `;
 
+    const refreshBtn = header.querySelector("#prs-refresh-btn");
+    refreshBtn?.addEventListener("click", async () => {
+        refreshBtn.disabled = true;
+        await _loadPullRequests();
+        refreshBtn.disabled = false;
+    });
+
     // Root containers
     const statsEl = document.createElement("div");
     statsEl.id = "prs-stats-container";
@@ -86,11 +113,16 @@ export async function renderPullRequestsPage(outlet) {
 
     // Initial Data Fetch
     await _loadPullRequests();
+
+    window.addEventListener("router:before-navigate", _stopPolling, { once: true });
+    _startPolling();
 }
 
-async function _loadPullRequests() {
-    _prsState.isLoading = true;
-    _renderSkeletonState();
+async function _loadPullRequests(silent = false) {
+    if (!silent) {
+        _prsState.isLoading = true;
+        _renderSkeletonState();
+    }
 
     try {
         const [prRes, statsRes] = await Promise.allSettled([
@@ -106,7 +138,7 @@ async function _loadPullRequests() {
             _prsState.items = prRes.value.items || [];
             _prsState.total = prRes.value.total || 0;
             _prsState.totalPages = prRes.value.total_pages || 1;
-        } else {
+        } else if (!silent) {
             _prsState.items = [];
             _prsState.total = 0;
         }
@@ -116,11 +148,11 @@ async function _loadPullRequests() {
         }
     } catch (err) {
         console.error("[PRs] Failed to load PRs:", err);
-        Toast.error("Failed to load pull requests.");
+        if (!silent) Toast.error("Failed to load pull requests.");
     } finally {
-        _prsState.isLoading = false;
+        if (!silent) _prsState.isLoading = false;
         _renderStatsCards();
-        _renderToolbar();
+        if (!silent) _renderToolbar();
         _renderPrTable();
     }
 }
