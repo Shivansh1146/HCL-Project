@@ -4,7 +4,7 @@
  * Run via:  node backend/static/js/tests/frontend_tests.js   (Node 18+)
  *
  * Covers:
- *  - State: immutability, subscriptions, reset, theme persistence
+ *  - State: immutability, subscriptions, reset
  *  - API: ApiError structure, exponential backoff signature, interceptor registry
  *  - Router: route registration, public routes set
  *  - dom.js: escape() XSS prevention, safeUrl() open-redirect prevention
@@ -99,14 +99,14 @@ test("safeUrl() returns # for null",       () => expect(_safeUrl(null)).toBe("#"
 console.log("\n📦 state.js — Store Behavior");
 
 // Inline store for isolated testing
-const _INITIAL = Object.freeze({ user: null, isAuthenticated: false, organizations: [], theme: "dark", notifications: [], isLoading: false });
+const _INITIAL = Object.freeze({ user: null, isAuthenticated: false, organizations: [], notifications: [], isLoading: false });
 class TestStore {
     constructor() { this._state = { ..._INITIAL }; this._listeners = new Set(); }
     getState()  { return Object.freeze({ ...this._state }); }
     setState(p) { const prev = Object.freeze({ ...this._state }); this._state = { ...this._state, ...p }; this._listeners.forEach(l => l(Object.freeze({ ...this._state }), prev)); }
     subscribe(fn) { this._listeners.add(fn); return () => this._listeners.delete(fn); }
     setUser(u) { this.setState({ user: u, isAuthenticated: !!u, organizations: u?.organizations ?? [] }); }
-    reset()    { const t = this._state.theme; this._state = { ..._INITIAL, theme: t }; }
+    reset()    { this._state = { ..._INITIAL }; }
 }
 
 const ts = new TestStore();
@@ -145,11 +145,6 @@ test("reset() clears user state", () => {
     expect(ts.getState().isAuthenticated).toBeFalsy();
 });
 
-test("reset() preserves theme", () => {
-    ts.setState({ theme: "light" });
-    ts.reset();
-    expect(ts.getState().theme).toBe("light");
-});
 
 // ---------------------------------------------------------------------------
 // --- ApiError Tests ---
@@ -243,12 +238,6 @@ console.log("\n📊 Dashboard Shell & Navigation");
 
 const ts3 = new TestStore();
 
-test("Theme toggle: toggles theme state and stores in localStorage", () => {
-    ts3.setState({ theme: "dark" });
-    const nextTheme = ts3.getState().theme === "dark" ? "light" : "dark";
-    ts3.setState({ theme: nextTheme });
-    expect(ts3.getState().theme).toBe("light");
-});
 
 test("Organization switcher: updates currentOrg state", () => {
     ts3.setState({ currentOrg: "Personal" });
@@ -464,11 +453,6 @@ test("Profile identity: formats handle & email correctly", () => {
     expect(mockUser.email).toBe("octocat@github.com");
 });
 
-test("Theme persistence: store theme updates dynamically", () => {
-    const ts5 = new TestStore();
-    ts5.setState({ theme: "light" });
-    expect(ts5.getState().theme).toBe("light");
-});
 
 test("Audit log badge: assigns badge-error for ERROR severity", () => {
     const log = { action: "LOGIN_FAILED", severity: "ERROR" };

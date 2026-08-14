@@ -5,7 +5,6 @@
  *  - getState() returns a frozen deep copy (prevents external mutation)
  *  - subscribe() returns unsubscribe fn — callers MUST call it to prevent memory leaks
  *  - reset() clears auth/user state on logout (prevents session bleed)
- *  - theme persisted in localStorage
  *  - Organization and installation state included
  */
 
@@ -17,7 +16,6 @@ const INITIAL_STATE = Object.freeze({
     organizations:   [],
     installations:   [],
     selectedRepos:   [],
-    theme:           localStorage.getItem("hcl-theme") || "dark",
     notifications:   [],
     route:           window.location.hash || "#/dashboard",
     isLoading:       false,
@@ -96,12 +94,6 @@ class Store {
         this.setState({ isLoading });
     }
 
-    setTheme(theme) {
-        this.setState({ theme });
-        localStorage.setItem("hcl-theme", theme);
-        document.documentElement.setAttribute("data-theme", theme);
-    }
-
     addNotification(notification) {
         const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         this.setState({
@@ -118,13 +110,11 @@ class Store {
 
     /**
      * Resets all auth-related state on logout.
-     * Preserves theme and route preferences.
+     * Preserves route preferences.
      */
     reset() {
-        const { theme } = this._state;
         this._state = {
             ...INITIAL_STATE,
-            theme,
             notifications: [],
         };
         this._notify(Object.freeze({ ...this._state }), Object.freeze({ ...INITIAL_STATE }));

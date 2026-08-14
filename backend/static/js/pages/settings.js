@@ -20,7 +20,6 @@ export async function renderSettingsPage(outlet) {
     wrapper.className = "animate-fade-up";
     wrapper.style.cssText = "padding:1rem 0 3rem;";
 
-    const currentTheme = store.getState().theme || "dark";
 
     // Header
     const header = document.createElement("div");
@@ -33,38 +32,6 @@ export async function renderSettingsPage(outlet) {
             Preferences, System Health Status, and AI Provider Configurations
         </p>
     `;
-
-    // 1. Appearance & Theme Settings
-    const appearanceCard = document.createElement("div");
-    appearanceCard.className = "glass-card";
-    appearanceCard.style.cssText = "padding:1.5rem;margin-bottom:1.5rem;";
-
-    appearanceCard.innerHTML = `
-        <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-            Appearance & Interface Theme
-        </h3>
-        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center;">
-            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.9rem;">
-                <input type="radio" name="theme-option" value="dark" ${currentTheme === 'dark' ? 'checked' : ''}>
-                <span>🌙 Dark Mode (Default)</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.9rem;">
-                <input type="radio" name="theme-option" value="light" ${currentTheme === 'light' ? 'checked' : ''}>
-                <span>☀️ Light Mode</span>
-            </label>
-        </div>
-    `;
-
-    appearanceCard.querySelectorAll('input[name="theme-option"]').forEach(radio => {
-        radio.addEventListener("change", (e) => {
-            const selected = e.target.value;
-            store.setState({ theme: selected });
-            document.documentElement.setAttribute("data-theme", selected);
-            localStorage.setItem("hcl_theme", selected);
-            Toast.success(`Interface theme set to ${selected} mode.`);
-        });
-    });
 
     // 2. Notification Preferences
     const notifyCard = document.createElement("div");
@@ -126,6 +93,6 @@ export async function renderSettingsPage(outlet) {
         </div>
     `;
 
-    wrapper.append(header, appearanceCard, notifyCard, adminCard);
+    wrapper.append(header, notifyCard, adminCard);
     outlet.appendChild(wrapper);
 }

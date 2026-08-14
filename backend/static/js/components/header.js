@@ -23,7 +23,6 @@ export function renderHeader(headerEl) {
 
     const state = store.getState();
     const user = state.user;
-    const currentTheme = state.theme || "dark";
     const currentOrg = state.currentOrg || "Personal";
     const orgs = state.organizations || ["Personal"];
 
@@ -129,23 +128,6 @@ export function renderHeader(headerEl) {
         Toast.info("No unread notifications.");
     });
 
-    // 3. Theme Toggle Button
-    const themeBtn = document.createElement("button");
-    themeBtn.type = "button";
-    themeBtn.className = "icon-btn";
-    themeBtn.id = "theme-toggle-btn";
-    themeBtn.setAttribute("aria-label", `Switch to ${currentTheme === "dark" ? "light" : "dark"} mode`);
-    themeBtn.setAttribute("data-tooltip", `Theme: ${currentTheme}`);
-    themeBtn.innerHTML = currentTheme === "dark"
-        ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`
-        : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`;
-
-    themeBtn.addEventListener("click", () => {
-        const nextTheme = currentTheme === "dark" ? "light" : "dark";
-        store.setTheme(nextTheme);
-        Toast.info(`Theme set to ${nextTheme} mode`);
-    });
-
     // 4. User Avatar Quick Link
     if (user) {
         const avatarLink = document.createElement("a");
@@ -163,9 +145,9 @@ export function renderHeader(headerEl) {
         img.onerror = () => { img.src = "https://github.com/ghost.png"; };
 
         avatarLink.appendChild(img);
-        rightSection.append(orgWrap, notifBtn, themeBtn, avatarLink);
+        rightSection.append(orgWrap, notifBtn, avatarLink);
     } else {
-        rightSection.append(orgWrap, notifBtn, themeBtn);
+        rightSection.append(orgWrap, notifBtn);
     }
 
     headerEl.append(leftSection, rightSection);

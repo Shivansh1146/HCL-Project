@@ -48,10 +48,7 @@ async function bootstrapApp() {
         backdrop?.classList.remove("active");
     });
 
-    // 2. Apply saved theme immediately
-    const theme = store.getState().theme || "dark";
-    document.documentElement.setAttribute("data-theme", theme);
-
+    // 2. Default theme is set in CSS, no JS theme application required
     // 3. Attempt session restoration from HttpOnly cookie
     try {
         await authService.restoreSession();
@@ -70,7 +67,7 @@ async function bootstrapApp() {
 
     mountLayoutComponents();
 
-    // Subscribe layout components to store updates (auth, orgs, theme)
+    // Subscribe layout components to store updates (auth, orgs)
     store.subscribe(() => {
         mountLayoutComponents();
     });
