@@ -20,7 +20,9 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
+
+import httpx
 
 logger = logging.getLogger("backend.review_publisher")
 
@@ -197,6 +199,80 @@ def _build_inline_comments(issues: List[Dict[str, Any]], commit_sha: str) -> Lis
     return comments
 
 
+async def _fetch_pr_changed_files(
+    owner: str,
+    repo: str,
+    pr_number: int,
+    token: str,
+) -> Optional[Set[str]]:
+    """
+    Fetch the set of filenames actually changed in this PR from GitHub.
+    Returns None if the request fails (caller should treat all paths as unverifiable).
+    """
+    url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/files"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url, headers=headers)
+        if resp.status_code == 200:
+            files = {f["filename"] for f in resp.json() if "filename" in f}
+            logger.info(f"[ReviewPublisher] PR #{pr_number} changed files: {files}")
+            return files
+        logger.warning(
+            f"[ReviewPublisher] Could not fetch PR files ({resp.status_code}): {resp.text[:200]}"
+        )
+    except Exception as exc:
+        logger.warning(f"[ReviewPublisher] Exception fetching PR files: {exc}")
+    return None
+
+
+def _resolve_path_against_files(
+    ai_path: str,
+    changed_files: Set[str],
+) -> Optional[str]:
+    """
+    Resolve an AI-supplied path against the authoritative set of changed files.
+
+    Rules:
+    1. Exact match → return as-is.
+    2. Exactly one file in changed_files contains ai_path as a suffix, or
+       ai_path (without extension) matches exactly one file → return that file.
+    3. Otherwise → return None (drop the inline comment).
+    """
+    if ai_path in changed_files:
+        return ai_path
+
+    # Strip extension from ai_path and try to match
+    ai_stem = ai_path.rsplit(".", 1)[0] if "." in ai_path else ai_path
+
+    candidates = [
+        f for f in changed_files
+        if f == ai_stem                          # exact stem match (security.py → security)
+        or f.endswith("/" + ai_path)            # path suffix (src/security.py)
+        or f.endswith("/" + ai_stem)            # stem suffix  (src/security)
+        or ai_path.endswith("/" + f)            # ai_path is longer but ends with actual file
+    ]
+
+    if len(candidates) == 1:
+        logger.info(
+            f"[ReviewPublisher] Resolved path '{ai_path}' → '{candidates[0]}'"
+        )
+        return candidates[0]
+
+    if len(candidates) > 1:
+        logger.warning(
+            f"[ReviewPublisher] Ambiguous path '{ai_path}' matches {candidates} — dropping inline comment"
+        )
+    else:
+        logger.warning(
+            f"[ReviewPublisher] Path '{ai_path}' not found in PR changed files {changed_files} — dropping inline comment"
+        )
+    return None
+
+
 async def publish_review(
     github_pr_id: int,
     owner: str,
@@ -237,8 +313,8 @@ async def publish_review(
         issues = []
 
     github_event = DECISION_TO_EVENT.get(decision, "COMMENT")
+    # Build the review body unconditionally — this is always posted regardless of inline comments.
     review_body = _build_review_body(decision, issues, review_summary)
-    inline_comments = _build_inline_comments(issues, head_sha)
 
     # Resolve installation access token
     token: Optional[str] = None
@@ -247,7 +323,7 @@ async def publish_review(
             app_service = get_app_service()
             token = await app_service.get_installation_access_token(installation_id)
             if token:
-                logger.debug(f"[ReviewPublisher] Got installation token for installation={installation_id}")
+                logger.info(f"[ReviewPublisher] Got installation token for installation={installation_id}")
             else:
                 logger.warning(f"[ReviewPublisher] Empty token from app_service for installation={installation_id}, falling back to GITHUB_TOKEN")
         except Exception as exc:
@@ -255,6 +331,45 @@ async def publish_review(
 
     if not token:
         token = os.getenv("GITHUB_TOKEN", "")
+
+    # ------------------------------------------------------------------
+    # Path validation: fetch the actual changed-file list from GitHub and
+    # resolve / drop each issue path BEFORE building inline comments.
+    # This is the authoritative gate — it runs at publish time so that
+    # stale DB data (AI-hallucinated extensions like security.py) cannot
+    # reach the GitHub reviews API.
+    # ------------------------------------------------------------------
+    changed_files: Optional[Set[str]] = await _fetch_pr_changed_files(
+        owner, repo, pr_number, token
+    )
+
+    if changed_files is not None:
+        resolved_issues: List[Dict[str, Any]] = []
+        for issue in issues:
+            ai_path = issue.get("file") or issue.get("path") or ""
+            if not ai_path:
+                resolved_issues.append(issue)  # no path → will be skipped by _build_inline_comments
+                continue
+            resolved = _resolve_path_against_files(ai_path, changed_files)
+            if resolved is not None:
+                # Overwrite with the authoritative GitHub path
+                issue = dict(issue)
+                issue["file"] = resolved
+                issue["path"] = resolved
+                resolved_issues.append(issue)
+            else:
+                logger.warning(
+                    f"[ReviewPublisher] Dropping inline comment for unresolvable path '{ai_path}'"
+                )
+        issues_for_inline = resolved_issues
+    else:
+        # Could not fetch file list — proceed without inline comments to avoid 422
+        logger.warning(
+            "[ReviewPublisher] Could not verify changed files — posting review body only (no inline comments)"
+        )
+        issues_for_inline = []
+
+    inline_comments = _build_inline_comments(issues_for_inline, head_sha)
 
     # Post review to GitHub
     try:

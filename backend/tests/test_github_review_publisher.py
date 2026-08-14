@@ -137,7 +137,9 @@ class TestPublishReview:
 
             with patch("services.github_service._github_service_instance", mock_gh), \
                  patch("auth.store.update_pull_request_review_published", new_callable=AsyncMock) as mock_db, \
-                 patch("auth.app_service.get_app_service", return_value=mock_app):
+                 patch("auth.app_service.get_app_service", return_value=mock_app), \
+                 patch("services.review_publisher._fetch_pr_changed_files",
+                       new_callable=AsyncMock, return_value={"app/db.py"}):
 
                 from services.review_publisher import publish_review
                 result = await publish_review(
@@ -166,7 +168,9 @@ class TestPublishReview:
 
             with patch("services.github_service._github_service_instance", mock_gh), \
                  patch("auth.store.update_pull_request_review_published", new_callable=AsyncMock), \
-                 patch("auth.app_service.get_app_service", return_value=mock_app):
+                 patch("auth.app_service.get_app_service", return_value=mock_app), \
+                 patch("services.review_publisher._fetch_pr_changed_files",
+                       new_callable=AsyncMock, return_value=set()):
 
                 from services.review_publisher import publish_review
                 result = await publish_review(
@@ -193,7 +197,9 @@ class TestPublishReview:
 
             with patch("services.github_service._github_service_instance", mock_gh), \
                  patch("auth.store.update_pull_request_review_published", new_callable=AsyncMock), \
-                 patch("auth.app_service.get_app_service", return_value=mock_app):
+                 patch("auth.app_service.get_app_service", return_value=mock_app), \
+                 patch("services.review_publisher._fetch_pr_changed_files",
+                       new_callable=AsyncMock, return_value={"app/utils.py"}):
 
                 from services.review_publisher import publish_review
                 result = await publish_review(
@@ -223,7 +229,9 @@ class TestPublishReview:
 
             with patch("services.github_service._github_service_instance", mock_gh), \
                  patch("auth.store.update_pull_request_review_published", new_callable=AsyncMock), \
-                 patch("auth.app_service.get_app_service", return_value=mock_app):
+                 patch("auth.app_service.get_app_service", return_value=mock_app), \
+                 patch("services.review_publisher._fetch_pr_changed_files",
+                       new_callable=AsyncMock, return_value={"app/db.py"}):
 
                 from services.review_publisher import publish_review
                 result = await publish_review(
@@ -248,7 +256,9 @@ class TestPublishReview:
 
             with patch("services.github_service._github_service_instance", mock_gh), \
                  patch("auth.store.update_pull_request_review_published", new_callable=AsyncMock) as mock_db, \
-                 patch("auth.app_service.get_app_service", return_value=mock_app):
+                 patch("auth.app_service.get_app_service", return_value=mock_app), \
+                 patch("services.review_publisher._fetch_pr_changed_files",
+                       new_callable=AsyncMock, return_value=set()):
 
                 from services.review_publisher import publish_review
                 result = await publish_review(
@@ -273,7 +283,9 @@ class TestPublishReview:
 
             with patch("services.github_service._github_service_instance", mock_gh), \
                  patch("auth.store.update_pull_request_review_published", new_callable=AsyncMock, return_value=None), \
-                 patch("auth.app_service.get_app_service", return_value=mock_app):
+                 patch("auth.app_service.get_app_service", return_value=mock_app), \
+                 patch("services.review_publisher._fetch_pr_changed_files",
+                       new_callable=AsyncMock, return_value=set()):
                 from services.review_publisher import publish_review
                 result = await publish_review(
                     github_pr_id=5007, owner="acme", repo="backend", pr_number=48,
@@ -296,6 +308,8 @@ class TestPublishReview:
             with patch("services.github_service._github_service_instance", mock_gh), \
                  patch("auth.store.update_pull_request_review_published", new_callable=AsyncMock), \
                  patch("auth.app_service.get_app_service", return_value=mock_app), \
+                 patch("services.review_publisher._fetch_pr_changed_files",
+                       new_callable=AsyncMock, return_value=set()), \
                  patch.dict(os.environ, {"GITHUB_TOKEN": "ghp_fallback"}):
 
                 from services.review_publisher import publish_review
@@ -457,3 +471,39 @@ class TestPublishReviewEndpoint:
 
         assert resp.status_code == 500
 
+
+# ---------------------------------------------------------------------------
+# Unit tests: _resolve_path_against_files (path validation gate)
+# ---------------------------------------------------------------------------
+
+class TestPathResolution:
+
+    def test_exact_path_accepted(self):
+        """'security' in changed files -> returned as-is."""
+        from services.review_publisher import _resolve_path_against_files
+        result = _resolve_path_against_files("security", {"security", "README.md"})
+        assert result == "security"
+
+    def test_extension_hallucination_resolved(self):
+        """AI returns 'security.py', actual changed file is 'security' -> resolved."""
+        from services.review_publisher import _resolve_path_against_files
+        result = _resolve_path_against_files("security.py", {"security", "README.md"})
+        assert result == "security"
+
+    def test_unknown_path_dropped(self):
+        """AI returns a path not in changed files -> None (drop inline comment)."""
+        from services.review_publisher import _resolve_path_against_files
+        result = _resolve_path_against_files("nonexistent.py", {"security", "README.md"})
+        assert result is None
+
+    def test_ambiguous_path_dropped(self):
+        """Multiple candidates -> None (no guessing)."""
+        from services.review_publisher import _resolve_path_against_files
+        result = _resolve_path_against_files("security.py", {"security", "src/security"})
+        assert result is None
+
+    def test_path_with_directory_prefix_resolved(self):
+        """AI returns bare filename, actual path includes directory -> resolved."""
+        from services.review_publisher import _resolve_path_against_files
+        result = _resolve_path_against_files("security.py", {"src/security.py"})
+        assert result == "src/security.py"
