@@ -196,11 +196,18 @@ _Built with Python · FastAPI · Groq · PostgreSQL · asyncpg · GitHub REST AP
 - **Large GitHub review IDs**: `github_review_id` uses PostgreSQL `BIGINT`, so GitHub review identifiers are stored without 32-bit integer overflow.
 - **No false Published state**: A GitHub success is reported as published only after the local PostgreSQL update succeeds. Existing PR analysis data, findings, decisions, and review history are preserved by these migrations.
 
+### Real-time UI & End-to-End AI Publishing Pipeline (August 2026)
+- **Zero-Flicker Dashboard Auto-Refresh**: All frontend pages (Dashboard, Pull Requests, Analytics, Review History) now feature a seamless 5-second polling interval using silent data-fetching for live updates.
+- **GitHub Review Publisher Engine**: The AI now autonomously publishes native GitHub Pull Request Reviews with exact inline comments mapped to the changed code.
+- **Strict Suggestion Generation**: DiffValidator explicitly filters hallucinated fixes, ensuring ````suggestion```` blocks only contain valid code that differs from the original source.
+- **E2E Proven Security Catch**: Fully validated against test repositories for real-world injection vulnerabilities. The AI successfully reads the diff, identifies the security hole, generates the fix, validates the path, and pushes an actionable GitHub PR Review.
+
 ### System Status
 - ✅ All webhooks processing with zero race conditions
 - ✅ AI review pipeline fully operational and verified on Render
 - ✅ Database driver operating natively on PostgreSQL via `asyncpg`
 - ✅ GitHub OAuth & GitHub App integration active
 - ✅ Glassmorphism Command Center UI & Telemetry fully synchronized
+- ✅ Live GitHub Reviews and native code suggestions are actively published
 - ✅ Production live at [https://hcl-project-3tgd.onrender.com](https://hcl-project-3tgd.onrender.com)
 
