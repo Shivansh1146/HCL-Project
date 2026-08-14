@@ -113,7 +113,6 @@ async function _loadDashboardData(gridContainer, mainSection, user, silent = fal
   }
 
   try {
-try {
     const [statsData, installationsData, appStatusData, prStatsData] =
       await Promise.allSettled([
         api.getStats(),
@@ -271,9 +270,6 @@ try {
 
       mainSection.append(activityCard, quickActionsCard);
     }
-  } catch (err) {
-    console.error("[Dashboard] Error loading dashboard data:", err);
-    Toast.error("Failed to load dashboard metrics.");
   } catch (err) {
     if (!silent) {
       console.error("[Dashboard] Error loading dashboard data:", err);
