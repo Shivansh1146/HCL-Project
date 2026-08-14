@@ -47,6 +47,26 @@ let _state = {
 };
 
 let _debounceTimer = null;
+let _pollInterval = null;
+
+function _startPolling() {
+    _stopPolling();
+    _pollInterval = setInterval(async () => {
+        if (document.visibilityState !== "visible") return;
+        try {
+            await _loadDashboardData(true);
+        } catch (e) {
+            // silent fail
+        }
+    }, 5000);
+}
+
+function _stopPolling() {
+    if (_pollInterval) {
+        clearInterval(_pollInterval);
+        _pollInterval = null;
+    }
+}
 
 /**
  * Main entry point for the Review History / AI Review Dashboard.
@@ -113,11 +133,16 @@ export async function renderReviewHistoryPage(outlet) {
 
     // Fetch data
     await _loadDashboardData();
+
+    window.addEventListener("router:before-navigate", _stopPolling, { once: true });
+    _startPolling();
 }
 
-async function _loadDashboardData() {
-    _state.isLoading = true;
-    _renderSkeletonState();
+async function _loadDashboardData(silent = false) {
+    if (!silent) {
+        _state.isLoading = true;
+        _renderSkeletonState();
+    }
 
     try {
         const [prRes, statsRes, analyticsRes] = await Promise.allSettled([
@@ -156,7 +181,9 @@ async function _loadDashboardData() {
         console.error("[ReviewHistory] Error fetching dashboard data:", err);
         Toast.error("Failed to load AI review history.");
     } finally {
-        _state.isLoading = false;
+        if (!silent) {
+            _state.isLoading = false;
+        }
         _renderStatsCards();
         _renderVisualizations();
         _renderToolbar();

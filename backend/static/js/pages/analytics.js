@@ -19,6 +19,26 @@ import { Toast }           from "../components/toast.js";
 
 let _analyticsData = null;
 let _isLoading = false;
+let _pollInterval = null;
+
+function _startPolling() {
+    _stopPolling();
+    _pollInterval = setInterval(async () => {
+        if (document.visibilityState !== "visible") return;
+        try {
+            await _loadAnalyticsData(true);
+        } catch (e) {
+            // silent fail
+        }
+    }, 5000);
+}
+
+function _stopPolling() {
+    if (_pollInterval) {
+        clearInterval(_pollInterval);
+        _pollInterval = null;
+    }
+}
 
 /**
  * Renders the Analytics & Insights Dashboard into outlet.
@@ -67,33 +87,40 @@ export async function renderAnalyticsPage(outlet) {
 
     // Fetch data
     await _loadAnalyticsData();
+
+    window.addEventListener("router:before-navigate", _stopPolling, { once: true });
+    _startPolling();
 }
 
-async function _loadAnalyticsData() {
+async function _loadAnalyticsData(silent = false) {
     const container = document.getElementById("analytics-main-container");
     if (!container) return;
 
-    container.innerHTML = `
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:1rem;margin-bottom:1.5rem;">
-            ${renderSkeleton("card")}
-            ${renderSkeleton("card")}
-            ${renderSkeleton("card")}
-            ${renderSkeleton("card")}
-        </div>
-    `;
+    if (!silent) {
+        container.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:1rem;margin-bottom:1.5rem;">
+                ${renderSkeleton("card")}
+                ${renderSkeleton("card")}
+                ${renderSkeleton("card")}
+                ${renderSkeleton("card")}
+            </div>
+        `;
+    }
 
     try {
         _analyticsData = await api.getAnalytics();
         _renderDashboardContent(container);
     } catch (err) {
-        console.error("[Analytics] Failed to fetch metrics:", err);
-        renderEmptyState(container, {
-            title: "Analytics Connection Error",
-            description: "Unable to retrieve analytics telemetry from backend server.",
-            icon: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
-            actionText: "Retry Loading",
-            onAction: () => _loadAnalyticsData()
-        });
+        if (!silent) {
+            console.error("[Analytics] Failed to fetch metrics:", err);
+            renderEmptyState(container, {
+                title: "Analytics Connection Error",
+                description: "Unable to retrieve analytics telemetry from backend server.",
+                icon: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+                actionText: "Retry Loading",
+                onAction: () => _loadAnalyticsData()
+            });
+        }
     }
 }
 

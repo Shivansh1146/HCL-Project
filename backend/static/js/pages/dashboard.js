@@ -59,30 +59,61 @@ export async function renderDashboardPage(outlet) {
   gridContainer.id = "dashboard-metric-grid";
   gridContainer.setAttribute("aria-label", "Key Metrics Summary");
 
-  // Render Initial Skeleton Loaders
-  gridContainer.innerHTML = `
-        <div class="col-span-3">${renderSkeleton("card")}</div>
-        <div class="col-span-3">${renderSkeleton("card")}</div>
-        <div class="col-span-3">${renderSkeleton("card")}</div>
-        <div class="col-span-3">${renderSkeleton("card")}</div>
-    `;
-
   // Activity & Quick Actions Container
   const mainSection = document.createElement("div");
   mainSection.className = "grid-12";
   mainSection.style.cssText = "margin-top:2rem;";
   mainSection.id = "dashboard-main-section";
 
-  mainSection.innerHTML = `
-        <div class="col-span-8">${renderSkeleton("card")}</div>
-        <div class="col-span-4">${renderSkeleton("card")}</div>
-    `;
-
   wrapper.append(greeting, gridContainer, mainSection);
   outlet.appendChild(wrapper);
 
-  // Fetch Backend Data (Stats + Installations)
+  await _loadDashboardData(gridContainer, mainSection, user);
+
+  window.addEventListener("router:before-navigate", _stopPolling, { once: true });
+  _startPolling(gridContainer, mainSection, user);
+}
+
+let _pollInterval = null;
+
+function _startPolling(gridContainer, mainSection, user) {
+    _stopPolling();
+    _pollInterval = setInterval(async () => {
+        if (document.visibilityState !== "visible") return;
+        try {
+            await _loadDashboardData(gridContainer, mainSection, user, true);
+        } catch (e) {
+            // silent fail
+        }
+    }, 5000);
+}
+
+function _stopPolling() {
+    if (_pollInterval) {
+        clearInterval(_pollInterval);
+        _pollInterval = null;
+    }
+}
+
+async function _loadDashboardData(gridContainer, mainSection, user, silent = false) {
+  const safeName = dom.escape(user?.name || user?.login || "Engineer");
+  const safeLogin = dom.escape(user?.login || "");
+
+  if (!silent) {
+      gridContainer.innerHTML = `
+        <div class="col-span-3">${renderSkeleton("card")}</div>
+        <div class="col-span-3">${renderSkeleton("card")}</div>
+        <div class="col-span-3">${renderSkeleton("card")}</div>
+        <div class="col-span-3">${renderSkeleton("card")}</div>
+      `;
+      mainSection.innerHTML = `
+        <div class="col-span-8">${renderSkeleton("card")}</div>
+        <div class="col-span-4">${renderSkeleton("card")}</div>
+      `;
+  }
+
   try {
+try {
     const [statsData, installationsData, appStatusData, prStatsData] =
       await Promise.allSettled([
         api.getStats(),
@@ -243,5 +274,10 @@ export async function renderDashboardPage(outlet) {
   } catch (err) {
     console.error("[Dashboard] Error loading dashboard data:", err);
     Toast.error("Failed to load dashboard metrics.");
+  } catch (err) {
+    if (!silent) {
+      console.error("[Dashboard] Error loading dashboard data:", err);
+      Toast.error("Failed to load dashboard metrics.");
+    }
   }
 }
