@@ -214,6 +214,11 @@ async def publish_pr_review(
             repo=repo,
             pr_number=pr_number,
         )
+        if result.get("status") == "error":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=result.get("error", "Unknown GitHub publication error")
+            )
         return result
     except ValueError as ve:
         raise HTTPException(

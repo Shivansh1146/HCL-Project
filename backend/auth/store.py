@@ -1708,7 +1708,12 @@ async def get_installation_id_for_repo(owner: str, repo: str) -> Optional[int]:
     full_name = f"{owner}/{repo}".lower()
     async with get_db() as db:
         row = await db.fetchrow(
-            "SELECT installation_id FROM repositories WHERE LOWER(full_name) = $1 LIMIT 1",
+            """
+            SELECT i.installation_id
+            FROM repositories r
+            JOIN installations i ON r.installation_id = i.id
+            WHERE LOWER(r.full_name) = $1 LIMIT 1
+            """,
             full_name,
         )
         if row and row["installation_id"]:

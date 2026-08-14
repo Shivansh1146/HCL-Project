@@ -80,8 +80,11 @@ class DiffValidator:
         # Flexible file matching
         matched_key = DiffValidator._find_matching_file(file_path, mapping)
         if not matched_key:
-            logger.warning(f"[DiffValidator] File not in diff: {file_path}")
+            logger.warning(f"[DiffValidator] File not in diff (or ambiguous): {file_path}")
             return False
+
+        issue["file"] = matched_key
+        issue["file_path"] = matched_key
 
         # Check if line exists in mapping
         if line_num in mapping[matched_key]:
@@ -211,9 +214,12 @@ class DiffValidator:
     def _find_matching_file(file_path: str, mapping: Dict[str, Any]) -> Optional[str]:
         if not file_path: return None
         if file_path in mapping: return file_path
+        matches = []
         for key in mapping:
             if key.endswith(file_path) or file_path.endswith(key) or file_path in key or key in file_path:
-                return key
+                matches.append(key)
+        if len(matches) == 1:
+            return matches[0]
         return None
 
     @staticmethod
