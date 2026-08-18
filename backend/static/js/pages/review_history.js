@@ -635,7 +635,7 @@ async function _openReviewDetailDrawer(owner, repo, prNumber) {
     });
 
     try {
-        const details = await api.getPullRequestDetails(owner, repo, prNumber);
+        const details = await api.getPullRequestDetail(owner, repo, prNumber);
         _renderDrawerDetails(drawerContent, details, mount);
     } catch (err) {
         console.error("[ReviewHistory] Error opening drawer:", err);
