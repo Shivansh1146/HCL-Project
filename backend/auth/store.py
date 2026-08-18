@@ -1513,24 +1513,24 @@ async def list_pull_requests(
         elif st == "closed":
             where_conditions.append("state = 'closed' AND merged = 0")
         else:
-            where_conditions.append("state = $1")
+            where_conditions.append("state = ?")
             params.append(st)
 
     # 2. Repository filter
     if repository_name and repository_name.lower() != "all":
         where_conditions.append(
-            "(repository_name = $1 OR owner || '/' || repository_name = $1)"
+            "(repository_name = ? OR owner || '/' || repository_name = ?)"
         )
-        params.append(repository_name)
+        params.extend([repository_name, repository_name])
 
     # 3. Author filter
     if author:
-        where_conditions.append("LOWER(author_login) LIKE $1")
+        where_conditions.append("LOWER(author_login) LIKE ?")
         params.append(f"%{author.lower()}%")
 
     # 4. Decision filter
     if decision and decision.upper() != "ALL":
-        where_conditions.append("UPPER(decision) = $1")
+        where_conditions.append("UPPER(decision) = ?")
         params.append(decision.upper())
 
     # 5. Review status filter
@@ -1545,13 +1545,24 @@ async def list_pull_requests(
         elif st == "processing":
             where_conditions.append("review_status = 'processing'")
         else:
-            where_conditions.append("review_status = $1")
+            where_conditions.append("review_status = ?")
             params.append(st)
 
-    # 6. Search query
+    # 6. Date range filter
+    if date_range and date_range.lower() != "all":
+        dr = date_range.lower()
+        if dr == "7d":
+            where_conditions.append("CAST(created_at AS timestamp) >= (NOW() - INTERVAL '7 days')")
+        elif dr == "30d":
+            where_conditions.append("CAST(created_at AS timestamp) >= (NOW() - INTERVAL '30 days')")
+        elif dr == "90d":
+            where_conditions.append("CAST(created_at AS timestamp) >= (NOW() - INTERVAL '90 days')")
+
+    # 7. Search query
     if search_query:
-        where_conditions.append("(title ILIKE $1 OR body ILIKE $1)")
-        params.append(f"%{search_query}%")
+        where_conditions.append("(title ILIKE ? OR repository_name ILIKE ? OR author_login ILIKE ? OR CAST(number AS TEXT) ILIKE ?)")
+        sq = f"%{search_query}%"
+        params.extend([sq, sq, sq, sq])
 
     # Build WHERE clause
     where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
@@ -1560,6 +1571,10 @@ async def list_pull_requests(
     order_by_clause = "ORDER BY created_at DESC"
     if sort == "oldest":
         order_by_clause = "ORDER BY created_at ASC"
+    elif sort == "highest_severity":
+        order_by_clause = "ORDER BY risk_level DESC, created_at DESC"
+    elif sort == "highest_coverage":
+        order_by_clause = "ORDER BY coverage_percentage DESC, created_at DESC"
     elif sort == "updated":
         order_by_clause = "ORDER BY updated_at DESC"
 
@@ -1572,7 +1587,7 @@ async def list_pull_requests(
         total = total_row["count"] if total_row else 0
 
         # Get paginated results
-        query = f"SELECT * FROM pull_requests WHERE {where_clause} {order_by_clause} LIMIT $1 OFFSET $2"
+        query = f"SELECT * FROM pull_requests WHERE {where_clause} {order_by_clause} LIMIT ? OFFSET ?"
         rows = await db.fetch(query, *params, per_page, offset)
         items = []
         for row in rows:

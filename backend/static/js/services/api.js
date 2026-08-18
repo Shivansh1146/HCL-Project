@@ -318,6 +318,12 @@ class ApiService {
     if (params.per_page) query.append("per_page", params.per_page);
     if (params.state) query.append("state", params.state);
     if (params.repo) query.append("repo", params.repo);
+    if (params.author) query.append("author", params.author);
+    if (params.decision) query.append("decision", params.decision);
+    if (params.review_status) query.append("review_status", params.review_status);
+    if (params.sort) query.append("sort", params.sort);
+    if (params.date_range) query.append("date_range", params.date_range);
+    if (params.q) query.append("q", params.q);
 
     const url = query.toString()
       ? `${CONFIG.PR_ENDPOINTS.LIST}?${query}`
