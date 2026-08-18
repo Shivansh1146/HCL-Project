@@ -380,6 +380,22 @@ class ApiService {
   getStats() {
     return this.request(CONFIG.STATS_ENDPOINT);
   }
+
+  // ---------------------------------------------------------------------------
+  // Notification Endpoints
+  // ---------------------------------------------------------------------------
+
+  getNotifications() {
+    return this.request("/api/notifications");
+  }
+
+  markNotificationRead(notificationId) {
+    return this.request(`/api/notifications/${notificationId}/read`, { method: "POST" });
+  }
+
+  markAllNotificationsRead() {
+    return this.request("/api/notifications/read-all", { method: "POST" });
+  }
 }
 
 export const api = new ApiService();

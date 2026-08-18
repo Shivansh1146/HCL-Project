@@ -22,6 +22,7 @@ from routers.app_router import router as app_router
 from routers.auth_router import router as auth_router
 from routers.pr_router import router as pr_router
 from routers.webhook_router import router as webhook_router
+from routers.notifications_router import router as notifications_router
 from services.ai_service import get_ai_service
 from services.diff_validator import DiffValidator
 from services.filter_service import parse_and_filter_issues
@@ -88,6 +89,7 @@ app.include_router(repo_alias_router)
 app.include_router(pr_router)
 app.include_router(analytics_router)
 app.include_router(webhook_router)
+app.include_router(notifications_router)
 
 # Mount static files for the dashboard
 app.mount("/static", StaticFiles(directory="static"), name="static")

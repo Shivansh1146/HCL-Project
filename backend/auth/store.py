@@ -285,6 +285,23 @@ async def initialize_auth_db() -> None:
         """
         )
 
+        # 9. Notifications Table
+        await db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS notifications (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                type TEXT DEFAULT 'info',
+                title TEXT,
+                message TEXT,
+                link TEXT,
+                is_read INTEGER DEFAULT 0,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            )
+        """
+        )
+
         # 9. Pull Requests Table for Enterprise Analytics & PR Service
         await db.execute(
             """
@@ -686,6 +703,51 @@ async def get_oauth_token(user_id: int) -> Optional[OAuthToken]:
             ),
         )
 
+
+# ---------------------------------------------------------------------------
+# Notifications
+# ---------------------------------------------------------------------------
+
+async def create_notification(
+    user_id: int, type: str, title: str, message: str, link: Optional[str] = None
+) -> None:
+    async with get_db() as db:
+        await db.execute(
+            """INSERT INTO notifications (user_id, type, title, message, link, is_read, created_at)
+               VALUES ($1, $2, $3, $4, $5, 0, $6)""",
+            user_id, type, title, message, link, datetime.now(timezone.utc).isoformat()
+        )
+
+async def get_notifications_for_user(user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
+    async with get_db() as db:
+        rows = await db.fetch(
+            "SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2",
+            user_id, limit
+        )
+        return [dict(r) for r in rows]
+
+async def mark_notification_read(notification_id: int, user_id: int) -> bool:
+    async with get_db() as db:
+        status_str = await db.execute(
+            "UPDATE notifications SET is_read = 1 WHERE id = $1 AND user_id = $2",
+            notification_id, user_id
+        )
+        return status_str.rowcount > 0
+
+async def mark_all_notifications_read(user_id: int) -> None:
+    async with get_db() as db:
+        await db.execute(
+            "UPDATE notifications SET is_read = 1 WHERE user_id = $1", user_id
+        )
+
+async def get_user_ids_for_installation(installation_id: int) -> List[int]:
+    """Returns all user_ids that own the given GitHub App installation_id."""
+    async with get_db() as db:
+        rows = await db.fetch(
+            "SELECT DISTINCT user_id FROM installations WHERE installation_id = $1 AND user_id IS NOT NULL",
+            installation_id,
+        )
+        return [r["user_id"] for r in rows]
 
 # ---------------------------------------------------------------------------
 # State CSRF Management

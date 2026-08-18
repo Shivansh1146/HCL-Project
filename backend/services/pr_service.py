@@ -27,6 +27,8 @@ from auth.store import (
     update_pull_request_review_results,
     update_pull_request_review_published,
     get_installation_id_for_repo,
+    create_notification,
+    get_user_ids_for_installation,
 )
 from services.ai_service import get_ai_service
 from services.diff_validator import DiffValidator
@@ -245,7 +247,31 @@ async def run_ai_review_task(
         )
         logger.info(f"✅ [AI_REVIEW_TASK] Completed AI review for PR #{pr_number}: decision={decision}, issues={len(valid_issues)}")
 
-        # Phase 2.2 — Publish review to GitHub
+        # Fan-out review notification to all installation owners
+        try:
+            if installation_id:
+                user_ids = await get_user_ids_for_installation(installation_id)
+            else:
+                user_ids = []
+            _decision_emojis = {"BLOCK": "🚫", "REVIEW_REQUIRED": "⚠️", "SAFE": "✅", "PERFECT": "💎"}
+            _emoji = _decision_emojis.get(decision, "ℹ️")
+            _notif_title = f"{_emoji} PR #{pr_number} — {decision}"
+            _notif_message = f"{owner}/{repo}: {summary}"
+            _notif_link = f"#/prs/{owner}/{repo}/{pr_number}"
+            for uid in user_ids:
+                try:
+                    await create_notification(
+                        user_id=uid,
+                        type="review",
+                        title=_notif_title,
+                        message=_notif_message,
+                        link=_notif_link,
+                    )
+                except Exception as _ne:
+                    logger.warning(f"[AI_REVIEW_TASK] Failed to create notification for user {uid}: {_ne}")
+        except Exception as _notif_exc:
+            logger.warning(f"[AI_REVIEW_TASK] Notification fan-out failed: {_notif_exc}")
+
         logger.info("📤 Posting review to GitHub")
         
         logger.info(f"📤 Calling GitHub review publisher for PR #{pr_number}")
