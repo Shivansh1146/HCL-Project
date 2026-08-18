@@ -282,7 +282,79 @@ function _renderDashboardContent(container) {
         </div>
     `;
 
-    container.append(metricsGrid, distGrid, leaderboardCard);
+    // 4. Daily Trend Bar Chart
+    const trendCard = document.createElement("div");
+    trendCard.className = "glass-card";
+    trendCard.style.cssText = "padding:1.5rem;margin-bottom:1.5rem;";
+
+    if (trends.length === 0) {
+        trendCard.innerHTML = `
+            <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:1rem;">Daily Review Activity Trend</h3>
+            <p style="color:var(--text-muted);font-size:0.9rem;text-align:center;padding:2rem 0;">No review activity recorded yet.</p>
+        `;
+    } else {
+        const maxCount = Math.max(...trends.map(t => t.count), 1);
+        trendCard.innerHTML = `
+            <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:1.25rem;">Daily Review Activity Trend (Last 14 Days)</h3>
+            <div style="display:flex;align-items:flex-end;gap:6px;height:120px;padding-bottom:1.5rem;position:relative;border-bottom:1px solid var(--border-color);">
+                ${trends.map(t => {
+                    const pct = Math.round((t.count / maxCount) * 100);
+                    const label = (t.date || "").slice(5); // MM-DD
+                    return `
+                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;" title="${dom.escape(t.date || "")}: ${t.count} reviews">
+                            <span style="font-size:0.65rem;color:var(--text-muted);">${t.count}</span>
+                            <div style="width:100%;height:${pct}%;background:var(--primary);border-radius:3px 3px 0 0;min-height:3px;transition:height 0.3s;"></div>
+                        </div>
+                    `;
+                }).join("")}
+            </div>
+            <div style="display:flex;gap:6px;margin-top:0.4rem;">
+                ${trends.map(t => `
+                    <div style="flex:1;text-align:center;font-size:0.6rem;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dom.escape((t.date || "").slice(5))}</div>
+                `).join("")}
+            </div>
+        `;
+    }
+
+    // 5. Activity Timeline
+    const activityTimeline = _analyticsData?.activity_timeline || [];
+    const activityCard = document.createElement("div");
+    activityCard.className = "glass-card";
+    activityCard.style.cssText = "padding:1.5rem;margin-bottom:1.5rem;";
+
+    const decisionColor = { SAFE: "#10b981", PERFECT: "#10b981", BLOCK: "#ef4444", REVIEW_REQUIRED: "#f59e0b", ERROR: "#a855f7" };
+
+    if (activityTimeline.length === 0) {
+        activityCard.innerHTML = `
+            <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:1rem;">Recent Review Activity</h3>
+            <p style="color:var(--text-muted);font-size:0.9rem;text-align:center;padding:2rem 0;">No review activity recorded yet.</p>
+        `;
+    } else {
+        activityCard.innerHTML = `
+            <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:1rem;">Recent Review Activity</h3>
+            <div style="display:flex;flex-direction:column;gap:0.6rem;max-height:320px;overflow-y:auto;">
+                ${activityTimeline.map(ev => {
+                    const decision = (ev.detail || "PENDING").toUpperCase();
+                    const color = decisionColor[decision] || "#9ca3af";
+                    const ts = ev.timestamp ? new Date(ev.timestamp).toLocaleString() : "—";
+                    return `
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0.75rem;background:rgba(255,255,255,0.03);border:1px solid var(--border-color);border-radius:var(--radius-sm);">
+                            <div style="display:flex;align-items:center;gap:0.6rem;min-width:0;">
+                                <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+                                <span style="font-size:0.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dom.escape(ev.title || "—")}</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:0.75rem;flex-shrink:0;">
+                                <span style="font-size:0.75rem;color:${color};font-weight:600;">${dom.escape(decision)}</span>
+                                <span style="font-size:0.72rem;color:var(--text-muted);">${dom.escape(ts)}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join("")}
+            </div>
+        `;
+    }
+
+    container.append(metricsGrid, distGrid, leaderboardCard, trendCard, activityCard);
 }
 
 function _pct(val, total) {
