@@ -1825,3 +1825,15 @@ async def get_repos_for_user(user_id: int) -> List[Dict[str, Any]]:
             }
             for row in rows
         ]
+
+async def get_audit_logs_for_user(user_id: int, limit: int = 50) -> List[AuditLog]:
+    """
+    Returns recent audit logs for the specified user, limited to the most recent 'limit' entries.
+    """
+    async with get_db() as db:
+        rows = await db.fetch(
+            "SELECT * FROM audit_logs WHERE user_id = ? OR user_id IS NULL ORDER BY created_at DESC LIMIT ?",
+            user_id,
+            limit
+        )
+        return [AuditLog(**dict(row)) for row in rows]
