@@ -13,7 +13,7 @@ logger = logging.getLogger("backend")
 class AIService:
     def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY")
-        self.model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+        self.model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
         self.client = None
         self._initialize_client()
 
