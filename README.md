@@ -18,10 +18,12 @@ The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Review
 - **💎 PERFECT Status Mapping**: Flawless code is recognized as **"ZERO RISK • VERIFIED,"** triggering an automatic success status on GitHub.
 - **📊 Real-Time Glassmorphism Dashboard**: A premium, state-aware Command Center with live telemetry, spectral severity metrics, and instant decision intelligence.
 - **📈 Advanced Review History & Analytics**: Full historical context of every AI review, displaying severity breakdowns, confidence levels, and overall code quality scores.
-- **🧠 Decision Explainability**: Deep insights into every flagged issue. The AI provides the rationale ("Why flagged"), potential impact, suggested fixes, and a code quality summary across Security, Performance, Maintainability, and Reliability.
+- **📅 14-Day Activity Trend Chart**: Accurate full calendar bar chart showing all 14 days including zero-count days, proper pixel-scaled bars, and alternating date labels.
+- **🧠 Decision Explainability**: Deep insights into every flagged issue — rationale, impact, suggested fixes, and code quality summary across Security, Performance, Maintainability, and Reliability.
 - **⚡ One-Click Fixes**: Automatically posts native ` ```suggestion ` syntax to GitHub, allowing developers to apply fixes directly from the PR interface.
 - **🔒 Fail-Safe BLOCK**: If the AI engine is unreachable or returns malformed data, the system immediately defaults to `BLOCK` to prevent any unsafe approvals.
 - **🔄 GitHub App Integration**: Full GitHub OAuth login, App Installation flow, and seamless Repository Synchronization.
+- **⚙️ Live System Health Dashboard**: Settings page shows real-time status tiles for API Gateway, PostgreSQL, AI Provider Pipeline, and GitHub App — all fetched live from health endpoints.
 
 ---
 
@@ -31,7 +33,7 @@ The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Review
 | ----------------- | --------------------- | -------------------------------------------------------------------------- |
 | **Cloud Hosting** | Render (Blueprint)    | Automated CI/CD deployment with dynamic port binding and persistent state. |
 | **Backend**       | FastAPI (Python 3.11) | High-performance, asynchronous orchestration engine.                       |
-| **AI Engine**     | Groq (LLaMA 3)        | Security-focused analysis with deterministic temperature (0.1).            |
+| **AI Engine**     | Groq (`openai/gpt-oss-20b`) | Security-focused analysis with deterministic temperature (0.1). Model configurable via `GROQ_MODEL` env var. |
 | **Hardening**     | Python Services       | Literal blacklist, syntactic validation, and content guards.               |
 | **Persistence**   | PostgreSQL (Neon Async Pool via `asyncpg`) | High-scale, concurrent connection pool with enterprise table schemas. |
 | **Dashboard**     | Vanilla JS / CSS      | Minimalist, high-performance UI with real-time state synchronization.      |
@@ -45,6 +47,7 @@ The **HCL Project** is a production-grade, AI-powered GitHub Pull Request Review
 3. Configure the following **Environment Variables**:
    - `DATABASE_URL`: PostgreSQL / Neon database connection string (`postgresql://...`).
    - `GROQ_API_KEY`: Your Groq API Key.
+   - `GROQ_MODEL` *(optional)*: Override the AI model (default: `openai/gpt-oss-20b`).
    - `GITHUB_TOKEN`: Your GitHub Personal Access Token.
    - `GITHUB_WEBHOOK_SECRET`: Your custom webhook secret used to verify GitHub webhooks.
    - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`: GitHub OAuth App credentials for the user login flow.
@@ -96,6 +99,7 @@ Create `backend/.env`:
 ```env
 DATABASE_URL=postgresql://user:password@ep-host.neon.tech/neondb?sslmode=require
 GROQ_API_KEY=gsk_...
+GROQ_MODEL=openai/gpt-oss-20b
 GITHUB_TOKEN=ghp_...
 GITHUB_WEBHOOK_SECRET=your_secret
 PORT=8000
@@ -143,14 +147,15 @@ HCL Project/
     ├── main.py                  # Webhook Pipeline & App Initialization
     ├── db_engine.py             # PostgreSQL asyncpg Connection Pool
     ├── auth/                    # OAuth & Session Management
+    │   └── store.py             # Audit log retrieval & user data
     ├── routers/                 # API Routes (PRs, Webhooks, Auth, Analytics)
     ├── services/                # Business Logic
-    │   ├── ai_service.py        # Groq LLaMA Engine + Hardening Guards
+    │   ├── ai_service.py        # Groq GPT-OSS Engine + Hardening Guards
     │   ├── github_service.py    # GitHub API Integration & Rate Limiting
     │   ├── pr_service.py        # Pull Request State Management
     │   └── review_publisher.py  # GitHub Review Comment Publisher
     └── static/                  # Vanilla JS Frontend (Glassmorphism UI)
-        └── js/pages/            # Dashboard, Review History, Analytics
+        └── js/pages/            # Dashboard, Review History, Analytics, Settings
 ```
 
 ---
@@ -158,6 +163,7 @@ HCL Project/
 ## 🔐 Security & Safety Notes
 
 - **Secrets**: All API keys and PEM certificates are strictly excluded from version control.
+- **No Credential Exposure**: Settings page health tiles show connectivity status only — never database URLs, passwords, tokens, or private keys.
 - **Non-Destructive**: The AI is programmed to never delete code blocks; it only suggests surgical line-level fixes.
 - **Fail-Safe BLOCK**: If the AI engine is unreachable or times out, the system immediately defaults to `BLOCK`.
 
@@ -178,36 +184,42 @@ _Built with Python · FastAPI · Groq · PostgreSQL · asyncpg · GitHub REST AP
 
 ## 📝 Recent Updates & Production Verification
 
+### UI & Data Accuracy Fixes (August 2026)
+
+- **🔧 Settings: Live System Health Status**: Replaced 100% hardcoded status cards with live data from `/api/health` and `/api/health/ai`. Database correctly shows **PostgreSQL Connected**, AI pipeline shows live model name. No credentials or secrets are ever exposed.
+- **📊 Analytics: 14-Day Trend Chart**: Fixed the trend chart to always render all 14 calendar days, including zero-count days. Frontend now performs a date-join so sparse backend SQL data always fills the full timeline. Bars use pixel-accurate heights, count labels appear only on non-zero bars, and alternating x-axis labels prevent crowding.
+- **📋 Review History: Table Layout**: Fixed horizontal overflow and cell wrapping. Table now enforces `white-space: nowrap` on headers and data rows, uses compact padding, and correctly ellipsizes long PR titles. Horizontal scrolling is scoped to the table container only.
+- **🔍 Profile: Refresh Log Button**: Restored the audit log retrieval function (`get_audit_logs_for_user`) that was missing from `auth/store.py`. Added loading state and success toast to the Refresh Logs button.
+- **🤖 AI Model Update**: Migrated from the deprecated `llama-3.1-8b-instant` (Groq removed all Llama 3.x models mid-2026) to `openai/gpt-oss-20b`, the current Groq production model. Configurable via `GROQ_MODEL` environment variable.
+
 ### Enterprise PostgreSQL Migration & Production Stabilization (August 2026)
 - **PostgreSQL / Neon Engine**: Complete transition of backend persistence to high-performance `asyncpg` connection pool with dynamic `$n` positional parameter bindings.
 - **Deduplication Race Condition Fix**: Eliminated pre-emptive delivery ID insertions in `webhook_service.py` that were poisoning idempotency checks, ensuring smooth GitHub webhook ingestion.
 - **Production Schema Auto-Initialization**: Fully integrated automatic schema updates across `pull_requests`, `webhook_deliveries`, `selected_repos`, `installations`, and user session tables.
-- **End-to-End Live Verification**: Validated full pipeline execution with real GitHub PRs on monitored repository `Shivansh1146/college-resume-2025` on Render:
-  - GitHub PR Webhook ingestion & Verification
-  - Installation lookup & Monitored Repository Validation
-  - Code Diff Retrieval from GitHub REST API
-  - Groq AI Code Review & Risk Assessment (`SAFE`, `REVIEW_REQUIRED`, `BLOCK`)
-  - PostgreSQL Review Metadata Persistence (`reviewed_at`, severity counts, summaries)
-  - Interactive Dashboard, Review History, and Enterprise Telemetry updates.
+- **End-to-End Live Verification**: Validated full pipeline execution with real GitHub PRs on Render.
 
 ### Analytics and GitHub Publication-State Synchronization (August 2026)
-- **Canonical repository names**: Analytics now uses the stored full repository name when it is present and prefixes the owner only for short names. This prevents duplicate values such as `owner/owner/repository`.
+- **Canonical repository names**: Analytics now uses the stored full repository name when it is present and prefixes the owner only for short names.
 - **Reliable GitHub publication persistence**: After GitHub confirms a review, the corresponding `pull_requests` row records `review_posted`, `review_posted_at`, and the GitHub review ID.
 - **Large GitHub review IDs**: `github_review_id` uses PostgreSQL `BIGINT`, so GitHub review identifiers are stored without 32-bit integer overflow.
-- **No false Published state**: A GitHub success is reported as published only after the local PostgreSQL update succeeds. Existing PR analysis data, findings, decisions, and review history are preserved by these migrations.
 
 ### Real-time UI & End-to-End AI Publishing Pipeline (August 2026)
-- **Zero-Flicker Dashboard Auto-Refresh**: All frontend pages (Dashboard, Pull Requests, Analytics, Review History) now feature a seamless 5-second polling interval using silent data-fetching for live updates.
-- **GitHub Review Publisher Engine**: The AI now autonomously publishes native GitHub Pull Request Reviews with exact inline comments mapped to the changed code.
-- **Strict Suggestion Generation**: DiffValidator explicitly filters hallucinated fixes, ensuring ````suggestion```` blocks only contain valid code that differs from the original source.
-- **E2E Proven Security Catch**: Fully validated against test repositories for real-world injection vulnerabilities. The AI successfully reads the diff, identifies the security hole, generates the fix, validates the path, and pushes an actionable GitHub PR Review.
+- **Zero-Flicker Dashboard Auto-Refresh**: All frontend pages now feature seamless 5-second polling for live updates.
+- **GitHub Review Publisher Engine**: The AI autonomously publishes native GitHub Pull Request Reviews with exact inline comments mapped to the changed code.
+- **Strict Suggestion Generation**: DiffValidator explicitly filters hallucinated fixes.
 
-### System Status
-- ✅ All webhooks processing with zero race conditions
-- ✅ AI review pipeline fully operational and verified on Render
-- ✅ Database driver operating natively on PostgreSQL via `asyncpg`
-- ✅ GitHub OAuth & GitHub App integration active
-- ✅ Glassmorphism Command Center UI & Telemetry fully synchronized
-- ✅ Live GitHub Reviews and native code suggestions are actively published
-- ✅ Production live at [https://hcl-project-3tgd.onrender.com](https://hcl-project-3tgd.onrender.com)
+---
 
+### ✅ Current System Status
+
+| Component | Status |
+|---|---|
+| API Gateway | ✅ Operational |
+| PostgreSQL Database | ✅ Connected (asyncpg pool) |
+| AI Provider Pipeline | ✅ `openai/gpt-oss-20b` Active on Groq |
+| GitHub App Integration | ✅ Configured |
+| Webhook Processing | ✅ Zero race conditions |
+| Review History UI | ✅ Layout fixed, all filters operational |
+| Analytics Chart | ✅ Full 14-day calendar rendering |
+| Settings Health Dashboard | ✅ Live data, no hardcoded values |
+| Production URL | ✅ [https://hcl-project-3tgd.onrender.com](https://hcl-project-3tgd.onrender.com) |
