@@ -282,39 +282,89 @@ function _renderDashboardContent(container) {
         </div>
     `;
 
-    // 4. Daily Trend Bar Chart
+    // 4. Daily Trend Bar Chart — full 14-day calendar fill
     const trendCard = document.createElement("div");
     trendCard.className = "glass-card";
     trendCard.style.cssText = "padding:1.5rem;margin-bottom:1.5rem;";
 
-    if (trends.length === 0) {
+    // Build a complete 14-day date map regardless of what backend returned
+    // (backend only returns days that HAVE reviews; we fill zeros for the rest)
+    const todayMs = Date.now();
+    const msPerDay = 86400000;
+    const fullDays = Array.from({ length: 14 }, (_, i) => {
+        const d = new Date(todayMs - (13 - i) * msPerDay);
+        const iso = d.toISOString().slice(0, 10); // YYYY-MM-DD
+        const label = `${d.getMonth() + 1}/${d.getDate()}`; // M/D
+        return { date: iso, label, count: 0 };
+    });
+
+    // Left-join backend data into the full 14-day slots
+    const trendMap = {};
+    trends.forEach(t => { trendMap[t.date] = t.count; });
+    fullDays.forEach(d => {
+        if (trendMap[d.date] !== undefined) d.count = trendMap[d.date];
+    });
+
+    const totalActivity = fullDays.reduce((s, d) => s + d.count, 0);
+    const maxCount = Math.max(...fullDays.map(d => d.count), 1);
+    const CHART_H = 140; // px — fixed chart height
+
+    if (totalActivity === 0) {
         trendCard.innerHTML = `
-            <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:1rem;">Daily Review Activity Trend</h3>
-            <p style="color:var(--text-muted);font-size:0.9rem;text-align:center;padding:2rem 0;">No review activity recorded yet.</p>
+            <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:1rem;">Daily Review Activity Trend (Last 14 Days)</h3>
+            <p style="color:var(--text-muted);font-size:0.9rem;text-align:center;padding:2rem 0;">No review activity recorded in the last 14 days.</p>
         `;
     } else {
-        const maxCount = Math.max(...trends.map(t => t.count), 1);
+        const barsHtml = fullDays.map((d, i) => {
+            const barH = Math.max(Math.round((d.count / maxCount) * CHART_H), d.count > 0 ? 4 : 1);
+            const isEmpty = d.count === 0;
+            // Alternate labels: show every other one to avoid crowding
+            const showLabel = (i % 2 === 0) || (i === 13);
+            return `
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;position:relative;min-width:0;"
+                     title="${dom.escape(d.date)}: ${d.count} review${d.count !== 1 ? 's' : ''}">
+                    <!-- count above bar (non-zero only) -->
+                    <span style="font-size:0.62rem;font-weight:600;color:${isEmpty ? 'transparent' : 'var(--text-secondary)'};
+                                 height:1rem;line-height:1rem;margin-bottom:2px;user-select:none;">${d.count}</span>
+                    <!-- bar body -->
+                    <div style="width:75%;height:${barH}px;
+                                background:${isEmpty ? 'rgba(255,255,255,0.06)' : 'var(--primary)'};
+                                border-radius:3px 3px 0 0;
+                                align-self:flex-end;
+                                transition:height 0.3s ease;
+                                margin-top:auto;">
+                    </div>
+                    <!-- x-axis label -->
+                    <span style="font-size:0.6rem;color:var(--text-muted);margin-top:4px;
+                                 white-space:nowrap;opacity:${showLabel ? 1 : 0};
+                                 overflow:hidden;max-width:100%;text-align:center;">${d.label}</span>
+                </div>
+            `;
+        }).join("");
+
         trendCard.innerHTML = `
-            <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:1.25rem;">Daily Review Activity Trend (Last 14 Days)</h3>
-            <div style="display:flex;align-items:flex-end;gap:6px;height:120px;padding-bottom:1.5rem;position:relative;border-bottom:1px solid var(--border-color);">
-                ${trends.map(t => {
-                    const pct = Math.round((t.count / maxCount) * 100);
-                    const label = (t.date || "").slice(5); // MM-DD
-                    return `
-                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;" title="${dom.escape(t.date || "")}: ${t.count} reviews">
-                            <span style="font-size:0.65rem;color:var(--text-muted);">${t.count}</span>
-                            <div style="width:100%;height:${pct}%;background:var(--primary);border-radius:3px 3px 0 0;min-height:3px;transition:height 0.3s;"></div>
-                        </div>
-                    `;
-                }).join("")}
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.5rem;">
+                <h3 style="font-size:1.05rem;font-weight:700;margin:0;">Daily Review Activity Trend (Last 14 Days)</h3>
+                <span style="font-size:0.8rem;color:var(--text-muted);">${totalActivity} total review${totalActivity !== 1 ? 's' : ''}</span>
             </div>
-            <div style="display:flex;gap:6px;margin-top:0.4rem;">
-                ${trends.map(t => `
-                    <div style="flex:1;text-align:center;font-size:0.6rem;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${dom.escape((t.date || "").slice(5))}</div>
-                `).join("")}
+            <!-- Y-axis label -->
+            <div style="display:flex;gap:0;align-items:stretch;">
+                <div style="display:flex;flex-direction:column;justify-content:space-between;padding-bottom:1.5rem;padding-right:6px;min-width:24px;">
+                    <span style="font-size:0.6rem;color:var(--text-muted);text-align:right;">${maxCount}</span>
+                    <span style="font-size:0.6rem;color:var(--text-muted);text-align:right;">${Math.round(maxCount / 2)}</span>
+                    <span style="font-size:0.6rem;color:var(--text-muted);text-align:right;">0</span>
+                </div>
+                <!-- Chart area -->
+                <div style="flex:1;display:flex;flex-direction:column;border-left:1px solid var(--border-color);border-bottom:1px solid var(--border-color);">
+                    <!-- Bars row -->
+                    <div style="flex:1;display:flex;align-items:flex-end;gap:3px;padding:0 4px;height:${CHART_H + 16}px;">
+                        ${barsHtml}
+                    </div>
+                </div>
             </div>
         `;
     }
+
 
     // 5. Activity Timeline
     const activityTimeline = _analyticsData?.activity_timeline || [];
