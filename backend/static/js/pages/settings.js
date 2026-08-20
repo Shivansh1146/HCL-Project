@@ -92,7 +92,7 @@ async function _loadHealthStatus() {
     const grid = document.getElementById("settings-health-grid");
     if (!grid) return;
 
-    const [healthRes, aiRes] = await Promise.allSettled([
+    const [healthRes, aiRes, appRes] = await Promise.allSettled([
         api.request("/api/health"),
         api.request("/api/health/ai"),
         api.getAppStatus()
