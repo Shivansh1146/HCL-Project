@@ -129,21 +129,32 @@ export async function renderProfilePage(outlet) {
     wrapper.append(header, profileCard, securityCard, auditCard);
     outlet.appendChild(wrapper);
 
-    auditCard.querySelector("#refresh-audit-btn")?.addEventListener("click", () => _loadAuditLogs());
+    auditCard.querySelector("#refresh-audit-btn")?.addEventListener("click", () => _loadAuditLogs(true));
 
     // Initial audit log fetch
     await _loadAuditLogs();
 }
 
-async function _loadAuditLogs() {
+async function _loadAuditLogs(showFeedback = false) {
     const listEl = document.getElementById("audit-logs-list");
     if (!listEl) return;
+
+    if (showFeedback) {
+        const btn = document.getElementById("refresh-audit-btn");
+        if (btn) btn.style.opacity = "0.5";
+    }
 
     try {
         _auditLogs = await api.getAuditLogs(30);
         _renderAuditLogsList(listEl);
+        if (showFeedback) Toast.success("Audit logs refreshed");
     } catch (err) {
         listEl.innerHTML = `<div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.85rem;">No recent audit log entries available.</div>`;
+    } finally {
+        if (showFeedback) {
+            const btn = document.getElementById("refresh-audit-btn");
+            if (btn) btn.style.opacity = "1";
+        }
     }
 }
 
