@@ -492,21 +492,21 @@ function _renderTable() {
 
     table.innerHTML = `
         <thead>
-            <tr style="border-bottom:1px solid var(--border-color);color:var(--text-muted);font-size:0.78rem;text-transform:uppercase;letter-spacing:0.05em;">
-                <th style="padding:0.9rem 1rem;">Repository</th>
-                <th style="padding:0.9rem 1rem;">PR #</th>
-                <th style="padding:0.9rem 1rem;">PR Title</th>
-                <th style="padding:0.9rem 1rem;">Author</th>
-                <th style="padding:0.9rem 1rem;">AI Decision</th>
-                <th style="padding:0.9rem 1rem;">Review Status</th>
-                <th style="padding:0.9rem 1rem;">Published</th>
-                <th style="padding:0.9rem 1rem;">Coverage</th>
-                <th style="padding:0.9rem 1rem;">Latency</th>
-                <th style="padding:0.9rem 1rem;">Timestamp</th>
-                <th style="padding:0.9rem 1rem;">Actions</th>
+            <tr style="border-bottom:1px solid var(--border-color);color:var(--text-muted);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;">
+                <th style="padding:0.7rem 0.6rem;">Repository</th>
+                <th style="padding:0.7rem 0.6rem;">PR #</th>
+                <th style="padding:0.7rem 0.6rem;width:100%;">PR Title</th>
+                <th style="padding:0.7rem 0.6rem;">Author</th>
+                <th style="padding:0.7rem 0.6rem;">AI Decision</th>
+                <th style="padding:0.7rem 0.6rem;">Review Status</th>
+                <th style="padding:0.7rem 0.6rem;">Published</th>
+                <th style="padding:0.7rem 0.6rem;">Coverage</th>
+                <th style="padding:0.7rem 0.6rem;">Latency</th>
+                <th style="padding:0.7rem 0.6rem;">Timestamp</th>
+                <th style="padding:0.7rem 0.6rem;">Actions</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody style="white-space:nowrap;">
             ${items.map(pr => {
                 const repoName = dom.escape(pr.repository_name || `${pr.owner}/${pr.repository_name}`);
                 const title = dom.escape(pr.title || "Untitled Pull Request");
@@ -523,28 +523,28 @@ function _renderTable() {
 
                 return `
                     <tr style="border-bottom:1px solid var(--border-color);transition:background 0.2s;" class="table-row-hover">
-                        <td style="padding:0.9rem 1rem;font-weight:600;color:var(--text-primary);">${repoName}</td>
-                        <td style="padding:0.9rem 1rem;">
+                        <td style="padding:0.6rem;font-weight:600;color:var(--text-primary);">${repoName}</td>
+                        <td style="padding:0.6rem;">
                             <a href="${prUrl}" target="_blank" rel="noopener noreferrer" style="color:var(--primary);font-weight:700;text-decoration:none;">
                                 #${pr.number}
                             </a>
                         </td>
-                        <td style="padding:0.9rem 1rem;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${title}">
+                        <td style="padding:0.6rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;" title="${title}">
                             ${title}
                         </td>
-                        <td style="padding:0.9rem 1rem;color:var(--text-secondary);">
+                        <td style="padding:0.6rem;color:var(--text-secondary);">
                             <div style="display:flex;align-items:center;gap:0.4rem;">
                                 ${pr.author_avatar ? `<img src="${dom.escape(pr.author_avatar)}" alt="${author}" style="width:20px;height:20px;border-radius:50%;">` : ""}
                                 <span>${author}</span>
                             </div>
                         </td>
-                        <td style="padding:0.9rem 1rem;">${decisionBadge}</td>
-                        <td style="padding:0.9rem 1rem;">${statusBadge}</td>
-                        <td style="padding:0.9rem 1rem;">${publishedBadge}</td>
-                        <td style="padding:0.9rem 1rem;font-weight:600;color:var(--color-info);">${coveragePct}</td>
-                        <td style="padding:0.9rem 1rem;color:var(--text-muted);">${procTime}</td>
-                        <td style="padding:0.9rem 1rem;color:var(--text-muted);font-size:0.78rem;">${timestamp}</td>
-                        <td style="padding:0.9rem 1rem;">
+                        <td style="padding:0.6rem;">${decisionBadge}</td>
+                        <td style="padding:0.6rem;">${statusBadge}</td>
+                        <td style="padding:0.6rem;">${publishedBadge}</td>
+                        <td style="padding:0.6rem;font-weight:600;color:var(--color-info);">${coveragePct}</td>
+                        <td style="padding:0.6rem;color:var(--text-muted);">${procTime}</td>
+                        <td style="padding:0.6rem;color:var(--text-muted);font-size:0.75rem;">${timestamp}</td>
+                        <td style="padding:0.6rem;">
                             <div style="display:flex;align-items:center;gap:0.4rem;">
                                 <button
                                     type="button"
