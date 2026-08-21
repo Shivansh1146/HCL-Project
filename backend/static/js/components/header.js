@@ -224,17 +224,16 @@ export function renderHeader(headerEl) {
 
     const notifBtn = document.createElement("button");
     notifBtn.type = "button";
-    notifBtn.className = "org-switcher";
+    notifBtn.className = "icon-btn";
     notifBtn.id = "notification-bell-btn";
     notifBtn.setAttribute("aria-label", "Notifications");
     notifBtn.setAttribute("data-tooltip", "Notifications");
     notifBtn.innerHTML = `
-        <div style="position:relative;display:flex;align-items:center;gap:0.5rem;justify-content:center;">
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                 <path d="M13.73 21a2 2 0 01-3.46 0"/>
             </svg>
-            <span>Notifications</span>
             <span class="notif-badge" style="
                 display:none;position:absolute;top:-6px;right:-8px;
                 min-width:16px;height:16px;padding:0 3px;
