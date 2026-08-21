@@ -349,7 +349,7 @@ function _renderVisualizations() {
                         const maxVal = Math.max(...trends.map(x => x.count), 1);
                         const heightPct = Math.max(15, Math.round((t.count / maxVal) * 100));
                         return `
-                            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0.25rem;" title="${t.date}: ${t.count} reviews">
+                            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:0.25rem;" title="${t.date}: ${t.count} reviews">
                                 <div style="width:100%;height:${heightPct}%;background:linear-gradient(180deg,#3b82f6,#8b5cf6);border-radius:3px 3px 0 0;"></div>
                             </div>
                         `;
