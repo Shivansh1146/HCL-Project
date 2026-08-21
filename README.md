@@ -185,6 +185,8 @@ _Built with Python · FastAPI · Groq · PostgreSQL · asyncpg · GitHub REST AP
 ## 📝 Recent Updates & Production Verification
 
 ### UI & Data Accuracy Fixes (August 2026)
+- **📈 Review Trend Activity Chart Fix**: Resolved a flexbox percentage-height bug that caused the 14-day trend bars to render at 0px inside the Review History Command Center.
+- **💬 Top Header Tooltip Fix**: Corrected tooltip positioning in the sticky navigation header to drop downwards, preventing tooltips (like Notifications and Avatar labels) from clipping above the browser viewport.
 
 - **🔧 Settings: Live System Health Status**: Replaced 100% hardcoded status cards with live data from `/api/health` and `/api/health/ai`. Database correctly shows **PostgreSQL Connected**, AI pipeline shows live model name. No credentials or secrets are ever exposed.
 - **📊 Analytics: 14-Day Trend Chart**: Fixed the trend chart to always render all 14 calendar days, including zero-count days. Frontend now performs a date-join so sparse backend SQL data always fills the full timeline. Bars use pixel-accurate heights, count labels appear only on non-zero bars, and alternating x-axis labels prevent crowding.
